@@ -17,7 +17,7 @@ const BEHOLD_FEED_ID = "REPLACE_ME";
 const GRID_COUNT = 8;
 
 import { useState, useEffect, useCallback } from "react";
-import Lightbox, { type LightboxPost } from "@/components/Lightbox";
+import { Lightbox, type LightboxPost } from "@amyv/ui";
 
 interface BeholdPost {
   id: string;

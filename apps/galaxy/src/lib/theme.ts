@@ -23,6 +23,8 @@
  *  2. :root block in src/app/globals.css (--site-* vars)
  */
 
+import type { Theme } from "@amyv/design-system";
+
 export const COLORS = {
   bg:           "#0a0a0f", // page background
   bgAlt:        "#14141c", // cards, sidebars, elevated surfaces
@@ -41,10 +43,10 @@ export const FONTS = {
 } as const;
 
 export const SPACING = {
-  pagePx:    "1rem",   // horizontal page padding (px-4)
-  pageMax:   "72rem",  // max content width (max-w-6xl)
-  sectionY:  "6rem",   // vertical section padding (py-24)
-  cardPad:   "2rem",   // inner card padding (p-8)
+  pagePx:   "1rem",   // horizontal page padding (px-4)
+  pageMax:  "72rem",  // max content width (max-w-6xl)
+  sectionY: "6rem",   // vertical section padding (py-24)
+  cardPad:  "2rem",   // inner card padding (p-8)
 } as const;
 
 export const RADIUS = {
@@ -53,3 +55,10 @@ export const RADIUS = {
   lg:   "1rem",    // rounded-lg
   full: "9999px",  // rounded-full
 } as const;
+
+export const theme: Theme = {
+  colors:  COLORS,
+  fonts:   FONTS,
+  spacing: SPACING,
+  radius:  RADIUS,
+};

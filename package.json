@@ -5,6 +5,16 @@
   "engines": {
     "node": ">=20"
   },
+  "devDependencies": {
+    "@amyv/admin": "workspace:*",
+    "@amyv/design-system": "workspace:*",
+    "@amyv/email": "workspace:*",
+    "@amyv/orders": "workspace:*",
+    "@amyv/stripe": "workspace:*",
+    "@amyv/supabase": "workspace:*",
+    "@amyv/types": "workspace:*",
+    "@amyv/ui": "workspace:*"
+  },
   "scripts": {
     "dev:galaxy": "pnpm --filter @amyv/galaxy dev",
     "dev:esskay": "pnpm --filter @amyv/esskay dev",

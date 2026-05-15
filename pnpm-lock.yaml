@@ -6,7 +6,32 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      '@amyv/admin':
+        specifier: workspace:*
+        version: link:packages/admin
+      '@amyv/design-system':
+        specifier: workspace:*
+        version: link:packages/design-system
+      '@amyv/email':
+        specifier: workspace:*
+        version: link:packages/email
+      '@amyv/orders':
+        specifier: workspace:*
+        version: link:packages/orders
+      '@amyv/stripe':
+        specifier: workspace:*
+        version: link:packages/stripe
+      '@amyv/supabase':
+        specifier: workspace:*
+        version: link:packages/supabase
+      '@amyv/types':
+        specifier: workspace:*
+        version: link:packages/types
+      '@amyv/ui':
+        specifier: workspace:*
+        version: link:packages/ui
 
   apps/esskay:
     dependencies:
@@ -81,6 +106,22 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+
+  packages/admin: {}
+
+  packages/design-system: {}
+
+  packages/email: {}
+
+  packages/orders: {}
+
+  packages/stripe: {}
+
+  packages/supabase: {}
+
+  packages/types: {}
+
+  packages/ui: {}
 
 packages:
 

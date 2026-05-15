@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { IconMenu, IconClose } from "@/components/icons";
+import { IconMenu, IconClose } from "@amyv/ui";
 
 const links = [
   { href: "/shop",    label: "Shop"    },

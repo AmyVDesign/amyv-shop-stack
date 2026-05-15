@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/* ── Site design tokens ──────────────────────────────────────────
+   Single source of truth for the palette. All values are
+   placeholders — swap them here when the real brand palette lands.
+   ---------------------------------------------------------------- */
+:root {
+  --site-bg:           #0a0a0f;
+  --site-bg-alt:       #14141c;
+  --site-border:       #2a2a35;
+  --site-text:         #ffffff;
+  --site-muted:        #9090a0;
+  --site-accent:       #39ff14;
+  --site-accent-dark:  #1f8a0a;
+  --site-accent-light: #c8ffb8;
+}
+
+/* ── Tailwind v4 theme mapping ───────────────────────────────────
+   Maps --site-* tokens to Tailwind color utilities.
+   Usage: bg-site-bg, text-site-accent, border-site-border, etc.
+   ---------------------------------------------------------------- */
+@theme inline {
+  --color-site-bg:           var(--site-bg);
+  --color-site-bg-alt:       var(--site-bg-alt);
+  --color-site-border:       var(--site-border);
+  --color-site-text:         var(--site-text);
+  --color-site-muted:        var(--site-muted);
+  --color-site-accent:       var(--site-accent);
+  --color-site-accent-dark:  var(--site-accent-dark);
+  --color-site-accent-light: var(--site-accent-light);
+
+  /* Alias: keep `neon` working in existing code */
+  --color-neon: var(--site-accent);
+
+  /* Animations */
+  --animate-fade-in: fade-in 0.15s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+body {
+  background: var(--site-bg);
+  color: var(--site-text);
+  font-family: system-ui, sans-serif;
+}

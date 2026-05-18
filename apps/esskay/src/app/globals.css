@@ -1,6 +1,8 @@
 @import "tailwindcss";
+@source "../../../../packages/ui/src";
 
 :root {
+  /* Colors */
   --site-bg:           #f8f5f0;
   --site-bg-alt:       #ffffff;
   --site-border:       #d4c9b8;
@@ -9,6 +11,10 @@
   --site-accent:       #1e5f8e;
   --site-accent-dark:  #0f3a57;
   --site-accent-light: #b8d4e8;
+
+  /* Typography — swap these two vars to change fonts everywhere */
+  --font-display: 'Source Serif 4', Georgia, serif;
+  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 @theme inline {
@@ -24,6 +30,15 @@
   --animate-fade-in: fade-in 0.15s ease-out;
 }
 
+/* Font-family utilities that reference the CSS variables above */
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+@utility font-body {
+  font-family: var(--font-body);
+}
+
 @keyframes fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }
@@ -32,5 +47,10 @@
 body {
   background: var(--site-bg);
   color: var(--site-text);
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-body);
+}
+
+/* Ensure form controls inherit the body font */
+input, button, select, textarea {
+  font-family: inherit;
 }

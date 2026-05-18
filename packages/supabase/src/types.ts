@@ -321,81 +321,6 @@ export type Database = {
         }
         Relationships: []
       }
-      wholesale_allocations: {
-        Row: {
-          allocated_qty: number
-          created_at: string
-          id: string
-          partner_id: string
-          partner_price_cents: number | null
-          product_id: string
-          updated_at: string
-        }
-        Insert: {
-          allocated_qty: number
-          created_at?: string
-          id?: string
-          partner_id: string
-          partner_price_cents?: number | null
-          product_id: string
-          updated_at?: string
-        }
-        Update: {
-          allocated_qty?: number
-          created_at?: string
-          id?: string
-          partner_id?: string
-          partner_price_cents?: number | null
-          product_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "wholesale_allocations_partner_id_fkey"
-            columns: ["partner_id"]
-            isOneToOne: false
-            referencedRelation: "wholesale_partners"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wholesale_allocations_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      wholesale_partners: {
-        Row: {
-          contact_email: string | null
-          contact_phone: string | null
-          created_at: string
-          id: string
-          name: string
-          notes: string | null
-          updated_at: string
-        }
-        Insert: {
-          contact_email?: string | null
-          contact_phone?: string | null
-          created_at?: string
-          id?: string
-          name: string
-          notes?: string | null
-          updated_at?: string
-        }
-        Update: {
-          contact_email?: string | null
-          contact_phone?: string | null
-          created_at?: string
-          id?: string
-          name?: string
-          notes?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -412,7 +337,7 @@ export type Database = {
         | "damaged"
         | "found_in_stock"
       product_source: "manual" | "shopify_import" | "sheets_import"
-      product_visibility: "public" | "internal" | "wholesale" | "ebay_only"
+      product_visibility: "public" | "internal" | "ebay_only"
       qb_status: "pending_mom_review" | "approved_for_qb" | "pushed_to_qb"
     }
     CompositeTypes: {
@@ -550,7 +475,7 @@ export const Constants = {
         "found_in_stock",
       ],
       product_source: ["manual", "shopify_import", "sheets_import"],
-      product_visibility: ["public", "internal", "wholesale", "ebay_only"],
+      product_visibility: ["public", "internal", "ebay_only"],
       qb_status: ["pending_mom_review", "approved_for_qb", "pushed_to_qb"],
     },
   },

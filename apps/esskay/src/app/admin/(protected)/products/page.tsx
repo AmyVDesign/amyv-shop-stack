@@ -6,13 +6,17 @@ import { PartsTableBody } from './PartsTableBody'
 export default async function PartsPage() {
   const supabase = await createClient()
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('products')
     .select(
       'id, title, sku, part_number, manufacturer, photo_urls, price_cents, qty_on_hand, qty_for_sale, visibility'
     )
     .order('created_at', { ascending: false })
     .limit(50)
+
+  if (error) {
+    console.error('[products page] query failed:', error)
+  }
 
   const parts = data ?? []
 
@@ -29,7 +33,11 @@ export default async function PartsPage() {
         </Link>
       </div>
 
-      {parts.length === 0 ? (
+      {error ? (
+        <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Failed to load parts. Check server logs.
+        </div>
+      ) : parts.length === 0 ? (
         <EmptyState
           message={
             <>

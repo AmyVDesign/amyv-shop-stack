@@ -82,9 +82,14 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
               <Badge variant={badge.variant}>{badge.label}</Badge>
             </TableCell>
 
-            {/* Qty */}
-            <TableCell className="tabular-nums">
-              {part.qty_on_hand} / {part.qty_for_sale}
+            {/* For Sale */}
+            <TableCell className="tabular-nums text-right">
+              {part.qty_for_sale}
+            </TableCell>
+
+            {/* On Hand */}
+            <TableCell className="tabular-nums text-right">
+              {part.qty_on_hand}
             </TableCell>
 
             {/* Price */}

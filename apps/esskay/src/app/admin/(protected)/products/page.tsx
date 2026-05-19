@@ -56,7 +56,8 @@ export default async function PartsPage() {
                 <TableCell header>Part No.</TableCell>
                 <TableCell header>Manufacturer</TableCell>
                 <TableCell header>Visibility</TableCell>
-                <TableCell header>Qty</TableCell>
+                <TableCell header>For Sale</TableCell>
+                <TableCell header>On Hand</TableCell>
                 <TableCell header>Price</TableCell>
               </TableRow>
             </TableHeader>

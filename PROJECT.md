@@ -60,6 +60,30 @@ Each app gets its own brand, its own URL, its own users, its own data. But authe
 
 ---
 
+## Product architecture: the two-layer model
+
+The system separates two concerns that look like one in most simple e-commerce models:
+
+**Layer 1 — Internal admin view (always linked):**
+Every product row is implicitly linked to other rows that share the same `part_number + manufacturer`. The Parts list shows each row separately (one per physical item or bulk lot), but the detail "profile" page surfaces every related listing in a Related Listings section. Staff always see the full picture: "we have 3 Mercury 1985 Carburetors total — one on the website, one on eBay, one in-store."
+
+**Layer 2 — Customer-facing display (configurable per item):**
+At upload time, the user chooses whether each new item:
+- **Links** to an existing public product page (the new listing appears as a variant/option on the existing page), or
+- **Creates** its own standalone public page (a fresh URL and listing)
+
+Either way, the internal Layer 1 grouping remains intact.
+
+**Why this matters:**
+- Marina inventory is messy by nature (obsolete parts, varied conditions, multiple channels)
+- Forcing all same-part items into a single rigid customer-facing structure removes the user's editorial control
+- Forcing all same-part items into separate standalone listings loses the relationship internally
+- Decoupling these two layers means staff get the truth and customers get the curation
+
+**Implementation note:** Phase 2.2 implements this via shared `part_number + manufacturer` identifiers (Path A). Phase 3+ may promote to a formal `parts` (catalog) + `listings` (inventory items) table split (Path B) if usage shows the simpler model breaks down.
+
+---
+
 ## Users
 
 | Role | App | What they do |
@@ -107,12 +131,25 @@ The most important constraint across all users: **parent-facing language never u
 | 1.1 | Monorepo bootstrap, Galaxy migrated in, shared packages scaffolded | ✅ Shipped |
 | 1.2 | Supabase schema, RLS policies, typed client, Singer Castle seed | ✅ Shipped (commit `758b0c2`) |
 | 2.1 | Admin foundation — auth, top nav, parts list, design tokens, primitives, wholesale removal | ✅ Shipped (commit `45538fb`, May 18, 2026) |
-| 2.2 | Parts creation flow with photo upload + smart pre-fill | 🔄 Planning |
+| 2.2 | Smart entry and Part profile pages (photo pre-fill, match detection, condition field, related listings) | 🔄 Planning |
 | 2.3 | Legal & compliance foundation (Privacy, TOS, Refund, Shipping, Accessibility Statement, cookie consent, rate limiting) | 📋 Queued |
 | 3 | Customer storefront, cart, Stripe checkout, order pipeline | 📋 Queued |
 | 4 | Staff roles, audit logging, employee management, persistent sessions, Mom as super admin | 📋 Queued |
 | 5 | Shopify catalog migration (~3,652 products) + inventory import from 8 Google Sheets tabs | 📋 Queued |
 | 6 | QuickBooks export, abandoned cart, marketing email | 📋 Queued |
+
+### Phase 2.2 — Smart entry and Part profile pages *(planned, not yet started)*
+
+Goal: dramatically reduce time-to-add per part and surface inventory relationships that already exist implicitly in the data.
+
+Deliverables:
+1. **Photo-first entry path.** User uploads a photo of a part from their phone. System suggests Title, Manufacturer, and Part Number based on the image. User reviews and confirms or edits. Target: drop time-to-add from ~3 minutes to ~30 seconds per part. Parent-facing language: "smart pre-fill" — never "AI" or "automation."
+2. **Match detection at upload.** When the entered Part Number + Manufacturer matches an existing record, the system surfaces a soft prompt: *"Same part as Mercury 1985 Carburetor — link or keep standalone?"* User chooses per item.
+3. **Part profile detail page.** Clicking any part in the list opens a profile-style detail page showing that item plus a "Related Listings" section. Each related listing displays channel (Public / eBay / In-store), condition, price, status.
+4. **`condition` enum field on products.** Values: `new`, `NOS` (new old stock), `used_good`, `used_fair`, `needs_rebuild`, `parts_only`. Schema migration required; backfill existing rows to `used_good` by default.
+5. **(Maybe)** Bulk import improvements for the 8 Google Sheets tab migration. Defer if it adds scope.
+
+Reference diagrams: `docs/diagrams/03-add-part-flow-phase-2-2.md`
 
 ---
 
@@ -300,6 +337,20 @@ A running record of significant architectural and product decisions. Each entry:
 | 2026-05-18 | Wholesale removed from the database entirely | Cleaner schema; "never wholesale" is a strong commitment but worth the simplicity |
 | 2026-05-18 | Visual Studio Code + Claude Code extension as the primary dev environment | Inline diffs, plan mode, no more Rewind menu confusion |
 | 2026-05-18 | This Project Specification document created | Single source of truth for Claude Code context and portfolio use |
+
+**May 18, 2026 — Two-column QTY display.** Parts list shows separate "For Sale" and "On Hand" columns instead of the previous single "X / Y" format. Both numbers need to be readable and sortable independently. Implemented in PartsTableBody.tsx.
+
+**May 18, 2026 — Part detail "profile page" model (Path A).** When a user clicks a part in the list, the detail page shows that specific item plus a "Related Listings" section listing every other item with the same part_number + manufacturer. Each related listing shows channel (Public website / eBay / in-store), condition, price, and status. Rationale: marina inventory of obsolete parts arrives inconsistently and in varied conditions; staff and customers benefit from seeing the full history of a part across the business. Chose Path A (query by shared identifiers) over Path B (formal catalog + listings table split) because Path A delivers the UX with no schema migration; Path B can be promoted later if real usage demands it.
+
+**May 18, 2026 — Two-layer product architecture.** The source-of-truth admin view is always linked; the public-facing display is configurable per item. Staff never lose the relationship between identical parts (internal admin view always groups by part_number + manufacturer). Customer-facing display can be either a unified product page (linked) or a standalone listing — chosen per item at upload time. This separates internal truth from external curation and survives messy real-world data.
+
+**May 18, 2026 — Parts list row rule.** One row in the Parts list represents either one unique physical item OR one bulk lot of identical items. If items are truly identical (same condition, same source, interchangeable), they get one row with qty > 1. If any items differ in any way (different condition, source, photos), they get separate rows linked via shared part_number on the profile page. The qty_on_hand and qty_for_sale fields already support both cases — this is a workflow rule, not a schema change.
+
+**May 18, 2026 — Diagrams as portfolio artifacts.** User-flow diagrams live in `docs/diagrams/` as numbered Mermaid markdown files. Historical files are snapshots and are not edited when flows change — new numbered files are created instead. The evolution from Phase 2.1 → 2.2 → 2.3 is the portfolio narrative, more valuable than always-current diagrams. Captured in CLAUDE.md as the "Diagram maintenance" rule.
+
+**May 18, 2026 — RLS GRANT bug fix.** Discovered that the RLS policies created in earlier migrations were never paired with `GRANT SELECT` on the underlying tables for the anon/authenticated roles, causing the products page to silently return zero results. Added migration `20260518140000_grant_table_privileges.sql` granting full table access to authenticated and SELECT to anon (RLS policies still filter). Lesson: when adding RLS in Supabase via migration, always pair with GRANTs explicitly — the Supabase dashboard auto-grants but raw SQL migrations don't.
+
+**May 29, 2026 — Auto-push to GitHub enabled.** All commits in this repo automatically push to origin/main via a `.git/hooks/post-commit` hook. Switched to SSH after HTTPS credential prompt failed. Risk accepted: occasional push of half-baked work in exchange for zero manual upkeep — acceptable for a solo portfolio project.
 
 ---
 

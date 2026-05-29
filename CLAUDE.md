@@ -4,6 +4,8 @@ Before answering any question about this project, read PROJECT.md in the repo ro
 
 For product flow context before implementing features, reference docs/diagrams/ for canonical user-flow diagrams (Mermaid). The numbered prefix indicates portfolio order.
 
+Auto-push enabled — every commit automatically pushes to origin/main via .git/hooks/post-commit.
+
 ## Self-check protocol (mandatory before claiming any task is done)
 
 Before pausing at a checkpoint or saying a task is complete, run these checks and report results as a ✓ checklist. If any check fails, fix it before pausing — don't bring failures back to the user unless you genuinely cannot resolve them.

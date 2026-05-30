@@ -1,6 +1,6 @@
 # Project Specification
 
-**Project:** Ess-Kay Yards Marina Platform (`apps/esskay`) + Galaxy Storefront (`apps/galaxy`), running on the `amyv-shop-stack` shared infrastructure.
+**Project:** Marina Parts Platform (`apps/esskay`) + Galaxy Storefront (`apps/galaxy`), running on the `amyv-shop-stack` shared infrastructure.
 
 **Owner:** Amy Vorchheimer
 **Status:** Phase 2.1 shipped (admin foundation). Phase 2.2 in planning.
@@ -12,7 +12,7 @@
 
 This is a production e-commerce platform for **two separate small businesses**, sharing one technical foundation:
 
-- **Ess-Kay Yards** — a marina and obsolete-marine-parts business in Brewerton, NY, owned and operated by Amy's parents. Currently runs on Shopify with ~3,652 listed products plus inventory across eight Google Sheets tabs.
+- **the marina parts client** — a small marina and obsolete-marine-parts business in Upstate NY, run by the business owners. Currently runs on Shopify with ~3,652 listed products plus inventory across eight Google Sheets tabs.
 - **Galaxy SF** — an art and product shop selling handmade totems with a dark-neon aesthetic. The first client to ship on this stack.
 
 The two apps share a `pnpm` monorepo with shared packages for UI, auth, payments, and email. The architecture demonstrates a repeatable **multi-tenant service model** — each new small-business client costs less than the previous one because most of the work lives in the shared layer.
@@ -21,11 +21,11 @@ The two apps share a `pnpm` monorepo with shared packages for UI, auth, payments
 
 ## Why this exists
 
-Ess-Kay Yards has run on Shopify for a decade. It works, but the platform charges a percentage of revenue for features the business doesn't use, and the Shopify catalog system isn't built for a business whose inventory is dominated by **obsolete and hard-to-find parts** — items that need rich provenance data (which boat, which year, which engine), photos taken on a workbench, and pricing that often comes from one-off conversations rather than catalog rules.
+The platform's first client has run on Shopify for a decade. It works, but the platform charges a percentage of revenue for features the business doesn't use, and the Shopify catalog system isn't built for a business whose inventory is dominated by **obsolete and hard-to-find parts** — items that need rich provenance data (which boat, which year, which engine), photos taken on a workbench, and pricing that often comes from one-off conversations rather than catalog rules.
 
 Beyond cost, the business needs:
 
-- A workflow Amy's mom can actually use (she's change-averse, distrusts technical jargon, and is the QuickBooks gatekeeper)
+- A workflow Owner A can actually use (she's change-averse, distrusts technical jargon, and is the QuickBooks gatekeeper)
 - A path off the eight-Google-Sheets-tabs inventory system
 - A storefront optimized for technical buyers (mechanics, restorers) rather than impulse shoppers
 
@@ -42,7 +42,7 @@ The single most important decision in this project is the **monorepo with shared
 ```
 amyv-shop-stack/
 ├── apps/
-│   ├── esskay/    → admin.esskay.yards (parents' business)
+│   ├── esskay/    → marina parts client admin
 │   └── galaxy/    → galaxysf.com (totem shop)
 └── packages/
     ├── ui/            → Wordmark, Button, Badge, Card, Table, EmptyState
@@ -88,15 +88,15 @@ Either way, the internal Layer 1 grouping remains intact.
 
 | Role | App | What they do |
 |---|---|---|
-| **Mom** (Amy's mother) | Ess-Kay admin | Reviews and approves orders before they push to QuickBooks. Eventually serves as super admin. |
-| **Dad** (Amy's father) | Ess-Kay admin | Co-owner. Adds inventory from the workbench, manages part listings. |
-| **Marina staff** (future) | Ess-Kay admin | Day-to-day order processing, parts identification, customer phone calls. |
-| **Marina customers** | Ess-Kay storefront | Mechanics, boat restorers, owners hunting for parts that aren't manufactured anymore. |
+| **Owner A** | marina admin | Reviews and approves orders before they push to QuickBooks. Eventually serves as super admin. |
+| **Owner B** | marina admin | Co-owner. Adds inventory from the workbench, manages part listings. |
+| **Marina staff** (future) | marina admin | Day-to-day order processing, parts identification, customer phone calls. |
+| **Marina customers** | marina storefront | Mechanics, boat restorers, owners hunting for parts that aren't manufactured anymore. |
 | **Galaxy team** | Galaxy admin | Managing totem inventory, fulfillment, customer comms. |
 | **Galaxy customers** | Galaxy storefront | Art buyers, design-aware shoppers drawn by the aesthetic. |
 | **Amy** | Both | Designer, developer, owner, single point of contact. |
 
-The most important constraint across all users: **parent-facing language never uses "AI," "agents," or "automation."** Mom and Dad distrust tech jargon. Photo-pre-fill is called "smart pre-fill" or "auto-fills from photo," never "AI." This rule propagates everywhere — UI copy, error messages, admin labels.
+The most important constraint across all users: **client-facing language never uses "AI," "agents," or "automation."** The business owners distrust tech jargon. Photo-pre-fill is called "smart pre-fill" or "auto-fills from photo," never "AI." This rule propagates everywhere — UI copy, error messages, admin labels.
 
 ---
 
@@ -115,10 +115,10 @@ The most important constraint across all users: **parent-facing language never u
 
 ### Out of scope (intentionally)
 
-- POS / in-store checkout (Dad will use the existing register)
+- POS / in-store checkout (Owner B will use the existing register)
 - Slip rental management (marina operations stays on its current system)
 - Boat brokerage features
-- Wholesale partner allocation (**removed from the data model entirely** on May 18, 2026 — Mom and Dad don't do wholesale and never will)
+- Wholesale partner allocation (**removed from the data model entirely** on May 18, 2026 — the business owners don't do wholesale and never will)
 - Custom mobile apps (responsive web is the answer)
 - Multi-warehouse inventory (single physical location for both clients in the foreseeable future)
 
@@ -129,12 +129,12 @@ The most important constraint across all users: **parent-facing language never u
 | Phase | Description | Status |
 |---|---|---|
 | 1.1 | Monorepo bootstrap, Galaxy migrated in, shared packages scaffolded | ✅ Shipped |
-| 1.2 | Supabase schema, RLS policies, typed client, Singer Castle seed | ✅ Shipped (commit `758b0c2`) |
+| 1.2 | Supabase schema, RLS policies, typed client, seed data | ✅ Shipped (commit `758b0c2`) |
 | 2.1 | Admin foundation — auth, top nav, parts list, design tokens, primitives, wholesale removal | ✅ Shipped (commit `45538fb`, May 18, 2026) |
 | 2.2 | Smart entry and Part profile pages (photo pre-fill, match detection, condition field, related listings) | 🔄 Planning |
 | 2.3 | Legal & compliance foundation (Privacy, TOS, Refund, Shipping, Accessibility Statement, cookie consent, rate limiting) | 📋 Queued |
 | 3 | Customer storefront, cart, Stripe checkout, order pipeline | 📋 Queued |
-| 4 | Staff roles, audit logging, employee management, persistent sessions, Mom as super admin | 📋 Queued |
+| 4 | Staff roles, audit logging, employee management, persistent sessions, Owner A as super admin | 📋 Queued |
 | 5 | Shopify catalog migration (~3,652 products) + inventory import from 8 Google Sheets tabs | 📋 Queued |
 | 6 | QuickBooks export, abandoned cart, marketing email | 📋 Queued |
 
@@ -143,7 +143,7 @@ The most important constraint across all users: **parent-facing language never u
 Goal: dramatically reduce time-to-add per part and surface inventory relationships that already exist implicitly in the data.
 
 Deliverables:
-1. **Photo-first entry path.** User uploads a photo of a part from their phone. System suggests Title, Manufacturer, and Part Number based on the image. User reviews and confirms or edits. Target: drop time-to-add from ~3 minutes to ~30 seconds per part. Parent-facing language: "smart pre-fill" — never "AI" or "automation."
+1. **Photo-first entry path.** User uploads a photo of a part from their phone. System suggests Title, Manufacturer, and Part Number based on the image. User reviews and confirms or edits. Target: drop time-to-add from ~3 minutes to ~30 seconds per part. Client-facing language: "smart pre-fill" — never "AI" or "automation."
 2. **Match detection at upload.** When the entered Part Number + Manufacturer matches an existing record, the system surfaces a soft prompt: *"Same part as Mercury 1985 Carburetor — link or keep standalone?"* User chooses per item.
 3. **Part profile detail page.** Clicking any part in the list opens a profile-style detail page showing that item plus a "Related Listings" section. Each related listing displays channel (Public / eBay / In-store), condition, price, status.
 4. **`condition` enum field on products.** Values: `new`, `NOS` (new old stock), `used_good`, `used_fair`, `needs_rebuild`, `parts_only`. Schema migration required; backfill existing rows to `used_good` by default.
@@ -155,7 +155,7 @@ Reference diagrams: `docs/diagrams/03-add-part-flow-phase-2-2.md`
 
 ## Brand and voice
 
-### Ess-Kay Yards
+### Marina Parts Client
 
 - **Palette:** cream `#F8F5F0` (background), nautical navy `#0F3A57` (primary text and accent), accent blue `#1E5F8E`. Warm marina vibe — never tech-startup gradients.
 - **Typography:** Source Serif 4 (display, wordmark), Inter (body). Both placeholders, swappable via two CSS variables.
@@ -166,7 +166,7 @@ Reference diagrams: `docs/diagrams/03-add-part-flow-phase-2-2.md`
 - **Palette:** `#0a0a0f` (background), `#39ff14` (neon accent). Dark, electric, deliberately handmade-feeling.
 - **Voice:** confident, art-forward, slightly punk.
 
-### Language rules (Ess-Kay, non-negotiable)
+### Language rules (marina parts client, non-negotiable)
 
 | Avoid | Use instead |
 |---|---|
@@ -196,7 +196,7 @@ Reference diagrams: `docs/diagrams/03-add-part-flow-phase-2-2.md`
 
 ## Legal & compliance
 
-The merchant (Amy's parents, eventually) bears all legal responsibility for the public storefront. Shopify provides templates and tooling but explicitly disclaims that any of it constitutes legal compliance. Migrating off Shopify does not change this — it just shifts who configures the controls.
+The merchant (the business owners, eventually) bears all legal responsibility for the public storefront. Shopify provides templates and tooling but explicitly disclaims that any of it constitutes legal compliance. Migrating off Shopify does not change this — it just shifts who configures the controls.
 
 ### Required pages (before storefront launch)
 
@@ -226,7 +226,7 @@ Each page lives as MDX in the repo with React component slots for variables (bus
 
 - **Overlay accessibility widgets** (accessiBe, UserWay, AudioEye). US federal courts have repeatedly held these don't cure underlying WCAG failures, and the FTC fined accessiBe $1M in April 2025 for misleading WCAG-compliance claims. Treat as liability, not defense.
 - **SOC 2 audit.** Costs $15K–$40K, only useful if we ever sell to enterprise customers. Document equivalent controls in a one-page security overview instead.
-- **Per-user email marketing without explicit opt-in.** Mom would never agree to it anyway.
+- **Per-user email marketing without explicit opt-in.** The business owners would never agree to it anyway.
 
 ---
 
@@ -253,7 +253,7 @@ An **Accessibility Statement** is published at `/policies/accessibility-statemen
 
 ## SEO & performance
 
-The Ess-Kay storefront is the SEO surface (the admin is internal-only and `noindex`).
+The marina parts storefront is the SEO surface (the admin is internal-only and `noindex`).
 
 ### Page-level
 
@@ -303,11 +303,11 @@ The Ess-Kay storefront is the SEO surface (the admin is internal-only and `noind
 
 The project is successful when:
 
-1. **Mom can do her job without me.** She logs in, sees the orders queued for QuickBooks review, approves or edits them, and exports. No phone call to Amy required.
-2. **Dad can add a part from a phone photo in under two minutes.** From the workbench, snap a photo, hit upload, smart pre-fill suggests title/manufacturer/category, he confirms or edits, lists it. Compare to the current Shopify flow which takes him 8–10 minutes per item.
+1. **Owner A can do her job independently.** She logs in, sees the orders queued for QuickBooks review, approves or edits them, and exports. No call to the developer required.
+2. **Owner B can add a part from a phone photo in under two minutes.** From the workbench, snap a photo, hit upload, smart pre-fill suggests title/manufacturer/category, confirm or edit, list it. Compare to the current Shopify flow which takes 8–10 minutes per item.
 3. **The storefront performs.** Lighthouse ≥ 90 across performance, accessibility, SEO. Organic traffic from Google ≥ what Shopify generated within 90 days of launch.
-4. **Galaxy SF runs in parallel without interference.** Code changes for Galaxy don't break Ess-Kay and vice versa. The shared packages absorb the work.
-5. **A third client can be onboarded in ≤ 30% of the time Galaxy or Ess-Kay took.** This is the test of whether the multi-tenant architecture pays for itself.
+4. **Galaxy SF runs in parallel without interference.** Code changes for Galaxy don't break the marina parts app and vice versa. The shared packages absorb the work.
+5. **A third client can be onboarded in ≤ 30% of the time the first two clients took.** This is the test of whether the multi-tenant architecture pays for itself.
 
 ---
 
@@ -315,7 +315,7 @@ The project is successful when:
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Mom rejects the new admin UX | Medium | High | Email+password instead of magic link (matches her Shopify mental model); plain-language UI copy; staged rollout where Shopify keeps running in parallel for 30 days |
+| Owner A rejects the new admin UX | Medium | High | Email+password instead of magic link (matches her Shopify mental model); plain-language UI copy; staged rollout where Shopify keeps running in parallel for 30 days |
 | Shopify catalog migration introduces SKU mismatches | High | Medium | Dry-run migration script with diff report against current Shopify; manual reconciliation for items with conflicts |
 | PCI DSS 4.0 script-monitoring requirement gets missed | Low | High | Strict CSP + SRI hashes on the checkout page; document compliance in the security overview |
 | ADA demand letter post-launch | Low | High | WCAG 2.2 AA implementation from the start (not retrofitted); published Accessibility Statement; quarterly axe + manual audits documented |
@@ -330,9 +330,9 @@ A running record of significant architectural and product decisions. Each entry:
 
 | Date | Decision | Why |
 |---|---|---|
-| 2026-05-15 | Singer Castle removed as a wholesale partner | Parents don't do wholesale; the feature was theoretical |
+| 2026-05-15 | Test fixture wholesale partner removed from schema | The business owners don't do wholesale; the feature was theoretical |
 | 2026-05-15 | Phone (E.164) as primary key for customers | Marine customers rarely have email; phone is universal |
-| 2026-05-15 | Email+password auth, not magic link | Parents' UX expectation — Shopify-style persistent sessions |
+| 2026-05-15 | Email+password auth, not magic link | Business owners' UX expectation — Shopify-style persistent sessions |
 | 2026-05-15 | Top nav, not sidebar | Designer call — less screen real estate spent on navigation, faster scanning |
 | 2026-05-18 | Wholesale removed from the database entirely | Cleaner schema; "never wholesale" is a strong commitment but worth the simplicity |
 | 2026-05-18 | Visual Studio Code + Claude Code extension as the primary dev environment | Inline diffs, plan mode, no more Rewind menu confusion |
@@ -372,8 +372,8 @@ This document is the canonical source of truth for the project. It is read by:
 
 1. **Claude Code at the start of every session** (referenced from `CLAUDE.md`)
 2. **New developers** before touching the codebase
-3. **Stakeholders** (Amy's parents, Galaxy SF team) who want to understand what's being built
-4. **Hiring managers** reviewing Amy's portfolio — this doc lives at `amyvorchheimer.com/work/ess-kay-yards`
+3. **Stakeholders** (the business owners, Galaxy SF team) who want to understand what's being built
+4. **Hiring managers** reviewing Amy's portfolio
 
 **When something changes that matters**, update the Decisions Log first, then the affected sections. Never delete history — append.
 

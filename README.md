@@ -1,4 +1,4 @@
-# Ess-Kay Yards
+# Marine Parts E-commerce Platform
 
 Production e-commerce platform for a marina parts business. Built by a UX designer to demonstrate end-to-end product development with AI-assisted engineering.
 
@@ -8,11 +8,11 @@ Production e-commerce platform for a marina parts business. Built by a UX design
 
 ## What this is
 
-A real e-commerce platform replacing the Shopify storefront for a family-run marina in Brewerton, NY that specializes in obsolete and hard-to-find marine parts (~3,652 products in current catalog). It serves a real business — and doubles as a portfolio case study showing what a UX designer can ship today using AI-assisted engineering.
+A real e-commerce platform replacing the Shopify storefront for a small marine parts retailer specializing in obsolete and hard-to-find parts (~3,652 products in current catalog). It serves a real business — and doubles as a portfolio case study showing what a UX designer can ship today using AI-assisted engineering.
 
 ## Why I built it
 
-I'm a UX designer. I wanted to demonstrate something specific: that a designer with strong product instincts and AI assistance can ship real, working software — not just hand off a Figma file. The marina was the right constraint to test it against because the users are change-averse, the inventory is messy in honest real-world ways, and there's no faking whether it works.
+I'm a UX designer. I wanted to demonstrate something specific: that a designer with strong product instincts and AI assistance can ship real, working software — not just hand off a Figma file. This client was the right constraint to test it against because the users are change-averse, the inventory is messy in honest real-world ways, and there's no faking whether it works.
 
 ## What's built (Phase 2.1, shipped May 18, 2026)
 
@@ -37,9 +37,9 @@ Next.js 16 · React 19 · Tailwind v4 · TypeScript · Supabase (Postgres + RLS)
 
 ## Architecture highlight: the two-layer product model
 
-Marina inventory of obsolete parts is messy by nature. The same part comes in repeatedly, in different conditions, sold across multiple channels (website, eBay, in-store). I designed a two-layer model to handle that:
+Inventory of obsolete parts is messy by nature. The same part comes in repeatedly, in different conditions, sold across multiple channels (website, eBay, in-store). I designed a two-layer model to handle that:
 
-- **Internal admin view — always linked.** Same-part items group by `part_number + manufacturer` regardless of public display. Staff always see the truth: "we have three Mercury 1985 Carburetors total — one public, one on eBay, one in-store."
+- **Internal admin view — always linked.** Same-part items group by `part_number + manufacturer` regardless of public display. Staff always see the truth: "we have three of these total — one public, one on eBay, one in-store."
 - **Customer-facing display — configurable per item.** At upload, the user chooses whether each new item links to an existing public product page or creates its own standalone listing. The internal grouping never breaks.
 
 Decoupling these layers means staff get the truth and customers get the curation. Full rationale in the Decisions Log section of [PROJECT.md](PROJECT.md).

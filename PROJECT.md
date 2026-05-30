@@ -2,7 +2,7 @@
 
 **Project:** Marina Parts Platform (`apps/esskay`) + Galaxy Storefront (`apps/galaxy`), running on the `amyv-shop-stack` shared infrastructure.
 
-**Owner:** Amy Vorchheimer
+**Developer:** Amy Vorchheimer
 **Status:** Phase 2.1 shipped (admin foundation). Phase 2.2 in planning.
 **Last updated:** Monday, May 18, 2026
 
@@ -89,12 +89,12 @@ Either way, the internal Layer 1 grouping remains intact.
 | Role | App | What they do |
 |---|---|---|
 | **Owner A** | marina admin | Reviews and approves orders before they push to QuickBooks. Eventually serves as super admin. |
-| **Owner B** | marina admin | Co-owner. Adds inventory from the workbench, manages part listings. |
+| **Owner B** | marina admin | Adds inventory from the workbench, manages part listings. |
 | **Marina staff** (future) | marina admin | Day-to-day order processing, parts identification, customer phone calls. |
 | **Marina customers** | marina storefront | Mechanics, boat restorers, owners hunting for parts that aren't manufactured anymore. |
 | **Galaxy team** | Galaxy admin | Managing totem inventory, fulfillment, customer comms. |
 | **Galaxy customers** | Galaxy storefront | Art buyers, design-aware shoppers drawn by the aesthetic. |
-| **Amy** | Both | Designer, developer, owner, single point of contact. |
+| **Amy** | Both | Lead developer and designer. Sole contractor across both clients. |
 
 The most important constraint across all users: **client-facing language never uses "AI," "agents," or "automation."** The business owners distrust tech jargon. Photo-pre-fill is called "smart pre-fill" or "auto-fills from photo," never "AI." This rule propagates everywhere — UI copy, error messages, admin labels.
 

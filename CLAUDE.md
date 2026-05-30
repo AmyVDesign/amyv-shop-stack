@@ -1,6 +1,6 @@
 # Start here
 
-Before answering any question about this project, read PROJECT.md in the repo root — it is the canonical project specification covering business context, users, architecture, brand voice, legal compliance, accessibility, SEO, security, roadmap, risks, and decisions log. Esskay is the marina parts business owned by Amy's parents in Brewerton, NY — NOT a wholesale portal.
+Before answering any question about this project, read PROJECT.md in the repo root — it is the canonical project specification covering business context, users, architecture, brand voice, legal compliance, accessibility, SEO, security, roadmap, risks, and decisions log. The `apps/esskay` app is the marina parts client platform — NOT a wholesale portal.
 
 For product flow context before implementing features, reference docs/diagrams/ for canonical user-flow diagrams (Mermaid). The numbered prefix indicates portfolio order.
 

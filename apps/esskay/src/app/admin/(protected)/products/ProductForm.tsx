@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { PhotoUploader } from './PhotoUploader'
 import { findMatchingPart } from './actions'
-import { productConditionOptions } from '@/lib/product-labels'
+import type { MatchedPart } from './actions'
+import { productConditionOptions, conditionLabel } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
 
 export interface ProductFormValues {
@@ -54,7 +55,7 @@ export function ProductForm({
   )
 
   // Match detection state
-  const [matchResult, setMatchResult] = useState<{ id: string; title: string } | null>(null)
+  const [matchResult, setMatchResult] = useState<MatchedPart | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryId = useRef(0)
 
@@ -67,7 +68,7 @@ export function ProductForm({
   // True in edit mode (current state is always a choice) or after user clicks.
   const [hasChosen, setHasChosen] = useState(mode === 'edit')
 
-  // On mount in edit mode: if the part has a link, run the check once so the prompt appears
+  // On mount in edit mode: if the part has a link, run the check once so the section appears
   useEffect(() => {
     if (!initialValues?.linked_listing_id || !initialValues.part_number || !initialValues.manufacturer) return
     const qId = ++latestQueryId.current
@@ -99,7 +100,9 @@ export function ProductForm({
       excludeId &&
       trimPn === (initialValues?.part_number?.trim() ?? '') &&
       trimMfr === (initialValues?.manufacturer?.trim() ?? '')
-    ) return
+    ) {
+      return
+    }
 
     debounceRef.current = setTimeout(async () => {
       const match = await findMatchingPart(trimPn, trimMfr, excludeId)
@@ -107,7 +110,6 @@ export function ProductForm({
     }, 400)
   }
 
-  const showPrompt = matchResult !== null && visibility === 'public'
   const linkSelected = hasChosen && linkedListingId === matchResult?.id
   const standaloneSelected = hasChosen && linkedListingId === null
 
@@ -214,61 +216,6 @@ export function ProductForm({
             </div>
           </div>
 
-          {/* Match decision prompt — only when public + match found */}
-          {showPrompt && (
-            <div className="px-4 py-4 bg-[#e8f0f8] space-y-3">
-              <p className="text-sm font-semibold text-site-accent-dark">
-                You already have a public listing for this part
-              </p>
-              <a
-                href={`/admin/products/${matchResult.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-sm text-site-accent hover:underline"
-              >
-                {matchResult.title} →
-              </a>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLinkedListingId(matchResult.id)
-                    setHasChosen(true)
-                  }}
-                  className={[
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors',
-                    linkSelected
-                      ? 'bg-site-accent-dark text-white'
-                      : 'border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light',
-                  ].join(' ')}
-                >
-                  {linkSelected && <span aria-hidden="true">✓</span>}
-                  Add to existing listing
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLinkedListingId(null)
-                    setHasChosen(true)
-                  }}
-                  className={[
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors',
-                    standaloneSelected
-                      ? 'bg-site-accent-dark text-white'
-                      : 'border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light',
-                  ].join(' ')}
-                >
-                  {standaloneSelected && <span aria-hidden="true">✓</span>}
-                  Create new public page
-                </button>
-              </div>
-              <p className="text-xs text-site-muted leading-snug">
-                Adding to the existing listing means this part shows as a variant on the existing
-                product page. Creating a new page gives it its own URL.
-              </p>
-            </div>
-          )}
-
           {/* Condition */}
           <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
             <label htmlFor="condition" className="text-sm text-site-muted font-medium">
@@ -350,7 +297,7 @@ export function ProductForm({
             </div>
           </div>
 
-          {/* Visibility — controlled so prompt hides when not public */}
+          {/* Visibility — controlled so match section hides when not public */}
           <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
             <label htmlFor="visibility" className="text-sm text-site-muted font-medium">
               Visibility
@@ -389,6 +336,116 @@ export function ProductForm({
             </div>
           </div>
         </div>
+
+        {/* Match review section — only when public + match found */}
+        {matchResult && visibility === 'public' && (
+          <div className="rounded-lg border border-site-border overflow-hidden bg-[#e8f0f8] mb-6">
+            <div className="px-4 py-4 space-y-4">
+              <p className="text-sm font-semibold text-site-accent-dark">
+                We found an existing public listing for this part
+              </p>
+
+              {/* Match details */}
+              <div className="flex gap-4 items-start">
+                {/* Photo thumbnail */}
+                {matchResult.photo_urls.length > 0 ? (
+                  <img
+                    src={matchResult.photo_urls[0]}
+                    alt={matchResult.title}
+                    className="w-20 h-20 rounded object-cover flex-shrink-0 border border-site-border"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded flex-shrink-0 bg-[#f8f5f0] border border-site-border" />
+                )}
+
+                {/* Info column */}
+                <div className="flex-1 min-w-0 space-y-2">
+                  <a
+                    href={`/admin/products/${matchResult.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block font-display font-bold text-site-text leading-tight hover:text-site-accent-dark transition-colors"
+                  >
+                    {matchResult.title}
+                  </a>
+
+                  <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-sm">
+                    <span className="text-site-muted">Condition</span>
+                    <span className="text-site-text">
+                      {matchResult.condition ? conditionLabel[matchResult.condition] : '—'}
+                    </span>
+
+                    <span className="text-site-muted">Price</span>
+                    <span className="text-site-text">
+                      ${(matchResult.price_cents / 100).toFixed(2)}
+                    </span>
+
+                    <span className="text-site-muted">For sale</span>
+                    <span className="text-site-text">
+                      {matchResult.qty_for_sale} / {matchResult.qty_on_hand}
+                    </span>
+                  </div>
+
+                  <a
+                    href={`/admin/products/${matchResult.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block text-xs text-site-accent hover:underline"
+                  >
+                    View full part →
+                  </a>
+                </div>
+              </div>
+
+              <div className="border-t border-[#c8d8e8]" />
+
+              {/* Decision section */}
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-site-accent-dark">
+                  How should this new listing appear publicly?
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLinkedListingId(matchResult.id)
+                      setHasChosen(true)
+                    }}
+                    className={[
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors',
+                      linkSelected
+                        ? 'bg-site-accent-dark text-white'
+                        : 'border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light',
+                    ].join(' ')}
+                  >
+                    {linkSelected && <span aria-hidden="true">✓</span>}
+                    Add to existing listing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLinkedListingId(null)
+                      setHasChosen(true)
+                    }}
+                    className={[
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors',
+                      standaloneSelected
+                        ? 'bg-site-accent-dark text-white'
+                        : 'border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light',
+                    ].join(' ')}
+                  >
+                    {standaloneSelected && <span aria-hidden="true">✓</span>}
+                    Create new public page
+                  </button>
+                </div>
+                <p className="text-xs text-site-muted leading-snug">
+                  Adding to the existing listing means this part shows as a variant on the existing
+                  product page. Creating a new page gives it its own URL.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-3">
           <button

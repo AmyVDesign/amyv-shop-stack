@@ -42,6 +42,10 @@ Database migrations get an additional check: after writing a migration, verify t
 
 ## Diagram maintenance
 
-When implementing features that change a user-facing flow significantly, after completing the implementation propose an update to the corresponding diagram in docs/diagrams/. For phase boundaries, propose a new numbered file (e.g., 04-...-phase-2-3.md) rather than editing existing files. Existing files are historical snapshots and should not be edited except for typos or label corrections.
+`docs/diagrams/` uses a living + archived model:
+
+- **Top-level files** (e.g., `docs/diagrams/add-part-flow.md`) are living documentation. Update them when an implementation meaningfully changes a flow — shipped nodes stay white, planned nodes stay light blue.
+- **`docs/diagrams/archive/`** files are frozen historical snapshots. Never edit them except for typos or label corrections.
+- **At phase boundaries:** before starting work on a new phase, copy the current top-level file into `archive/` with a phase-numbered name (e.g., `archive/03-add-part-flow-phase-2-2.md`), then continue updating the top-level file.
 
 @AGENTS.md

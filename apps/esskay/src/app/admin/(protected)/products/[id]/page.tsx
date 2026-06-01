@@ -1,12 +1,12 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Badge, Table, TableHeader, TableRow, TableCell, EmptyState } from '@amyv/ui'
-import { RelatedListingsTableBody } from './RelatedListingsTableBody'
-import { conditionLabel, type ProductCondition } from '@/lib/product-labels'
+import { Badge, Table, TableHeader, TableRow, TableCell } from '@amyv/ui'
+import { VariantsTable } from './VariantsTable'
+import type { VariantRow } from './VariantsTable'
+import type { ProductCondition } from '@/lib/product-labels'
 
 type Visibility = 'public' | 'internal' | 'ebay_only'
-type Source = 'manual' | 'shopify_import' | 'sheets_import'
 
 const visibilityBadge: Record<Visibility, { variant: 'green' | 'gray' | 'orange'; label: string }> = {
   public:    { variant: 'green',  label: 'Public'    },
@@ -14,172 +14,120 @@ const visibilityBadge: Record<Visibility, { variant: 'green' | 'gray' | 'orange'
   ebay_only: { variant: 'orange', label: 'eBay Only' },
 }
 
-const sourceLabel: Record<Source, string> = {
-  manual:         'Manual',
-  shopify_import: 'Shopify import',
-  sheets_import:  'Sheets import',
-}
-
-function formatPrice(cents: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
-}
+const SELECT =
+  'id, title, sku, part_number, manufacturer, condition, price_cents, qty_on_hand, qty_for_sale, visibility, description, photo_urls, linked_listing_id'
 
 export default async function PartDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ error?: string }>
 }) {
-  const { id } = await params
+  const [{ id }, { error }] = await Promise.all([params, searchParams])
   const supabase = await createClient()
 
-  const { data: part, error: partError } = await supabase
+  const { data: product, error: productError } = await supabase
     .from('products')
-    .select(
-      'id, title, sku, part_number, manufacturer, photo_urls, price_cents, qty_on_hand, qty_for_sale, visibility, source, condition, description, acquired_date'
-    )
+    .select(SELECT)
     .eq('id', id)
     .single()
 
-  if (partError || !part) {
-    console.error('[part detail] query failed:', partError)
+  if (productError || !product) {
+    console.error('[part detail] query failed:', productError)
     notFound()
   }
 
-  const badge = visibilityBadge[part.visibility as Visibility]
-  const canMatchRelated = Boolean(part.part_number && part.manufacturer)
-
-  const details: [string, string][] = [
-    ['Part Number', part.part_number ?? '—'],
-    ['Manufacturer', part.manufacturer ?? '—'],
-    ['Condition', part.condition ? conditionLabel[part.condition as ProductCondition] : '—'],
-    ['Price', formatPrice(part.price_cents)],
-    ['For Sale', String(part.qty_for_sale)],
-    ['On Hand', String(part.qty_on_hand)],
-    ['Source', sourceLabel[part.source as Source] ?? part.source],
-  ]
-  if (part.acquired_date) details.push(['Acquired', part.acquired_date])
-  if (part.description) details.push(['Notes', part.description])
-
-  type RelatedListing = {
-    id: string
-    title: string
-    sku: string
-    visibility: Visibility
-    price_cents: number
-    qty_on_hand: number
-    qty_for_sale: number
-    source: Source
-    condition: ProductCondition | null
+  // Canonical redirect: child listings forward to their parent's page
+  if (product.linked_listing_id) {
+    redirect(`/admin/products/${product.linked_listing_id}`)
   }
 
-  let related: RelatedListing[] = []
-  let relatedFailed = false
+  // Fetch all listings linked to this canonical product
+  const { data: children } = await supabase
+    .from('products')
+    .select(SELECT)
+    .eq('linked_listing_id', id)
+    .order('created_at', { ascending: true })
 
-  if (canMatchRelated) {
-    const { data, error } = await supabase
-      .from('products')
-      .select('id, title, sku, visibility, price_cents, qty_on_hand, qty_for_sale, source, condition')
-      .eq('part_number', part.part_number!)
-      .eq('manufacturer', part.manufacturer!)
-      .neq('id', id)
-      .order('created_at', { ascending: false })
+  // Parent is always first (oldest / canonical)
+  const variants: VariantRow[] = [product, ...(children ?? [])].map((p) => ({
+    id: p.id,
+    title: p.title,
+    sku: p.sku,
+    part_number: p.part_number,
+    manufacturer: p.manufacturer,
+    condition: p.condition as ProductCondition | null,
+    price_cents: p.price_cents,
+    qty_on_hand: p.qty_on_hand,
+    qty_for_sale: p.qty_for_sale,
+    visibility: p.visibility as Visibility,
+    description: p.description,
+    photo_urls: p.photo_urls,
+    linked_listing_id: p.linked_listing_id,
+  }))
 
-    if (error) {
-      console.error('[part detail] related listings query failed:', error)
-      relatedFailed = true
-    } else {
-      related = (data ?? []) as RelatedListing[]
-    }
-  }
+  const badge = visibilityBadge[product.visibility as Visibility]
 
   return (
     <div className="px-6 py-8 max-w-5xl">
-      <div className="flex items-center justify-between mb-6">
-        <Link
-          href="/admin/products"
-          className="text-sm text-site-accent-dark hover:underline"
-        >
+      <div className="mb-6">
+        <Link href="/admin/products" className="text-sm text-site-accent-dark hover:underline">
           ← Parts
-        </Link>
-        <Link
-          href={`/admin/products/${part.id}/edit`}
-          className="rounded font-body font-medium transition-colors text-sm px-4 py-2 bg-site-bg border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light"
-        >
-          Edit
         </Link>
       </div>
 
-      {/* Part header */}
-      <div className="flex items-start gap-5 mb-8">
-        {part.photo_urls[0] ? (
+      {error === 'save_failed' && (
+        <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 mb-6">
+          Failed to save changes. Check server logs.
+        </div>
+      )}
+
+      {/* Canonical product info card */}
+      <div className="flex gap-6 items-start mb-10">
+        {product.photo_urls[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={part.photo_urls[0]}
-            alt={part.title}
-            width={96}
-            height={96}
-            className="flex-none w-24 h-24 object-cover rounded-lg border border-site-border"
+            src={product.photo_urls[0]}
+            alt={product.title}
+            className="flex-none w-60 h-60 object-cover rounded-lg border border-site-border"
           />
         ) : (
-          <div className="flex-none w-24 h-24 rounded-lg bg-site-border" />
+          <div className="flex-none w-60 h-60 rounded-lg bg-[#f8f5f0] border border-site-border" />
         )}
-        <div>
-          <h1 className="text-2xl font-display font-semibold text-site-text mb-2">{part.title}</h1>
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="space-y-2 pt-2">
+          <h1 className="text-2xl font-display font-semibold text-site-text">{product.title}</h1>
+          {product.part_number && (
+            <p className="font-mono text-sm text-site-muted">{product.part_number}</p>
+          )}
+          {product.manufacturer && (
+            <p className="text-sm text-site-muted">{product.manufacturer}</p>
+          )}
+          <div className="pt-1">
             <Badge variant={badge.variant}>{badge.label}</Badge>
-            <span className="font-mono text-xs text-site-muted">{part.sku}</span>
           </div>
         </div>
       </div>
 
-      {/* Detail grid */}
-      <div className="rounded-lg border border-site-border overflow-hidden mb-10">
-        <dl className="divide-y divide-site-border">
-          {details.map(([label, value]) => (
-            <div key={label} className="grid grid-cols-3 px-4 py-3 text-sm bg-white">
-              <dt className="text-site-muted font-medium">{label}</dt>
-              <dd className="col-span-2 text-site-text">{value}</dd>
-            </div>
-          ))}
-        </dl>
+      {/* Variants / listings table */}
+      <h2 className="text-lg font-display font-semibold text-site-text mb-4">
+        Listings ({variants.length})
+      </h2>
+      <div className="rounded-lg border border-site-border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent border-0">
+              <TableCell header>Photo</TableCell>
+              <TableCell header>Condition</TableCell>
+              <TableCell header>Price</TableCell>
+              <TableCell header>Qty</TableCell>
+              <TableCell header>Visibility</TableCell>
+              <TableCell header />
+            </TableRow>
+          </TableHeader>
+          <VariantsTable variants={variants} canonicalId={id} />
+        </Table>
       </div>
-
-      {/* Related listings */}
-      <h2 className="text-lg font-display font-semibold text-site-text mb-4">Related Listings</h2>
-
-      {!canMatchRelated ? (
-        <EmptyState
-          message="No part number or manufacturer on this listing — related parts can't be matched."
-          className="py-10"
-        />
-      ) : relatedFailed ? (
-        <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
-          Failed to load related listings. Check server logs.
-        </div>
-      ) : related.length === 0 ? (
-        <EmptyState
-          message="No other listings of this part yet."
-          className="py-10"
-        />
-      ) : (
-        <div className="rounded-lg border border-site-border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent border-0">
-                <TableCell header>SKU</TableCell>
-                <TableCell header>Title</TableCell>
-                <TableCell header>Visibility</TableCell>
-                <TableCell header>Condition</TableCell>
-                <TableCell header className="text-right">For Sale</TableCell>
-                <TableCell header className="text-right">On Hand</TableCell>
-                <TableCell header>Price</TableCell>
-                <TableCell header>Source</TableCell>
-              </TableRow>
-            </TableHeader>
-            <RelatedListingsTableBody listings={related} />
-          </Table>
-        </div>
-      )}
     </div>
   )
 }

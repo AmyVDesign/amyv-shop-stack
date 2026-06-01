@@ -16,6 +16,7 @@ interface Part {
   qty_on_hand: number
   qty_for_sale: number
   visibility: Visibility
+  linked_listing_id: string | null
 }
 
 const visibilityBadge: Record<Visibility, { variant: 'green' | 'gray' | 'orange'; label: string }> = {
@@ -38,7 +39,7 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
         return (
           <TableRow
             key={part.id}
-            onClick={() => router.push(`/admin/products/${part.id}`)}
+            onClick={() => router.push(`/admin/products/${part.linked_listing_id ?? part.id}`)}
             className="cursor-pointer hover:bg-site-bg/60 transition-colors"
           >
             {/* Photo */}

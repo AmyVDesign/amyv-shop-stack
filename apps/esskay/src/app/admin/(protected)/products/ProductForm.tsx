@@ -31,6 +31,7 @@ interface ProductFormProps {
   cancelHref: string
   errorMessage?: string
   excludeId?: string
+  onCancel?: () => void
 }
 
 const inputClass =
@@ -46,6 +47,7 @@ export function ProductForm({
   cancelHref,
   errorMessage,
   excludeId,
+  onCancel,
 }: ProductFormProps) {
   // Gating fields — controlled so we can derive gatingComplete and trigger match checks
   const [partNumber, setPartNumber] = useState(initialValues?.part_number ?? '')
@@ -477,12 +479,22 @@ export function ProductForm({
           >
             {submitLabel}
           </button>
-          <Link
-            href={cancelHref}
-            className="text-sm text-site-muted hover:text-site-text transition-colors"
-          >
-            Cancel
-          </Link>
+          {onCancel ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="text-sm text-site-muted hover:text-site-text transition-colors"
+            >
+              Cancel
+            </button>
+          ) : (
+            <Link
+              href={cancelHref}
+              className="text-sm text-site-muted hover:text-site-text transition-colors"
+            >
+              Cancel
+            </Link>
+          )}
         </div>
       </form>
     </>

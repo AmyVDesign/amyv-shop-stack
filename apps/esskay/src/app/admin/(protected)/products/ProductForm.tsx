@@ -207,23 +207,6 @@ export function ProductForm({
             </div>
           </div>
 
-          {/* Auto-link notice — informational only, no user action required */}
-          {matchResult && (
-            <div className="px-4 py-3 bg-[#e8f0f8] border-t border-site-border flex items-center gap-3">
-              <div className="flex-1 text-sm">
-                <span className="text-site-muted">Adding as a variant of: </span>
-                <a
-                  href={`/admin/products/${matchResult.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-display font-semibold text-site-accent-dark hover:underline"
-                >
-                  {matchResult.title}
-                </a>
-              </div>
-            </div>
-          )}
-
           {/* ── Helper text + downstream fields ──────────────────────── */}
 
           {/* Prompt — only in create mode while gating is incomplete */}

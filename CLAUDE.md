@@ -28,6 +28,20 @@ For UI/styling changes:
 - Fonts load without console warnings
 - No hardcoded colors or fonts in component files — everything goes through CSS tokens
 
+For any task touching .tsx files, do a pattern scan to catch runtime issues that tsc misses:
+
+- Block elements (`<div>`, `<p>`, `<section>`, modals, etc.) rendered as direct children of `<table>`, `<thead>`, or `<tbody>` — these cause hydration errors. Lift them outside the table via fragment or portal.
+- Conditional rendering that returns different DOM structure between server and client (e.g., `typeof window !== 'undefined'` checks in render)
+- `useEffect` with no dependency array unless explicitly intentional (note the reason in a comment)
+- Hardcoded color hex/rgb values where design tokens should be used
+
+Smoke fetch the changed routes via curl on the local dev server:
+
+- `curl -sI -o /dev/null -w "%{http_code}\n" http://localhost:3001/admin/products` and similar for each changed route
+- Protected admin routes should return 307 (redirect to /login — healthy, means the route handler ran without crashing)
+- Public routes should return 200
+- Any 500 means a server-side error — investigate before committing
+
 Report format example:
 
 ```
@@ -35,6 +49,8 @@ Report format example:
 ✓ tsc packages/ui: clean
 ✓ pnpm install: deps linked
 ✓ Dev server compiles: yes
+✓ Pattern scan: no issues found
+✓ Smoke fetch: /admin/products/[id] → 307 (healthy)
 ✓ [feature-specific check]: passing
 ```
 

@@ -12,8 +12,8 @@ export async function findMatchingPart(
   let q = supabase
     .from('products')
     .select('id, title')
-    .eq('part_number', partNumber)
-    .eq('manufacturer', manufacturer)
+    .ilike('part_number', partNumber.trim())
+    .ilike('manufacturer', manufacturer.trim())
     .order('created_at', { ascending: false })
     .limit(1)
 

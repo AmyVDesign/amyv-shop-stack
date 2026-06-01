@@ -46,6 +46,19 @@ export function PhotoUploader() {
     if (inputRef.current) inputRef.current.value = ''
   }
 
+  function removePhoto(path: string) {
+    setPhotos((prev) => prev.filter((p) => p.path !== path))
+
+    // Fire-and-forget: delete from Storage so we don't accumulate orphans
+    const supabase = createBrowserClient()
+    supabase.storage
+      .from('product-photos')
+      .remove([path])
+      .then(({ error }) => {
+        if (error) console.error('[PhotoUploader] storage delete failed:', path, error)
+      })
+  }
+
   return (
     <div>
       {/* Hidden inputs carry URLs into the Server Action's FormData */}
@@ -90,16 +103,25 @@ export function PhotoUploader() {
 
       {photos.length > 0 && (
         <div className="flex gap-2 flex-wrap mt-3">
-          {photos.map(({ url }) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={url}
-              src={url}
-              alt=""
-              width={80}
-              height={80}
-              className="w-20 h-20 object-cover rounded border border-site-border"
-            />
+          {photos.map(({ path, url }) => (
+            <div key={url} className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={url}
+                alt=""
+                width={80}
+                height={80}
+                className="w-20 h-20 object-cover rounded border border-site-border"
+              />
+              <button
+                type="button"
+                onClick={() => removePhoto(path)}
+                aria-label="Remove photo"
+                className="absolute top-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded-full bg-white/80 border border-gray-400 text-gray-600 text-xs leading-none opacity-70 hover:opacity-100 hover:scale-110 transition-all cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
           ))}
         </div>
       )}

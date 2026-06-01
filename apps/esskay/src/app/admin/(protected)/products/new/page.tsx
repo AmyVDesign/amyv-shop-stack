@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { productConditionOptions } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
+import { PhotoUploader } from './PhotoUploader'
 
 export default async function NewPartPage({
   searchParams,
@@ -26,6 +27,7 @@ export default async function NewPartPage({
     const qtyForSale = Math.max(0, parseInt(String(formData.get('qty_for_sale') ?? '0'), 10) || 0)
     const visibility = String(formData.get('visibility') ?? 'internal') as 'public' | 'internal' | 'ebay_only'
     const description = String(formData.get('description') ?? '').trim() || null
+    const photoUrls = formData.getAll('photo_urls').filter(Boolean) as string[]
 
     const slug = `${title}-${sku}`
       .toLowerCase()
@@ -44,6 +46,7 @@ export default async function NewPartPage({
       qty_for_sale: qtyForSale,
       visibility,
       description,
+      photo_urls: photoUrls,
       source: 'manual',
     })
 
@@ -79,6 +82,14 @@ export default async function NewPartPage({
 
       <form action={createPart}>
         <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-6">
+          {/* Photos */}
+          <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
+            <span className="text-sm text-site-muted font-medium pt-1.5">Photos</span>
+            <div className="col-span-2">
+              <PhotoUploader />
+            </div>
+          </div>
+
           {/* Title */}
           <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
             <label htmlFor="title" className="text-sm text-site-muted font-medium">

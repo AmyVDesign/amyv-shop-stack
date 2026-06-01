@@ -4,12 +4,20 @@ import { useRef, useState } from 'react'
 import { createBrowserClient } from '@/lib/supabase/client'
 
 interface UploadedPhoto {
-  path: string
-  url: string
+  path: string // storage object path (not full URL)
+  url: string  // public URL for display + hidden input
 }
 
-export function PhotoUploader() {
-  const [photos, setPhotos] = useState<UploadedPhoto[]>([])
+function pathFromUrl(url: string): string {
+  const marker = '/product-photos/'
+  const idx = url.indexOf(marker)
+  return idx >= 0 ? url.slice(idx + marker.length) : url
+}
+
+export function PhotoUploader({ initialPhotoUrls = [] }: { initialPhotoUrls?: string[] }) {
+  const [photos, setPhotos] = useState<UploadedPhoto[]>(() =>
+    initialPhotoUrls.map((url) => ({ path: pathFromUrl(url), url }))
+  )
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -42,14 +50,12 @@ export function PhotoUploader() {
     setPhotos((prev) => [...prev, ...newPhotos])
     setUploading(false)
 
-    // Reset so the same file can be re-selected after a failure
     if (inputRef.current) inputRef.current.value = ''
   }
 
   function removePhoto(path: string) {
     setPhotos((prev) => prev.filter((p) => p.path !== path))
 
-    // Fire-and-forget: delete from Storage so we don't accumulate orphans
     const supabase = createBrowserClient()
     supabase.storage
       .from('product-photos')
@@ -61,7 +67,6 @@ export function PhotoUploader() {
 
   return (
     <div>
-      {/* Hidden inputs carry URLs into the Server Action's FormData */}
       {photos.map(({ url }) => (
         <input key={url} type="hidden" name="photo_urls" value={url} />
       ))}
@@ -90,11 +95,7 @@ export function PhotoUploader() {
             : 'border-site-border text-site-accent-dark bg-white hover:bg-site-bg cursor-pointer',
         ].join(' ')}
       >
-        {uploading
-          ? 'Uploading…'
-          : photos.length === 0
-          ? 'Choose photos'
-          : 'Add more photos'}
+        {uploading ? 'Uploading…' : photos.length === 0 ? 'Choose photos' : 'Add more photos'}
       </label>
 
       {uploadError && (

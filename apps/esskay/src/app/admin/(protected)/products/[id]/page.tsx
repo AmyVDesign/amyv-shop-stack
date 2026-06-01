@@ -94,12 +94,20 @@ export default async function PartDetailPage({
 
   return (
     <div className="px-6 py-8 max-w-5xl">
-      <Link
-        href="/admin/products"
-        className="text-sm text-site-accent-dark hover:underline mb-6 inline-block"
-      >
-        ← Parts
-      </Link>
+      <div className="flex items-center justify-between mb-6">
+        <Link
+          href="/admin/products"
+          className="text-sm text-site-accent-dark hover:underline"
+        >
+          ← Parts
+        </Link>
+        <Link
+          href={`/admin/products/${part.id}/edit`}
+          className="rounded font-body font-medium transition-colors text-sm px-4 py-2 bg-site-bg border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light"
+        >
+          Edit
+        </Link>
+      </div>
 
       {/* Part header */}
       <div className="flex items-start gap-5 mb-8">

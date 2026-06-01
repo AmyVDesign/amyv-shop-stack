@@ -49,7 +49,6 @@ export function VariantsTable({
           </TableHeader>
           <tbody>
             {variants.map((variant) => {
-              const isCanonical = variant.id === canonicalId
               const badge = visibilityBadge[variant.visibility]
               return (
                 <TableRow key={variant.id} className="hover:bg-site-bg/60 transition-colors">
@@ -67,14 +66,6 @@ export function VariantsTable({
                         />
                       ) : (
                         <div className="w-12 h-12 rounded bg-[#f8f5f0] border border-site-border" />
-                      )}
-                      {isCanonical && (
-                        <span
-                          aria-label="Canonical listing"
-                          className="absolute -top-1.5 -right-1.5 text-[10px] font-semibold bg-site-accent-dark text-white rounded px-1 leading-4"
-                        >
-                          C
-                        </span>
                       )}
                     </div>
                   </TableCell>

@@ -102,6 +102,7 @@ export default async function EditPartPage({
         submitLabel="Save Changes"
         cancelHref={`/admin/products/${id}`}
         errorMessage={error === 'save_failed' ? 'Failed to save changes. Check server logs.' : undefined}
+        excludeId={id}
       />
     </div>
   )

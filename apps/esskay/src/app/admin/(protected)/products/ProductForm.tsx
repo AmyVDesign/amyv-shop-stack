@@ -1,7 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import { useRef, useState } from 'react'
 import { PhotoUploader } from './PhotoUploader'
+import { findMatchingPart } from './actions'
 import { productConditionOptions } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
 
@@ -26,6 +28,7 @@ interface ProductFormProps {
   submitLabel: string
   cancelHref: string
   errorMessage?: string
+  excludeId?: string
 }
 
 const inputClass =
@@ -39,7 +42,44 @@ export function ProductForm({
   submitLabel,
   cancelHref,
   errorMessage,
+  excludeId,
 }: ProductFormProps) {
+  // Controlled state for the two fields used in match detection
+  const [partNumber, setPartNumber] = useState(initialValues?.part_number ?? '')
+  const [manufacturer, setManufacturer] = useState(initialValues?.manufacturer ?? '')
+  const [matchResult, setMatchResult] = useState<{ id: string; title: string } | null>(null)
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Tracks the latest scheduled query so stale results are ignored
+  const latestQueryId = useRef(0)
+
+  function scheduleCheck(pn: string, mfr: string) {
+    setMatchResult(null)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    // Bump before early returns so any in-flight query with the old ID is invalidated
+    const qId = ++latestQueryId.current
+
+    const trimPn = pn.trim()
+    const trimMfr = mfr.trim()
+
+    if (!trimPn || !trimMfr) return
+
+    // In edit mode skip if unchanged from initial values — no point querying for self
+    if (
+      excludeId &&
+      trimPn === (initialValues?.part_number?.trim() ?? '') &&
+      trimMfr === (initialValues?.manufacturer?.trim() ?? '')
+    ) return
+
+    debounceRef.current = setTimeout(async () => {
+      const match = await findMatchingPart(trimPn, trimMfr, excludeId)
+      if (qId === latestQueryId.current) {
+        setMatchResult(match)
+      }
+    }, 400)
+  }
+
   return (
     <>
       {errorMessage && (
@@ -94,7 +134,7 @@ export function ProductForm({
             </div>
           </div>
 
-          {/* Part Number */}
+          {/* Part Number — controlled for match detection */}
           <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
             <label htmlFor="part_number" className="text-sm text-site-muted font-medium">
               Part Number
@@ -104,14 +144,18 @@ export function ProductForm({
                 id="part_number"
                 name="part_number"
                 type="text"
-                defaultValue={initialValues?.part_number ?? ''}
+                value={partNumber}
+                onChange={(e) => {
+                  setPartNumber(e.target.value)
+                  scheduleCheck(e.target.value, manufacturer)
+                }}
                 className={inputClass}
                 placeholder="OEM or aftermarket part number"
               />
             </div>
           </div>
 
-          {/* Manufacturer */}
+          {/* Manufacturer — controlled for match detection */}
           <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
             <label htmlFor="manufacturer" className="text-sm text-site-muted font-medium">
               Manufacturer
@@ -121,12 +165,37 @@ export function ProductForm({
                 id="manufacturer"
                 name="manufacturer"
                 type="text"
-                defaultValue={initialValues?.manufacturer ?? ''}
+                value={manufacturer}
+                onChange={(e) => {
+                  setManufacturer(e.target.value)
+                  scheduleCheck(partNumber, e.target.value)
+                }}
                 className={inputClass}
                 placeholder="e.g. Mercruiser"
               />
             </div>
           </div>
+
+          {/* Match detection banner */}
+          {matchResult && (
+            <div className="flex items-center gap-3 px-4 py-2.5 bg-[#e8f0f8] text-sm">
+              <span className="text-site-accent flex-none select-none" aria-hidden="true">
+                ℹ
+              </span>
+              <span className="text-site-accent-dark flex-1 min-w-0 truncate">
+                Possible match:{' '}
+                <span className="font-medium">{matchResult.title}</span>
+              </span>
+              <a
+                href={`/admin/products/${matchResult.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-none text-site-accent-dark hover:underline font-medium whitespace-nowrap"
+              >
+                View it →
+              </a>
+            </div>
+          )}
 
           {/* Condition */}
           <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">

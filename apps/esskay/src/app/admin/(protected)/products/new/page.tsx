@@ -30,10 +30,14 @@ export default async function NewPartPage({
     const linkedListingIdRaw = String(formData.get('linked_listing_id') ?? '').trim()
     const linkedListingId = visibility === 'public' && linkedListingIdRaw ? linkedListingIdRaw : null
 
-    const slug = `${title}-${sku}`
+    const baseSlug = `${title}-${sku}`
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
+    // Linked parts share the parent's public URL — the slug is never shown but must be unique
+    const slug = linkedListingId
+      ? `${baseSlug}-${Math.random().toString(36).slice(2, 8)}`
+      : baseSlug
 
     const { error: insertError } = await supabase.from('products').insert({
       title,

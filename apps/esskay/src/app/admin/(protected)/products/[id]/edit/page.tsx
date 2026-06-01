@@ -47,9 +47,23 @@ export default async function EditPartPage({
     const linkedListingIdRaw = String(formData.get('linked_listing_id') ?? '').trim()
     const linkedListingId = visibility === 'public' && linkedListingIdRaw ? linkedListingIdRaw : null
 
+    // Regenerate slug when the part gains a new link (slug is never shown for linked parts
+    // but must satisfy the unique constraint; use a suffix to avoid colliding with the parent)
+    const linkChanged = linkedListingId !== part!.linked_listing_id
+    const slugField =
+      linkedListingId && linkChanged
+        ? {
+            slug: `${`${title}-${sku}`
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-|-$/g, '')}-${Math.random().toString(36).slice(2, 8)}`,
+          }
+        : {}
+
     const { error: updateError } = await supabase
       .from('products')
       .update({
+        ...slugField,
         title,
         sku,
         part_number: partNumber,

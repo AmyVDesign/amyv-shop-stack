@@ -71,20 +71,23 @@ export function ProductForm({
   const [linkedListingId, setLinkedListingId] = useState<string | null>(
     initialValues?.linked_listing_id ?? null
   )
-  // hasChosen: true once the user picks an option in the modal (or on first load in edit mode)
-  const [hasChosen, setHasChosen] = useState(mode === 'edit')
+  // hasChosen: true when there's already a saved link (suppress modal on load for linked parts).
+  // A saved standalone (linked_listing_id = null) does NOT count as a prior choice.
+  const [hasChosen, setHasChosen] = useState(
+    mode === 'edit' && !!initialValues?.linked_listing_id
+  )
 
-  // In create mode, downstream fields are locked until part_number + manufacturer are filled.
-  // Visibility always has a value (defaults to 'internal'), so only two fields gate.
+  // In create mode, downstream fields gate on part number + manufacturer being filled.
+  // Visibility always has a value so it never blocks gating.
   const gatingComplete = mode === 'edit' || (partNumber.trim() !== '' && manufacturer.trim() !== '')
 
-  // Modal shows when a match is found and the user hasn't answered yet
+  // Modal shows when a match is found and the user hasn't yet decided
   const showModal = matchResult !== null && !hasChosen
 
-  // On mount in edit mode: if the part is linked, run the match check once
-  // (hasChosen starts true so this never opens the modal — it just populates matchResult)
+  // On mount in edit mode: run the match check whenever part_number + manufacturer are set,
+  // regardless of linked_listing_id. This lets users retroactively link existing standalone parts.
   useEffect(() => {
-    if (!initialValues?.linked_listing_id || !initialValues.part_number || !initialValues.manufacturer) return
+    if (!initialValues?.part_number || !initialValues.manufacturer) return
     const qId = ++latestQueryId.current
     findMatchingPart(
       initialValues.part_number.trim(),
@@ -96,8 +99,9 @@ export function ProductForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function scheduleCheck(pn: string, mfr: string, vis: 'public' | 'internal' | 'ebay_only') {
-    // Reset all decision state on any gating field change
+  // Linking is independent of visibility — fire the check whenever pn + mfr are both filled.
+  function scheduleCheck(pn: string, mfr: string) {
+    // Reset all decision state when the identifier fields change
     setMatchResult(null)
     setHasChosen(false)
     setLinkedListingId(null)
@@ -111,10 +115,9 @@ export function ProductForm({
 
     const trimPn = pn.trim()
     const trimMfr = mfr.trim()
-    // Only check when public + both identifier fields are filled
-    if (!trimPn || !trimMfr || vis !== 'public') return
+    if (!trimPn || !trimMfr) return
 
-    // Edit mode: skip if values haven't changed from initial (avoids check on first render)
+    // Edit mode: skip if values haven't changed from initial (avoids redundant check on first render)
     if (
       excludeId &&
       trimPn === (initialValues?.part_number?.trim() ?? '') &&
@@ -137,14 +140,14 @@ export function ProductForm({
         </div>
       )}
 
-      {/* Match decision modal — appears when a public match is found and user hasn't chosen */}
+      {/* Match decision modal */}
       {showModal && matchResult && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" />
           <div className="relative z-10 w-full max-w-md mx-4 bg-white rounded-lg border border-site-border shadow-xl overflow-hidden">
             <div className="p-6 space-y-4">
               <p className="text-sm font-semibold text-site-accent-dark">
-                We found an existing public listing for this part
+                We found an existing listing for this part
               </p>
 
               {/* Matched part details */}
@@ -185,7 +188,7 @@ export function ProductForm({
               </div>
 
               <p className="text-sm text-site-text font-medium">
-                How should this new listing appear publicly?
+                Should this new listing be linked to it?
               </p>
 
               <div className="flex flex-wrap gap-2">
@@ -199,7 +202,7 @@ export function ProductForm({
                   }}
                   className="px-3 py-1.5 rounded text-sm font-medium bg-site-accent-dark text-white hover:bg-site-accent transition-colors"
                 >
-                  Add to existing listing
+                  Add to existing product
                 </button>
                 <button
                   type="button"
@@ -209,13 +212,13 @@ export function ProductForm({
                   }}
                   className="px-3 py-1.5 rounded text-sm font-medium border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light transition-colors"
                 >
-                  Create new public page
+                  Keep as standalone
                 </button>
               </div>
 
               <p className="text-xs text-site-muted leading-snug">
-                Adding to the existing listing means this part shows as a variant on the existing
-                product page. Creating a new page gives it its own URL.
+                Linking groups them as variants of the same product. The storefront only shows
+                variants with Public visibility.
               </p>
             </div>
           </div>
@@ -251,7 +254,7 @@ export function ProductForm({
                 value={partNumber}
                 onChange={(e) => {
                   setPartNumber(e.target.value)
-                  scheduleCheck(e.target.value, manufacturer, visibility)
+                  scheduleCheck(e.target.value, manufacturer)
                 }}
                 className={inputClass}
                 placeholder="OEM or aftermarket part number"
@@ -272,7 +275,7 @@ export function ProductForm({
                 value={manufacturer}
                 onChange={(e) => {
                   setManufacturer(e.target.value)
-                  scheduleCheck(partNumber, e.target.value, visibility)
+                  scheduleCheck(partNumber, e.target.value)
                 }}
                 className={inputClass}
                 placeholder="e.g. Mercruiser"
@@ -280,7 +283,7 @@ export function ProductForm({
             </div>
           </div>
 
-          {/* Visibility */}
+          {/* Visibility — changing visibility no longer affects match detection */}
           <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
             <label htmlFor="visibility" className="text-sm text-site-muted font-medium">
               Visibility
@@ -290,11 +293,7 @@ export function ProductForm({
                 id="visibility"
                 name="visibility"
                 value={visibility}
-                onChange={(e) => {
-                  const v = e.target.value as 'public' | 'internal' | 'ebay_only'
-                  setVisibility(v)
-                  scheduleCheck(partNumber, manufacturer, v)
-                }}
+                onChange={(e) => setVisibility(e.target.value as 'public' | 'internal' | 'ebay_only')}
                 className={selectClass}
               >
                 <option value="internal">Internal</option>
@@ -310,7 +309,7 @@ export function ProductForm({
           {!gatingComplete && mode === 'create' && (
             <div className="px-4 py-2 bg-[#f8f5f0]">
               <p className="text-xs text-site-muted">
-                Fill in part number, manufacturer, and visibility above to continue.
+                Fill in part number and manufacturer above to continue.
               </p>
             </div>
           )}

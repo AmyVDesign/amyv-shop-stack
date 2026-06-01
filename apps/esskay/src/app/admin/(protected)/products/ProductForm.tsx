@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { PhotoUploader } from './PhotoUploader'
 import { findMatchingPart } from './actions'
 import type { MatchedPart } from './actions'
-import { productConditionOptions, conditionLabel } from '@/lib/product-labels'
+import { productConditionOptions } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
 
 export interface ProductFormValues {
@@ -56,36 +56,22 @@ export function ProductForm({
     initialValues?.visibility ?? 'internal'
   )
 
-  // Title: controlled so the modal can auto-fill it; disabled when linked
-  const [titleValue, setTitleValue] = useState(initialValues?.title ?? '')
-  const [titleDisabled, setTitleDisabled] = useState(
-    mode === 'edit' && !!initialValues?.linked_listing_id
-  )
-
   // Match detection
   const [matchResult, setMatchResult] = useState<MatchedPart | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryId = useRef(0)
 
-  // Link decision: null = standalone, string = linked to that id
+  // Link decision: auto-set from match detection, no user choice required
   const [linkedListingId, setLinkedListingId] = useState<string | null>(
     initialValues?.linked_listing_id ?? null
-  )
-  // hasChosen: true when there's already a saved link (suppress modal on load for linked parts).
-  // A saved standalone (linked_listing_id = null) does NOT count as a prior choice.
-  const [hasChosen, setHasChosen] = useState(
-    mode === 'edit' && !!initialValues?.linked_listing_id
   )
 
   // In create mode, downstream fields gate on part number + manufacturer being filled.
   // Visibility always has a value so it never blocks gating.
   const gatingComplete = mode === 'edit' || (partNumber.trim() !== '' && manufacturer.trim() !== '')
 
-  // Modal shows when a match is found and the user hasn't yet decided
-  const showModal = matchResult !== null && !hasChosen
-
-  // On mount in edit mode: run the match check whenever part_number + manufacturer are set,
-  // regardless of linked_listing_id. This lets users retroactively link existing standalone parts.
+  // On mount in edit mode: run the match check if part_number + manufacturer are set,
+  // and auto-link if a match is found.
   useEffect(() => {
     if (!initialValues?.part_number || !initialValues.manufacturer) return
     const qId = ++latestQueryId.current
@@ -94,19 +80,19 @@ export function ProductForm({
       initialValues.manufacturer.trim(),
       excludeId
     ).then((match) => {
-      if (qId === latestQueryId.current && match) setMatchResult(match)
+      if (qId === latestQueryId.current && match) {
+        setMatchResult(match)
+        setLinkedListingId(match.id)
+      }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Linking is independent of visibility — fire the check whenever pn + mfr are both filled.
+  // Auto-links to the matched part; clears the link when no match.
   function scheduleCheck(pn: string, mfr: string) {
-    // Reset all decision state when the identifier fields change
     setMatchResult(null)
-    setHasChosen(false)
     setLinkedListingId(null)
-    setTitleDisabled(false)
-    setTitleValue(mode === 'create' ? '' : (initialValues?.title ?? ''))
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
@@ -128,7 +114,10 @@ export function ProductForm({
 
     debounceRef.current = setTimeout(async () => {
       const match = await findMatchingPart(trimPn, trimMfr, excludeId)
-      if (qId === latestQueryId.current) setMatchResult(match)
+      if (qId === latestQueryId.current) {
+        setMatchResult(match)
+        setLinkedListingId(match?.id ?? null)
+      }
     }, 400)
   }
 
@@ -137,91 +126,6 @@ export function ProductForm({
       {errorMessage && (
         <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 mb-6">
           {errorMessage}
-        </div>
-      )}
-
-      {/* Match decision modal */}
-      {showModal && matchResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" />
-          <div className="relative z-10 w-full max-w-md mx-4 bg-white rounded-lg border border-site-border shadow-xl overflow-hidden">
-            <div className="p-6 space-y-4">
-              <p className="text-sm font-semibold text-site-accent-dark">
-                We found an existing listing for this part
-              </p>
-
-              {/* Matched part details */}
-              <div className="flex gap-4 items-start">
-                {matchResult.photo_urls.length > 0 ? (
-                  <img
-                    src={matchResult.photo_urls[0]}
-                    alt={matchResult.title}
-                    className="w-24 h-24 rounded object-cover flex-shrink-0 border border-site-border"
-                  />
-                ) : (
-                  <div className="w-24 h-24 rounded flex-shrink-0 bg-[#f8f5f0] border border-site-border" />
-                )}
-                <div className="flex-1 min-w-0 space-y-2">
-                  <a
-                    href={`/admin/products/${matchResult.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block font-display font-bold text-site-text leading-tight hover:text-site-accent-dark transition-colors"
-                  >
-                    {matchResult.title}
-                  </a>
-                  <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-sm">
-                    <span className="text-site-muted">Condition</span>
-                    <span className="text-site-text">
-                      {matchResult.condition ? conditionLabel[matchResult.condition] : '—'}
-                    </span>
-                    <span className="text-site-muted">Price</span>
-                    <span className="text-site-text">
-                      ${(matchResult.price_cents / 100).toFixed(2)}
-                    </span>
-                    <span className="text-site-muted">For sale</span>
-                    <span className="text-site-text">
-                      {matchResult.qty_for_sale} / {matchResult.qty_on_hand}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-sm text-site-text font-medium">
-                Should this new listing be linked to it?
-              </p>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLinkedListingId(matchResult.id)
-                    setTitleValue(matchResult.title)
-                    setTitleDisabled(true)
-                    setHasChosen(true)
-                  }}
-                  className="px-3 py-1.5 rounded text-sm font-medium bg-site-accent-dark text-white hover:bg-site-accent transition-colors"
-                >
-                  Add to existing product
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLinkedListingId(null)
-                    setHasChosen(true)
-                  }}
-                  className="px-3 py-1.5 rounded text-sm font-medium border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light transition-colors"
-                >
-                  Keep as standalone
-                </button>
-              </div>
-
-              <p className="text-xs text-site-muted leading-snug">
-                Linking groups them as variants of the same product. The storefront only shows
-                variants with Public visibility.
-              </p>
-            </div>
-          </div>
         </div>
       )}
 
@@ -283,7 +187,7 @@ export function ProductForm({
             </div>
           </div>
 
-          {/* Visibility — changing visibility no longer affects match detection */}
+          {/* Visibility */}
           <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
             <label htmlFor="visibility" className="text-sm text-site-muted font-medium">
               Visibility
@@ -302,6 +206,23 @@ export function ProductForm({
               </select>
             </div>
           </div>
+
+          {/* Auto-link notice — informational only, no user action required */}
+          {matchResult && (
+            <div className="px-4 py-3 bg-[#e8f0f8] border-t border-site-border flex items-center gap-3">
+              <div className="flex-1 text-sm">
+                <span className="text-site-muted">Adding as a variant of: </span>
+                <a
+                  href={`/admin/products/${matchResult.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-display font-semibold text-site-accent-dark hover:underline"
+                >
+                  {matchResult.title}
+                </a>
+              </div>
+            </div>
+          )}
 
           {/* ── Helper text + downstream fields ──────────────────────── */}
 
@@ -333,15 +254,8 @@ export function ProductForm({
                   name="title"
                   type="text"
                   required
-                  value={titleValue}
-                  onChange={(e) => setTitleValue(e.target.value)}
-                  readOnly={titleDisabled}
-                  className={[
-                    'w-full rounded border border-site-border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-site-accent',
-                    titleDisabled
-                      ? 'bg-[#f8f5f0] text-site-muted cursor-not-allowed'
-                      : 'bg-white text-site-text',
-                  ].join(' ')}
+                  defaultValue={initialValues?.title ?? ''}
+                  className={inputClass}
                   placeholder="e.g. Mercruiser water pump impeller"
                 />
               </div>

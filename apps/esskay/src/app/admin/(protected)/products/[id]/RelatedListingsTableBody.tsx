@@ -5,6 +5,7 @@ import { Badge, TableRow, TableCell } from '@amyv/ui'
 
 type Visibility = 'public' | 'internal' | 'ebay_only'
 type Source = 'manual' | 'shopify_import' | 'sheets_import'
+type ProductCondition = 'new' | 'nos' | 'used_good' | 'used_fair' | 'needs_rebuild' | 'parts_only'
 
 export interface RelatedListing {
   id: string
@@ -15,6 +16,7 @@ export interface RelatedListing {
   qty_on_hand: number
   qty_for_sale: number
   source: Source
+  condition: ProductCondition | null
 }
 
 const visibilityBadge: Record<Visibility, { variant: 'green' | 'gray' | 'orange'; label: string }> = {
@@ -27,6 +29,15 @@ const sourceLabel: Record<Source, string> = {
   manual:         'Manual',
   shopify_import: 'Shopify import',
   sheets_import:  'Sheets import',
+}
+
+const conditionLabel: Record<ProductCondition, string> = {
+  new:           'New',
+  nos:           'NOS (New Old Stock)',
+  used_good:     'Used — good',
+  used_fair:     'Used — fair',
+  needs_rebuild: 'Needs rebuild',
+  parts_only:    'Parts only',
 }
 
 function formatPrice(cents: number) {
@@ -54,6 +65,11 @@ export function RelatedListingsTableBody({ listings }: { listings: RelatedListin
             </TableCell>
             <TableCell>
               <Badge variant={badge.variant}>{badge.label}</Badge>
+            </TableCell>
+            <TableCell>
+              <span className="text-site-muted text-xs">
+                {listing.condition ? conditionLabel[listing.condition] : '—'}
+              </span>
             </TableCell>
             <TableCell className="tabular-nums text-right">{listing.qty_for_sale}</TableCell>
             <TableCell className="tabular-nums text-right">{listing.qty_on_hand}</TableCell>

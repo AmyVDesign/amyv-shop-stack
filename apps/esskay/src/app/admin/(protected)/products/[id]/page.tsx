@@ -6,6 +6,7 @@ import { RelatedListingsTableBody } from './RelatedListingsTableBody'
 
 type Visibility = 'public' | 'internal' | 'ebay_only'
 type Source = 'manual' | 'shopify_import' | 'sheets_import'
+type ProductCondition = 'new' | 'nos' | 'used_good' | 'used_fair' | 'needs_rebuild' | 'parts_only'
 
 const visibilityBadge: Record<Visibility, { variant: 'green' | 'gray' | 'orange'; label: string }> = {
   public:    { variant: 'green',  label: 'Public'    },
@@ -17,6 +18,15 @@ const sourceLabel: Record<Source, string> = {
   manual:         'Manual',
   shopify_import: 'Shopify import',
   sheets_import:  'Sheets import',
+}
+
+const conditionLabel: Record<ProductCondition, string> = {
+  new:           'New',
+  nos:           'NOS (New Old Stock)',
+  used_good:     'Used — good',
+  used_fair:     'Used — fair',
+  needs_rebuild: 'Needs rebuild',
+  parts_only:    'Parts only',
 }
 
 function formatPrice(cents: number) {
@@ -34,7 +44,7 @@ export default async function PartDetailPage({
   const { data: part, error: partError } = await supabase
     .from('products')
     .select(
-      'id, title, sku, part_number, manufacturer, photo_urls, price_cents, qty_on_hand, qty_for_sale, visibility, source, description, acquired_date'
+      'id, title, sku, part_number, manufacturer, photo_urls, price_cents, qty_on_hand, qty_for_sale, visibility, source, condition, description, acquired_date'
     )
     .eq('id', id)
     .single()
@@ -50,6 +60,7 @@ export default async function PartDetailPage({
   const details: [string, string][] = [
     ['Part Number', part.part_number ?? '—'],
     ['Manufacturer', part.manufacturer ?? '—'],
+    ['Condition', part.condition ? conditionLabel[part.condition as ProductCondition] : '—'],
     ['Price', formatPrice(part.price_cents)],
     ['For Sale', String(part.qty_for_sale)],
     ['On Hand', String(part.qty_on_hand)],
@@ -67,6 +78,7 @@ export default async function PartDetailPage({
     qty_on_hand: number
     qty_for_sale: number
     source: Source
+    condition: ProductCondition | null
   }
 
   let related: RelatedListing[] = []
@@ -75,7 +87,7 @@ export default async function PartDetailPage({
   if (canMatchRelated) {
     const { data, error } = await supabase
       .from('products')
-      .select('id, title, sku, visibility, price_cents, qty_on_hand, qty_for_sale, source')
+      .select('id, title, sku, visibility, price_cents, qty_on_hand, qty_for_sale, source, condition')
       .eq('part_number', part.part_number!)
       .eq('manufacturer', part.manufacturer!)
       .neq('id', id)
@@ -158,6 +170,7 @@ export default async function PartDetailPage({
                 <TableCell header>SKU</TableCell>
                 <TableCell header>Title</TableCell>
                 <TableCell header>Visibility</TableCell>
+                <TableCell header>Condition</TableCell>
                 <TableCell header className="text-right">For Sale</TableCell>
                 <TableCell header className="text-right">On Hand</TableCell>
                 <TableCell header>Price</TableCell>

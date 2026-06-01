@@ -260,6 +260,7 @@ export type Database = {
           acquired_date: string | null
           compatibility: string[]
           compatibility_likely: string[]
+          condition: Database["public"]["Enums"]["product_condition"] | null
           created_at: string
           description: string | null
           id: string
@@ -281,6 +282,7 @@ export type Database = {
           acquired_date?: string | null
           compatibility?: string[]
           compatibility_likely?: string[]
+          condition?: Database["public"]["Enums"]["product_condition"] | null
           created_at?: string
           description?: string | null
           id?: string
@@ -302,6 +304,7 @@ export type Database = {
           acquired_date?: string | null
           compatibility?: string[]
           compatibility_likely?: string[]
+          condition?: Database["public"]["Enums"]["product_condition"] | null
           created_at?: string
           description?: string | null
           id?: string
@@ -336,6 +339,13 @@ export type Database = {
         | "migration"
         | "damaged"
         | "found_in_stock"
+      product_condition:
+        | "new"
+        | "nos"
+        | "used_good"
+        | "used_fair"
+        | "needs_rebuild"
+        | "parts_only"
       product_source: "manual" | "shopify_import" | "sheets_import"
       product_visibility: "public" | "internal" | "ebay_only"
       qb_status: "pending_mom_review" | "approved_for_qb" | "pushed_to_qb"
@@ -473,6 +483,14 @@ export const Constants = {
         "migration",
         "damaged",
         "found_in_stock",
+      ],
+      product_condition: [
+        "new",
+        "nos",
+        "used_good",
+        "used_fair",
+        "needs_rebuild",
+        "parts_only",
       ],
       product_source: ["manual", "shopify_import", "sheets_import"],
       product_visibility: ["public", "internal", "ebay_only"],

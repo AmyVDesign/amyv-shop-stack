@@ -27,6 +27,8 @@ export default async function NewPartPage({
     const visibility = String(formData.get('visibility') ?? 'internal') as 'public' | 'internal' | 'ebay_only'
     const description = String(formData.get('description') ?? '').trim() || null
     const photoUrls = formData.getAll('photo_urls').filter(Boolean) as string[]
+    const linkedListingIdRaw = String(formData.get('linked_listing_id') ?? '').trim()
+    const linkedListingId = visibility === 'public' && linkedListingIdRaw ? linkedListingIdRaw : null
 
     const slug = `${title}-${sku}`
       .toLowerCase()
@@ -46,6 +48,7 @@ export default async function NewPartPage({
       visibility,
       description,
       photo_urls: photoUrls,
+      linked_listing_id: linkedListingId,
       source: 'manual',
     })
 

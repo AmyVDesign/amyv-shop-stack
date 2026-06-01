@@ -18,7 +18,7 @@ export default async function EditPartPage({
   const { data: part, error: partError } = await supabase
     .from('products')
     .select(
-      'id, title, sku, part_number, manufacturer, photo_urls, price_cents, qty_on_hand, qty_for_sale, visibility, condition, description'
+      'id, title, sku, part_number, manufacturer, photo_urls, price_cents, qty_on_hand, qty_for_sale, visibility, condition, description, linked_listing_id'
     )
     .eq('id', id)
     .single()
@@ -44,6 +44,8 @@ export default async function EditPartPage({
     const visibility = String(formData.get('visibility') ?? 'internal') as 'public' | 'internal' | 'ebay_only'
     const description = String(formData.get('description') ?? '').trim() || null
     const photoUrls = formData.getAll('photo_urls').filter(Boolean) as string[]
+    const linkedListingIdRaw = String(formData.get('linked_listing_id') ?? '').trim()
+    const linkedListingId = visibility === 'public' && linkedListingIdRaw ? linkedListingIdRaw : null
 
     const { error: updateError } = await supabase
       .from('products')
@@ -59,6 +61,7 @@ export default async function EditPartPage({
         visibility,
         description,
         photo_urls: photoUrls,
+        linked_listing_id: linkedListingId,
       })
       .eq('id', id)
 
@@ -82,6 +85,7 @@ export default async function EditPartPage({
     visibility: part.visibility as 'public' | 'internal' | 'ebay_only',
     description: part.description,
     photo_urls: part.photo_urls,
+    linked_listing_id: part.linked_listing_id,
   }
 
   return (

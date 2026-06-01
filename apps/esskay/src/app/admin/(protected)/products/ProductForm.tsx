@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PhotoUploader } from './PhotoUploader'
 import { findMatchingPart } from './actions'
 import { productConditionOptions } from '@/lib/product-labels'
@@ -19,6 +19,7 @@ export interface ProductFormValues {
   visibility: 'public' | 'internal' | 'ebay_only'
   description: string | null
   photo_urls: string[]
+  linked_listing_id: string | null
 }
 
 interface ProductFormProps {
@@ -37,6 +38,7 @@ const selectClass =
   'w-full rounded border border-site-border bg-white px-3 py-1.5 text-sm text-site-text focus:outline-none focus:ring-1 focus:ring-site-accent'
 
 export function ProductForm({
+  mode,
   initialValues,
   action,
   submitLabel,
@@ -44,28 +46,55 @@ export function ProductForm({
   errorMessage,
   excludeId,
 }: ProductFormProps) {
-  // Controlled state for the two fields used in match detection
+  // Controlled state for fields used in match detection + the decision prompt
   const [partNumber, setPartNumber] = useState(initialValues?.part_number ?? '')
   const [manufacturer, setManufacturer] = useState(initialValues?.manufacturer ?? '')
-  const [matchResult, setMatchResult] = useState<{ id: string; title: string } | null>(null)
+  const [visibility, setVisibility] = useState<'public' | 'internal' | 'ebay_only'>(
+    initialValues?.visibility ?? 'internal'
+  )
 
+  // Match detection state
+  const [matchResult, setMatchResult] = useState<{ id: string; title: string } | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Tracks the latest scheduled query so stale results are ignored
   const latestQueryId = useRef(0)
+
+  // Link decision state
+  // linkedListingId: what we submit. Null = standalone. String = linked.
+  const [linkedListingId, setLinkedListingId] = useState<string | null>(
+    initialValues?.linked_listing_id ?? null
+  )
+  // hasChosen: whether to show a button as visually "selected".
+  // True in edit mode (current state is always a choice) or after user clicks.
+  const [hasChosen, setHasChosen] = useState(mode === 'edit')
+
+  // On mount in edit mode: if the part has a link, run the check once so the prompt appears
+  useEffect(() => {
+    if (!initialValues?.linked_listing_id || !initialValues.part_number || !initialValues.manufacturer) return
+    const qId = ++latestQueryId.current
+    findMatchingPart(
+      initialValues.part_number.trim(),
+      initialValues.manufacturer.trim(),
+      excludeId
+    ).then((match) => {
+      if (qId === latestQueryId.current && match) setMatchResult(match)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function scheduleCheck(pn: string, mfr: string) {
     setMatchResult(null)
+    setHasChosen(false)
+    setLinkedListingId(null)  // Clear any prior link decision when fields change
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
-    // Bump before early returns so any in-flight query with the old ID is invalidated
+    // Bump ID before early returns so in-flight queries don't overwrite cleared state
     const qId = ++latestQueryId.current
 
     const trimPn = pn.trim()
     const trimMfr = mfr.trim()
-
     if (!trimPn || !trimMfr) return
 
-    // In edit mode skip if unchanged from initial values — no point querying for self
+    // Edit mode: skip if values haven't changed from initial (avoids noisy check on first load)
     if (
       excludeId &&
       trimPn === (initialValues?.part_number?.trim() ?? '') &&
@@ -74,11 +103,13 @@ export function ProductForm({
 
     debounceRef.current = setTimeout(async () => {
       const match = await findMatchingPart(trimPn, trimMfr, excludeId)
-      if (qId === latestQueryId.current) {
-        setMatchResult(match)
-      }
+      if (qId === latestQueryId.current) setMatchResult(match)
     }, 400)
   }
+
+  const showPrompt = matchResult !== null && visibility === 'public'
+  const linkSelected = hasChosen && linkedListingId === matchResult?.id
+  const standaloneSelected = hasChosen && linkedListingId === null
 
   return (
     <>
@@ -89,6 +120,13 @@ export function ProductForm({
       )}
 
       <form action={action}>
+        {/* Always-submitted hidden field for link decision */}
+        <input
+          type="hidden"
+          name="linked_listing_id"
+          value={linkedListingId ?? ''}
+        />
+
         <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-6">
           {/* Photos */}
           <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
@@ -176,24 +214,58 @@ export function ProductForm({
             </div>
           </div>
 
-          {/* Match detection banner */}
-          {matchResult && (
-            <div className="flex items-center gap-3 px-4 py-2.5 bg-[#e8f0f8] text-sm">
-              <span className="text-site-accent flex-none select-none" aria-hidden="true">
-                ℹ
-              </span>
-              <span className="text-site-accent-dark flex-1 min-w-0 truncate">
-                Possible match:{' '}
-                <span className="font-medium">{matchResult.title}</span>
-              </span>
+          {/* Match decision prompt — only when public + match found */}
+          {showPrompt && (
+            <div className="px-4 py-4 bg-[#e8f0f8] space-y-3">
+              <p className="text-sm font-semibold text-site-accent-dark">
+                You already have a public listing for this part
+              </p>
               <a
                 href={`/admin/products/${matchResult.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-none text-site-accent-dark hover:underline font-medium whitespace-nowrap"
+                className="block text-sm text-site-accent hover:underline"
               >
-                View it →
+                {matchResult.title} →
               </a>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLinkedListingId(matchResult.id)
+                    setHasChosen(true)
+                  }}
+                  className={[
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors',
+                    linkSelected
+                      ? 'bg-site-accent-dark text-white'
+                      : 'border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light',
+                  ].join(' ')}
+                >
+                  {linkSelected && <span aria-hidden="true">✓</span>}
+                  Add to existing listing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLinkedListingId(null)
+                    setHasChosen(true)
+                  }}
+                  className={[
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors',
+                    standaloneSelected
+                      ? 'bg-site-accent-dark text-white'
+                      : 'border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light',
+                  ].join(' ')}
+                >
+                  {standaloneSelected && <span aria-hidden="true">✓</span>}
+                  Create new public page
+                </button>
+              </div>
+              <p className="text-xs text-site-muted leading-snug">
+                Adding to the existing listing means this part shows as a variant on the existing
+                product page. Creating a new page gives it its own URL.
+              </p>
             </div>
           )}
 
@@ -278,7 +350,7 @@ export function ProductForm({
             </div>
           </div>
 
-          {/* Visibility */}
+          {/* Visibility — controlled so prompt hides when not public */}
           <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
             <label htmlFor="visibility" className="text-sm text-site-muted font-medium">
               Visibility
@@ -287,7 +359,10 @@ export function ProductForm({
               <select
                 id="visibility"
                 name="visibility"
-                defaultValue={initialValues?.visibility ?? 'internal'}
+                value={visibility}
+                onChange={(e) =>
+                  setVisibility(e.target.value as 'public' | 'internal' | 'ebay_only')
+                }
                 className={selectClass}
               >
                 <option value="internal">Internal</option>

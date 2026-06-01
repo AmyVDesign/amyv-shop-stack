@@ -264,6 +264,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          linked_listing_id: string | null
           manufacturer: string | null
           part_number: string | null
           photo_urls: string[]
@@ -286,6 +287,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          linked_listing_id?: string | null
           manufacturer?: string | null
           part_number?: string | null
           photo_urls?: string[]
@@ -308,6 +310,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          linked_listing_id?: string | null
           manufacturer?: string | null
           part_number?: string | null
           photo_urls?: string[]
@@ -322,7 +325,15 @@ export type Database = {
           updated_at?: string
           visibility?: Database["public"]["Enums"]["product_visibility"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_linked_listing_id_fkey"
+            columns: ["linked_listing_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

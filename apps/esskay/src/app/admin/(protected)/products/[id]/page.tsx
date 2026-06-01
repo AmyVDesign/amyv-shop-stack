@@ -3,10 +3,10 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Badge, Table, TableHeader, TableRow, TableCell, EmptyState } from '@amyv/ui'
 import { RelatedListingsTableBody } from './RelatedListingsTableBody'
+import { conditionLabel, type ProductCondition } from '@/lib/product-labels'
 
 type Visibility = 'public' | 'internal' | 'ebay_only'
 type Source = 'manual' | 'shopify_import' | 'sheets_import'
-type ProductCondition = 'new' | 'nos' | 'used_good' | 'used_fair' | 'needs_rebuild' | 'parts_only'
 
 const visibilityBadge: Record<Visibility, { variant: 'green' | 'gray' | 'orange'; label: string }> = {
   public:    { variant: 'green',  label: 'Public'    },
@@ -18,15 +18,6 @@ const sourceLabel: Record<Source, string> = {
   manual:         'Manual',
   shopify_import: 'Shopify import',
   sheets_import:  'Sheets import',
-}
-
-const conditionLabel: Record<ProductCondition, string> = {
-  new:           'New',
-  nos:           'NOS (New Old Stock)',
-  used_good:     'Used — good',
-  used_fair:     'Used — fair',
-  needs_rebuild: 'Needs rebuild',
-  parts_only:    'Parts only',
 }
 
 function formatPrice(cents: number) {

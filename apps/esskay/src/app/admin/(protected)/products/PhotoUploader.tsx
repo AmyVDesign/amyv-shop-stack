@@ -2,6 +2,22 @@
 
 import { useRef, useState } from 'react'
 import { createBrowserClient } from '@/lib/supabase/client'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  arrayMove,
+  horizontalListSortingStrategy,
+} from '@dnd-kit/sortable'
 
 interface UploadedPhoto {
   path: string // storage object path (not full URL)
@@ -14,6 +30,65 @@ function pathFromUrl(url: string): string {
   return idx >= 0 ? url.slice(idx + marker.length) : url
 }
 
+interface SortableThumbnailProps {
+  photo: UploadedPhoto
+  isCover: boolean
+  onRemove: (path: string) => void
+}
+
+function SortableThumbnail({ photo, isCover, onRemove }: SortableThumbnailProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: photo.url })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: transform
+          ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0)`
+          : undefined,
+        transition,
+        zIndex: isDragging ? 10 : undefined,
+        opacity: isDragging ? 0.7 : 1,
+      }}
+      className={[
+        'relative touch-none',
+        isDragging ? 'shadow-lg' : '',
+      ].join(' ')}
+      {...attributes}
+      {...listeners}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={photo.url}
+        alt="Product photo"
+        width={80}
+        height={80}
+        draggable={false}
+        className="w-20 h-20 object-cover rounded border border-site-border select-none cursor-grab active:cursor-grabbing"
+      />
+
+      {isCover && (
+        <span className="absolute bottom-0.5 left-0.5 text-[9px] font-bold uppercase tracking-wider text-white bg-site-accent-dark/80 px-1 py-0.5 rounded leading-none pointer-events-none">
+          Cover
+        </span>
+      )}
+
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onRemove(photo.path)
+        }}
+        aria-label="Remove photo"
+        className="absolute top-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded-full bg-white/80 border border-gray-400 text-gray-600 text-xs leading-none opacity-70 hover:opacity-100 hover:scale-110 transition-all cursor-pointer"
+      >
+        ×
+      </button>
+    </div>
+  )
+}
+
 export function PhotoUploader({ initialPhotoUrls = [] }: { initialPhotoUrls?: string[] }) {
   const [photos, setPhotos] = useState<UploadedPhoto[]>(() =>
     initialPhotoUrls.map((url) => ({ path: pathFromUrl(url), url }))
@@ -21,6 +96,23 @@ export function PhotoUploader({ initialPhotoUrls = [] }: { initialPhotoUrls?: st
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Require 8px of movement before drag starts so button clicks fire normally
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setPhotos((prev) => {
+        const oldIndex = prev.findIndex((p) => p.url === active.id)
+        const newIndex = prev.findIndex((p) => p.url === over.id)
+        return arrayMove(prev, oldIndex, newIndex)
+      })
+    }
+  }
 
   async function handleFiles(files: FileList) {
     setUploading(true)
@@ -67,6 +159,7 @@ export function PhotoUploader({ initialPhotoUrls = [] }: { initialPhotoUrls?: st
 
   return (
     <div>
+      {/* Hidden inputs carry ordered URLs into the Server Action's FormData */}
       {photos.map(({ url }) => (
         <input key={url} type="hidden" name="photo_urls" value={url} />
       ))}
@@ -103,28 +196,27 @@ export function PhotoUploader({ initialPhotoUrls = [] }: { initialPhotoUrls?: st
       )}
 
       {photos.length > 0 && (
-        <div className="flex gap-2 flex-wrap mt-3">
-          {photos.map(({ path, url }) => (
-            <div key={url} className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={url}
-                alt=""
-                width={80}
-                height={80}
-                className="w-20 h-20 object-cover rounded border border-site-border"
-              />
-              <button
-                type="button"
-                onClick={() => removePhoto(path)}
-                aria-label="Remove photo"
-                className="absolute top-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded-full bg-white/80 border border-gray-400 text-gray-600 text-xs leading-none opacity-70 hover:opacity-100 hover:scale-110 transition-all cursor-pointer"
-              >
-                ×
-              </button>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={photos.map((p) => p.url)}
+            strategy={horizontalListSortingStrategy}
+          >
+            <div className="flex gap-2 flex-wrap mt-3">
+              {photos.map((photo, index) => (
+                <SortableThumbnail
+                  key={photo.url}
+                  photo={photo}
+                  isCover={index === 0}
+                  onRemove={removePhoto}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   )

@@ -47,7 +47,7 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={part.photo_urls[0]}
-                  alt=""
+                  alt={part.title}
                   width={40}
                   height={40}
                   className="w-10 h-10 object-cover rounded"

@@ -115,7 +115,7 @@ export default async function PartDetailPage({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={part.photo_urls[0]}
-            alt=""
+            alt={part.title}
             width={96}
             height={96}
             className="flex-none w-24 h-24 object-cover rounded-lg border border-site-border"

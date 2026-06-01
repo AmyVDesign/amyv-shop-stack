@@ -1,18 +1,11 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Badge, Table, TableHeader, TableRow, TableCell } from '@amyv/ui'
 import { VariantsTable } from './VariantsTable'
 import type { VariantRow } from './VariantsTable'
 import type { ProductCondition } from '@/lib/product-labels'
 
 type Visibility = 'public' | 'internal' | 'ebay_only'
-
-const visibilityBadge: Record<Visibility, { variant: 'green' | 'gray' | 'orange'; label: string }> = {
-  public:    { variant: 'green',  label: 'Public'    },
-  internal:  { variant: 'gray',   label: 'Internal'  },
-  ebay_only: { variant: 'orange', label: 'eBay Only' },
-}
 
 const SELECT =
   'id, title, sku, part_number, manufacturer, condition, price_cents, qty_on_hand, qty_for_sale, visibility, description, photo_urls, linked_listing_id'
@@ -67,7 +60,17 @@ export default async function PartDetailPage({
     linked_listing_id: p.linked_listing_id,
   }))
 
-  const badge = visibilityBadge[product.visibility as Visibility]
+  // Visibility breakdown across all variants
+  const publicCount   = variants.filter((v) => v.visibility === 'public').length
+  const internalCount = variants.filter((v) => v.visibility === 'internal').length
+  const ebayCount     = variants.filter((v) => v.visibility === 'ebay_only').length
+
+  const stats: [string, number][] = [
+    ['Total listings', variants.length],
+    ['Public',         publicCount],
+    ['Internal',       internalCount],
+    ['eBay only',      ebayCount],
+  ]
 
   return (
     <div className="px-6 py-8 max-w-5xl">
@@ -95,7 +98,7 @@ export default async function PartDetailPage({
         ) : (
           <div className="flex-none w-60 h-60 rounded-lg bg-[#f8f5f0] border border-site-border" />
         )}
-        <div className="space-y-2 pt-2">
+        <div className="space-y-1.5 pt-2">
           <h1 className="text-2xl font-display font-semibold text-site-text">{product.title}</h1>
           {product.part_number && (
             <p className="font-mono text-sm text-site-muted">{product.part_number}</p>
@@ -103,31 +106,24 @@ export default async function PartDetailPage({
           {product.manufacturer && (
             <p className="text-sm text-site-muted">{product.manufacturer}</p>
           )}
-          <div className="pt-1">
-            <Badge variant={badge.variant}>{badge.label}</Badge>
+
+          {/* Visibility / listing stats */}
+          <div className="grid grid-cols-4 gap-6 pt-3">
+            {stats.map(([label, value]) => (
+              <div key={label}>
+                <p className="text-xs uppercase tracking-wide text-site-muted">{label}</p>
+                <p className="text-lg font-semibold text-site-text mt-0.5">{value}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Variants / listings table */}
+      {/* Variants / listings table — VariantsTable owns the card wrapper */}
       <h2 className="text-lg font-display font-semibold text-site-text mb-4">
         Listings ({variants.length})
       </h2>
-      <div className="rounded-lg border border-site-border overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent border-0">
-              <TableCell header>Photo</TableCell>
-              <TableCell header>Condition</TableCell>
-              <TableCell header>Price</TableCell>
-              <TableCell header>Qty</TableCell>
-              <TableCell header>Visibility</TableCell>
-              <TableCell header />
-            </TableRow>
-          </TableHeader>
-          <VariantsTable variants={variants} canonicalId={id} />
-        </Table>
-      </div>
+      <VariantsTable variants={variants} canonicalId={id} />
     </div>
   )
 }

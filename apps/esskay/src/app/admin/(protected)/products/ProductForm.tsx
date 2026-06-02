@@ -8,6 +8,10 @@ import type { MatchedPart } from './actions'
 import { productConditionOptions } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
 
+function getTodayISO() {
+  return new Date().toISOString().slice(0, 10)
+}
+
 export interface ProductFormValues {
   title: string
   sku: string
@@ -56,8 +60,9 @@ export function ProductForm({
   // ── Gating fields ───────────────────────────────────────────
   const [partNumber, setPartNumber] = useState(initialValues?.part_number ?? '')
   const [manufacturer, setManufacturer] = useState(initialValues?.manufacturer ?? '')
-  const [visibility, setVisibility] = useState<'public' | 'internal' | 'ebay_only'>(
-    initialValues?.visibility ?? 'internal'
+  const [visibility, setVisibility] = useState<'public' | 'internal' | 'ebay_only' | ''>(
+    // Create mode: no default — user must actively choose
+    mode === 'edit' ? (initialValues?.visibility ?? 'internal') : ''
   )
   const [condition, setCondition] = useState<ProductCondition | ''>(
     initialValues?.condition ?? ''
@@ -93,17 +98,28 @@ export function ProductForm({
   const priceDisabled = isNewLinked
   const photosInherited = isNewLinked
 
-  // Auto-fill title and price from canonical when lock conditions become true
+  // In edit mode, skip auto-fill on the first matchResult load (keep saved title).
+  // After that, any transition to 'new' (user-driven) does trigger auto-fill.
+  const skipNextAutoFill = useRef(mode === 'edit')
+
   useEffect(() => {
-    if (isNewLinked && matchResult) {
-      setTitleValue(matchResult.title)
-      setPriceValue((matchResult.price_cents / 100).toFixed(2))
+    if (!isNewLinked || !matchResult) return
+    if (skipNextAutoFill.current) {
+      skipNextAutoFill.current = false
+      return
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setTitleValue(`added ${partNumber.trim()} ${manufacturer.trim()} ${getTodayISO()}`)
+    setPriceValue((matchResult.price_cents / 100).toFixed(2))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [condition, linkedListingId, matchResult])
 
   // ── Gating ──────────────────────────────────────────────────
-  const gatingComplete = mode === 'edit' || (partNumber.trim() !== '' && manufacturer.trim() !== '')
+  const gatingComplete = mode === 'edit' || (
+    partNumber.trim() !== '' &&
+    manufacturer.trim() !== '' &&
+    visibility !== '' &&
+    condition !== ''
+  )
 
   // On mount in edit mode: run the match check if part_number + manufacturer are set
   useEffect(() => {
@@ -153,11 +169,15 @@ export function ProductForm({
   }
 
   const showStorefrontModal =
-    visibility === 'public' && matchResult !== null && storefrontChoice === 'unchosen'
+    visibility === 'public' &&
+    matchResult !== null &&
+    storefrontChoice === 'unchosen' &&
+    gatingComplete
 
   // Conditional field visibility
   const showConditionNotes = condition !== 'new' && condition !== ''
   const showSummary = linkedListingId === null
+  const titleRequired = !(linkedListingId !== null && condition === 'new')
 
   return (
     <>
@@ -302,6 +322,7 @@ export function ProductForm({
                 }}
                 className={selectClass}
               >
+                <option value="" disabled>— Select visibility —</option>
                 <option value="internal">Internal</option>
                 <option value="public">Public</option>
                 <option value="ebay_only">eBay Only</option>
@@ -322,7 +343,7 @@ export function ProductForm({
                 onChange={(e) => setCondition(e.target.value as ProductCondition | '')}
                 className={selectClass}
               >
-                <option value="">— Select condition (optional) —</option>
+                <option value="" disabled>— Select condition —</option>
                 {productConditionOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
@@ -370,7 +391,7 @@ export function ProductForm({
           {!gatingComplete && mode === 'create' && (
             <div className="px-4 py-2 bg-[#f8f5f0]">
               <p className="text-xs text-site-muted">
-                Fill in part number and manufacturer above to continue.
+                Fill in part number, manufacturer, visibility, and condition above to continue.
               </p>
             </div>
           )}
@@ -385,14 +406,14 @@ export function ProductForm({
             {/* Title */}
             <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
               <label htmlFor="title" className="text-sm text-site-muted font-medium">
-                Title <span className="text-red-500">*</span>
+                Title{titleRequired && <span className="text-red-500"> *</span>}
               </label>
               <div className="col-span-2">
                 <input
                   id="title"
                   name="title"
                   type="text"
-                  required
+                  required={titleRequired}
                   value={titleValue}
                   onChange={(e) => setTitleValue(e.target.value)}
                   readOnly={titleDisabled}
@@ -522,7 +543,7 @@ export function ProductForm({
               </div>
             )}
 
-            {/* Summary — canonical product description, only for standalone/canonical listings */}
+            {/* Summary — canonical product description, only for canonical/standalone listings */}
             {showSummary && (
               <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
                 <label htmlFor="description" className="text-sm text-site-muted font-medium pt-1.5">

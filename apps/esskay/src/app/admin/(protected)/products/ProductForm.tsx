@@ -56,6 +56,9 @@ export function ProductForm({
   const [visibility, setVisibility] = useState<'public' | 'internal' | 'ebay_only'>(
     initialValues?.visibility ?? 'internal'
   )
+  const [condition, setCondition] = useState<ProductCondition | ''>(
+    initialValues?.condition ?? ''
+  )
 
   // Storefront display choice — only relevant when visibility=public and a match is found
   const [storefrontChoice, setStorefrontChoice] = useState<'unchosen' | 'variant' | 'standalone'>(
@@ -75,6 +78,20 @@ export function ProductForm({
   const [linkedListingId, setLinkedListingId] = useState<string | null>(
     initialValues?.linked_listing_id ?? null
   )
+
+  // Price — controlled so we can lock it when this is a new linked variant
+  const [priceValue, setPriceValue] = useState(
+    initialValues ? (initialValues.price_cents / 100).toFixed(2) : ''
+  )
+  const priceDisabled = condition === 'new' && linkedListingId !== null && matchResult !== null
+
+  // Auto-fill price from canonical whenever lock conditions become true
+  useEffect(() => {
+    if (condition === 'new' && linkedListingId !== null && matchResult !== null) {
+      setPriceValue((matchResult.price_cents / 100).toFixed(2))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [condition, linkedListingId, matchResult])
 
   // In create mode, downstream fields gate on part number + manufacturer being filled.
   // Visibility always has a value so it never blocks gating.
@@ -395,7 +412,8 @@ export function ProductForm({
                 <select
                   id="condition"
                   name="condition"
-                  defaultValue={initialValues?.condition ?? ''}
+                  value={condition}
+                  onChange={(e) => setCondition(e.target.value as ProductCondition | '')}
                   className={selectClass}
                 >
                   <option value="">— Select condition (optional) —</option>
@@ -421,12 +439,20 @@ export function ProductForm({
                   required
                   min="0"
                   step="0.01"
-                  defaultValue={
-                    initialValues ? (initialValues.price_cents / 100).toFixed(2) : ''
-                  }
-                  className={inputClass}
+                  value={priceValue}
+                  onChange={(e) => setPriceValue(e.target.value)}
+                  readOnly={priceDisabled}
+                  className={[
+                    inputClass,
+                    priceDisabled ? 'bg-site-bg text-site-muted cursor-not-allowed' : '',
+                  ].join(' ')}
                   placeholder="0.00"
                 />
+                {priceDisabled && (
+                  <p className="text-xs text-site-muted mt-1">
+                    New variants share the canonical product&apos;s price
+                  </p>
+                )}
               </div>
             </div>
 
@@ -467,22 +493,31 @@ export function ProductForm({
               </div>
             </div>
 
-            {/* Notes */}
-            <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
-              <label htmlFor="description" className="text-sm text-site-muted font-medium pt-1.5">
-                Notes
-              </label>
-              <div className="col-span-2">
-                <textarea
-                  id="description"
-                  name="description"
-                  rows={3}
-                  defaultValue={initialValues?.description ?? ''}
-                  className={`${inputClass} resize-none`}
-                  placeholder="Additional notes about this part (optional)"
-                />
-              </div>
-            </div>
+            {/* Notes / Condition notes */}
+            {(() => {
+              const isNonNew = condition !== '' && condition !== 'new'
+              return (
+                <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
+                  <label htmlFor="description" className="text-sm text-site-muted font-medium pt-1.5">
+                    {isNonNew ? 'Condition notes' : 'Notes'}
+                  </label>
+                  <div className="col-span-2">
+                    <textarea
+                      id="description"
+                      name="description"
+                      rows={3}
+                      defaultValue={initialValues?.description ?? ''}
+                      className={`${inputClass} resize-none`}
+                      placeholder={
+                        isNonNew
+                          ? 'Describe the specific condition: minor patina, missing hardware, light pitting, etc.'
+                          : 'Additional notes about this part (optional)'
+                      }
+                    />
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
 

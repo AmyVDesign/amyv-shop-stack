@@ -59,11 +59,11 @@ export function ProductForm({
 
   // Storefront display choice — only relevant when visibility=public and a match is found
   const [storefrontChoice, setStorefrontChoice] = useState<'unchosen' | 'variant' | 'standalone'>(
-    mode === 'edit'
-      ? initialValues?.standalone_listing
-        ? 'standalone'
-        : 'variant'
-      : 'unchosen'
+    initialValues?.standalone_listing
+      ? 'standalone'
+      : initialValues?.linked_listing_id
+        ? 'variant'
+        : 'unchosen'
   )
 
   // Match detection
@@ -297,6 +297,39 @@ export function ProductForm({
               </select>
             </div>
           </div>
+
+          {/* Storefront choice confirmation pill */}
+          {visibility === 'public' && matchResult && storefrontChoice !== 'unchosen' && (
+            <div className="px-4 py-3 bg-[#e8f0f8] border-t border-site-border">
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-site-accent-dark font-semibold">✓</span>
+                <div className="flex-1 text-site-text">
+                  {storefrontChoice === 'variant' ? (
+                    <>
+                      Will appear on the storefront as a variant of{' '}
+                      <a
+                        href={`/admin/products/${matchResult.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-display font-semibold text-site-accent-dark hover:underline"
+                      >
+                        {matchResult.title}
+                      </a>
+                    </>
+                  ) : (
+                    <>Will have its own storefront page</>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStorefrontChoice('unchosen')}
+                  className="text-xs text-site-accent hover:underline"
+                >
+                  Change
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ── Helper text + downstream fields ──────────────────────── */}
 

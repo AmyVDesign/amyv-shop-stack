@@ -12,6 +12,22 @@ function formatPrice(cents: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
 }
 
+type Row = {
+  id: string
+  title: string
+  slug: string
+  part_number: string | null
+  manufacturer: string | null
+  condition: string | null
+  price_cents: number
+  qty_for_sale: number
+  description: string | null
+  photo_urls: string[]
+  linked_listing_id: string | null
+  standalone_listing: boolean
+  visibility: string
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -19,7 +35,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params
   const supabase = await createClient()
-  const { data } = await supabase.from('products').select('title, description').eq('slug', slug).maybeSingle()
+  const { data } = await supabase
+    .from('products')
+    .select('title, description')
+    .eq('slug', slug)
+    .maybeSingle()
   if (!data) return { title: 'Ess-Kay Yards' }
   return {
     title: `${data.title} — Ess-Kay Yards`,
@@ -55,37 +75,38 @@ export default async function ProductPage({
     notFound()
   }
 
-  // Canonical or standalone: determine variants to display
-  let displayVariants: typeof product[] = [product]
-
-  if (!product.linked_listing_id) {
-    // Canonical — fetch public non-standalone children
-    const { data: children } = await supabase
-      .from('products')
-      .select(SELECT)
-      .eq('linked_listing_id', product.id)
-      .eq('visibility', 'public')
-      .eq('standalone_listing', false)
-      .order('created_at', { ascending: true })
-
-    displayVariants = [product, ...(children ?? [])]
+  // For standalone listings: single-variant layout (no grouping)
+  if (product.linked_listing_id && product.standalone_listing) {
+    return <StandaloneLayout product={product as Row} />
   }
+
+  // Canonical — fetch public non-standalone children
+  const { data: children } = await supabase
+    .from('products')
+    .select(SELECT)
+    .eq('linked_listing_id', product.id)
+    .eq('visibility', 'public')
+    .eq('standalone_listing', false)
+    .order('created_at', { ascending: true })
+
+  const displayVariants: Row[] = [product as Row, ...(children ?? []) as Row[]]
+
+  const newVariants = displayVariants.filter(
+    (v) => v.condition === 'new' || v.condition === 'nos'
+  )
+  const otherVariants = displayVariants.filter(
+    (v) => v.condition !== 'new' && v.condition !== 'nos'
+  )
 
   const coverPhoto = product.photo_urls[0] ?? null
 
   return (
     <div className="min-h-screen bg-site-bg">
-      {/* Public header */}
-      <header className="border-b border-site-border bg-site-bg">
-        <div className="max-w-5xl mx-auto px-6 py-4">
-          <Wordmark size="sm" />
-        </div>
-      </header>
+      <PublicHeader />
 
       <main className="max-w-5xl mx-auto px-6 py-10">
         {/* Hero */}
         <div className="flex flex-col md:flex-row gap-10 mb-12">
-          {/* Cover photo */}
           <div className="flex-none">
             {coverPhoto ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -99,78 +120,179 @@ export default async function ProductPage({
             )}
           </div>
 
-          {/* Product info */}
           <div className="flex flex-col justify-start pt-2">
             <h1 className="font-display text-4xl font-semibold text-site-text leading-tight mb-3">
               {product.title}
             </h1>
-            {product.part_number && (
-              <p className="font-mono text-sm text-site-muted mb-1">{product.part_number}</p>
-            )}
-            {product.manufacturer && (
-              <p className="text-sm text-site-muted mb-4">{product.manufacturer}</p>
+            {(product.part_number || product.manufacturer) && (
+              <p className="text-sm text-site-muted mb-4">
+                {product.part_number && (
+                  <span className="font-mono">Part #{product.part_number}</span>
+                )}
+                {product.part_number && product.manufacturer && ' · '}
+                {product.manufacturer}
+              </p>
             )}
             {product.description && (
-              <p className="text-sm text-site-text leading-relaxed">{product.description}</p>
+              <p className="text-base text-site-text leading-relaxed">{product.description}</p>
             )}
           </div>
         </div>
 
-        {/* Variants section */}
-        {displayVariants.length === 1 ? (
-          // Single listing — show details inline
-          <div className="rounded-lg border border-site-border bg-white p-6 inline-flex flex-col gap-2">
-            <p className="text-2xl font-semibold text-site-text">
-              {formatPrice(displayVariants[0].price_cents)}
-            </p>
-            {displayVariants[0].condition && (
-              <p className="text-sm text-site-muted">
-                {conditionLabel[displayVariants[0].condition as ProductCondition]}
+        {/* Available section */}
+        <section>
+          <p className="text-xs font-medium uppercase tracking-wide text-site-muted mb-4">
+            Available
+          </p>
+
+          <div className="flex flex-col gap-3">
+            {/* New / NOS — grouped fungible block */}
+            {newVariants.length > 0 && (
+              <NewGroupCard variants={newVariants} />
+            )}
+
+            {/* Non-new — individual cards */}
+            {otherVariants.map((v) => (
+              <OtherVariantCard key={v.id} variant={v} />
+            ))}
+          </div>
+        </section>
+      </main>
+    </div>
+  )
+}
+
+// ── Sub-components ────────────────────────────────────────────
+
+function PublicHeader() {
+  return (
+    <header className="border-b border-site-border bg-site-bg">
+      <div className="max-w-5xl mx-auto px-6 py-4">
+        <Wordmark size="sm" />
+      </div>
+    </header>
+  )
+}
+
+function NewGroupCard({ variants }: { variants: Row[] }) {
+  const totalQty = variants.reduce((sum, v) => sum + v.qty_for_sale, 0)
+  const prices = variants.map((v) => v.price_cents)
+  const minPrice = Math.min(...prices)
+  const allSamePrice = prices.every((p) => p === minPrice)
+  const priceLabel = allSamePrice ? formatPrice(minPrice) : `from ${formatPrice(minPrice)}`
+
+  return (
+    <div className="rounded-lg border border-site-border bg-white px-6 py-5 flex items-center justify-between gap-4">
+      <div>
+        <p className="font-display text-lg font-semibold text-site-text mb-1">New</p>
+        <p className={`text-sm ${totalQty > 0 ? 'text-green-700' : 'text-site-muted'}`}>
+          {totalQty > 0 ? `${totalQty} in stock` : 'Out of stock'}
+        </p>
+      </div>
+      <p className="text-xl font-semibold text-site-text tabular-nums">{priceLabel}</p>
+    </div>
+  )
+}
+
+function OtherVariantCard({ variant: v }: { variant: Row }) {
+  const outOfStock = v.qty_for_sale === 0
+  const condLabel = v.condition
+    ? conditionLabel[v.condition as ProductCondition]
+    : 'Used'
+
+  return (
+    <div
+      className={`rounded-lg border border-site-border bg-white flex items-center gap-5 px-5 py-4 ${outOfStock ? 'opacity-50' : ''}`}
+    >
+      {/* Photo */}
+      <div className="flex-none">
+        {v.photo_urls[0] ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={v.photo_urls[0]}
+            alt={v.title}
+            width={120}
+            height={120}
+            className="w-[120px] h-[120px] object-cover rounded border border-site-border"
+          />
+        ) : (
+          <div className="w-[120px] h-[120px] rounded border border-site-border bg-site-bg" />
+        )}
+      </div>
+
+      {/* Details */}
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-site-text mb-0.5">{condLabel}</p>
+        {v.description && (
+          <p className="text-sm text-site-muted leading-snug">{v.description}</p>
+        )}
+        <p className={`text-xs mt-2 font-medium ${outOfStock ? 'text-site-muted' : 'text-green-700'}`}>
+          {outOfStock ? 'Out of stock' : `${v.qty_for_sale} in stock`}
+        </p>
+      </div>
+
+      {/* Price */}
+      <p className="flex-none text-xl font-semibold text-site-text tabular-nums">
+        {formatPrice(v.price_cents)}
+      </p>
+    </div>
+  )
+}
+
+function StandaloneLayout({ product }: { product: Row }) {
+  const coverPhoto = product.photo_urls[0] ?? null
+
+  return (
+    <div className="min-h-screen bg-site-bg">
+      <PublicHeader />
+
+      <main className="max-w-5xl mx-auto px-6 py-10">
+        <div className="flex flex-col md:flex-row gap-10 mb-12">
+          <div className="flex-none">
+            {coverPhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={coverPhoto}
+                alt={product.title}
+                className="w-full md:w-[480px] aspect-square object-cover rounded-lg border border-site-border"
+              />
+            ) : (
+              <div className="w-full md:w-[480px] aspect-square rounded-lg bg-white border border-site-border" />
+            )}
+          </div>
+
+          <div className="flex flex-col justify-start pt-2">
+            <h1 className="font-display text-4xl font-semibold text-site-text leading-tight mb-3">
+              {product.title}
+            </h1>
+            {(product.part_number || product.manufacturer) && (
+              <p className="text-sm text-site-muted mb-4">
+                {product.part_number && (
+                  <span className="font-mono">Part #{product.part_number}</span>
+                )}
+                {product.part_number && product.manufacturer && ' · '}
+                {product.manufacturer}
               </p>
             )}
-            <p className={`text-sm font-medium ${displayVariants[0].qty_for_sale > 0 ? 'text-green-700' : 'text-site-muted'}`}>
-              {displayVariants[0].qty_for_sale > 0 ? 'In stock' : 'Out of stock'}
-            </p>
-          </div>
-        ) : (
-          // Multiple variants — card grid
-          <section>
-            <h2 className="font-display text-xl font-semibold text-site-text mb-4">Available</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {displayVariants.map((v) => (
-                <div
-                  key={v.id}
-                  className="rounded-lg border border-site-border bg-white overflow-hidden flex flex-col"
-                >
-                  {v.photo_urls[0] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={v.photo_urls[0]}
-                      alt={v.title}
-                      className="w-full aspect-square object-cover"
-                    />
-                  ) : (
-                    <div className="w-full aspect-square bg-site-bg" />
-                  )}
-                  <div className="p-3 flex flex-col gap-1">
-                    <p className="text-sm font-semibold text-site-text leading-snug">{v.title}</p>
-                    {v.condition && (
-                      <p className="text-xs text-site-muted">
-                        {conditionLabel[v.condition as ProductCondition]}
-                      </p>
-                    )}
-                    <p className="text-sm font-semibold text-site-text mt-0.5">
-                      {formatPrice(v.price_cents)}
-                    </p>
-                    <p className={`text-xs font-medium ${v.qty_for_sale > 0 ? 'text-green-700' : 'text-site-muted'}`}>
-                      {v.qty_for_sale > 0 ? 'In stock' : 'Out of stock'}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            {product.description && (
+              <p className="text-base text-site-text leading-relaxed mb-6">{product.description}</p>
+            )}
+
+            <div className="rounded-lg border border-site-border bg-white px-6 py-5 inline-flex flex-col gap-1.5">
+              {product.condition && (
+                <p className="text-sm text-site-muted">
+                  {conditionLabel[product.condition as ProductCondition]}
+                </p>
+              )}
+              <p className="text-2xl font-semibold text-site-text">
+                {formatPrice(product.price_cents)}
+              </p>
+              <p className={`text-sm font-medium ${product.qty_for_sale > 0 ? 'text-green-700' : 'text-site-muted'}`}>
+                {product.qty_for_sale > 0 ? `${product.qty_for_sale} in stock` : 'Out of stock'}
+              </p>
             </div>
-          </section>
-        )}
+          </div>
+        </div>
       </main>
     </div>
   )

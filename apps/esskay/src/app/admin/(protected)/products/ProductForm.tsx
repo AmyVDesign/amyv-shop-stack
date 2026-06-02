@@ -89,6 +89,8 @@ export function ProductForm({
   const [priceValue, setPriceValue] = useState(
     initialValues ? (initialValues.price_cents / 100).toFixed(2) : ''
   )
+  const [qtyOnHand, setQtyOnHand] = useState(initialValues?.qty_on_hand ?? 0)
+  const [qtyForSale, setQtyForSale] = useState(initialValues?.qty_for_sale ?? 0)
 
   // ── Derived display flags ────────────────────────────────────
   const gatingComplete = mode === 'edit' || (
@@ -115,6 +117,7 @@ export function ProductForm({
 
   const showConditionNotes = condition !== 'new' && condition !== ''
   const showSummary = linkedListingId === null
+  const qtyError = qtyForSale > qtyOnHand
 
   // ── Mount effect: run match check in edit mode ───────────────
   useEffect(() => {
@@ -474,7 +477,8 @@ export function ProductForm({
                   type="number"
                   min="0"
                   step="1"
-                  defaultValue={initialValues?.qty_on_hand ?? 0}
+                  value={qtyOnHand}
+                  onChange={(e) => setQtyOnHand(Math.max(0, parseInt(e.target.value, 10) || 0))}
                   className={inputClass}
                 />
               </div>
@@ -491,11 +495,17 @@ export function ProductForm({
                   name="qty_for_sale"
                   type="number"
                   min="0"
+                  max={qtyOnHand}
                   step="1"
-                  defaultValue={initialValues?.qty_for_sale ?? 0}
-                  className={inputClass}
+                  value={qtyForSale}
+                  onChange={(e) => setQtyForSale(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  className={[inputClass, qtyError ? 'border-red-500' : ''].join(' ').trim()}
                 />
-                <p className="text-xs text-site-muted mt-1">Must be ≤ qty on hand</p>
+                {qtyError && (
+                  <p className="text-xs text-red-600 mt-1">
+                    For Sale cannot exceed On Hand ({qtyOnHand})
+                  </p>
+                )}
               </div>
             </div>
 
@@ -542,10 +552,10 @@ export function ProductForm({
         <div className="flex items-center gap-3">
           <button
             type="submit"
-            disabled={mode === 'create' && !showBottom}
+            disabled={(mode === 'create' && !showBottom) || qtyError}
             className={[
               'rounded font-body font-medium transition-colors text-sm px-4 py-2',
-              mode === 'create' && !showBottom
+              (mode === 'create' && !showBottom) || qtyError
                 ? 'bg-site-border text-site-muted cursor-not-allowed'
                 : 'bg-site-accent-dark text-white hover:bg-site-accent',
             ].join(' ')}

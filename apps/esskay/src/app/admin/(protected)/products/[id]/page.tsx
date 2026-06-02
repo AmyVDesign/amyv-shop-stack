@@ -3,12 +3,13 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { VariantsTable } from './VariantsTable'
 import type { VariantRow } from './VariantsTable'
+import { PublicUrlBlock } from './PublicUrlBlock'
 import type { ProductCondition } from '@/lib/product-labels'
 
 type Visibility = 'public' | 'internal' | 'ebay_only'
 
 const SELECT =
-  'id, title, sku, part_number, manufacturer, condition, price_cents, qty_on_hand, qty_for_sale, visibility, description, condition_notes, photo_urls, linked_listing_id, standalone_listing, created_at'
+  'id, title, slug, sku, part_number, manufacturer, condition, price_cents, qty_on_hand, qty_for_sale, visibility, description, condition_notes, photo_urls, linked_listing_id, standalone_listing, created_at'
 
 export default async function PartDetailPage({
   params,
@@ -126,6 +127,11 @@ export default async function PartDetailPage({
               </div>
             ))}
           </div>
+
+          <PublicUrlBlock
+            slug={product.slug}
+            visibility={product.visibility as 'public' | 'internal' | 'ebay_only'}
+          />
         </div>
       </div>
 

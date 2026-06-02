@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { PhotoUploader } from './PhotoUploader'
 import { findMatchingPart } from './actions'
 import type { MatchedPart } from './actions'
-import { productConditionOptions } from '@/lib/product-labels'
+import { conditionLabel, productConditionOptions } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
 
 export interface ProductFormValues {
@@ -21,6 +21,7 @@ export interface ProductFormValues {
   description: string | null
   photo_urls: string[]
   linked_listing_id: string | null
+  standalone_listing: boolean
 }
 
 interface ProductFormProps {
@@ -54,6 +55,15 @@ export function ProductForm({
   const [manufacturer, setManufacturer] = useState(initialValues?.manufacturer ?? '')
   const [visibility, setVisibility] = useState<'public' | 'internal' | 'ebay_only'>(
     initialValues?.visibility ?? 'internal'
+  )
+
+  // Storefront display choice — only relevant when visibility=public and a match is found
+  const [storefrontChoice, setStorefrontChoice] = useState<'unchosen' | 'variant' | 'standalone'>(
+    mode === 'edit'
+      ? initialValues?.standalone_listing
+        ? 'standalone'
+        : 'variant'
+      : 'unchosen'
   )
 
   // Match detection
@@ -93,6 +103,7 @@ export function ProductForm({
   function scheduleCheck(pn: string, mfr: string) {
     setMatchResult(null)
     setLinkedListingId(null)
+    setStorefrontChoice('unchosen')
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
@@ -121,8 +132,84 @@ export function ProductForm({
     }, 400)
   }
 
+  const showStorefrontModal =
+    visibility === 'public' && matchResult !== null && storefrontChoice === 'unchosen'
+
   return (
     <>
+      {showStorefrontModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-start justify-center py-8 px-4">
+            <div className="fixed inset-0 bg-black/50" />
+            <div className="relative w-full max-w-lg bg-white rounded-lg border border-site-border shadow-xl overflow-hidden">
+              <div className="px-6 pt-6 pb-5 border-b border-site-border">
+                <h2 className="text-lg font-display font-semibold text-site-text">
+                  This part already exists in the storefront
+                </h2>
+              </div>
+              <div className="px-6 py-5">
+                {/* Match card */}
+                <div className="flex gap-4 mb-5 p-4 rounded border border-site-border bg-[#f8f5f0]">
+                  {matchResult.photo_urls[0] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={matchResult.photo_urls[0]}
+                      alt={matchResult.title}
+                      width={96}
+                      height={96}
+                      className="flex-none w-24 h-24 object-cover rounded border border-site-border"
+                    />
+                  ) : (
+                    <div className="flex-none w-24 h-24 rounded border border-site-border bg-white" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-display font-semibold text-site-text leading-snug mb-1">
+                      {matchResult.title}
+                    </p>
+                    <p className="text-sm text-site-muted">
+                      {matchResult.condition ? conditionLabel[matchResult.condition] : 'No condition'}
+                    </p>
+                    <p className="text-sm text-site-muted">
+                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
+                        matchResult.price_cents / 100
+                      )}
+                    </p>
+                    <p className="text-sm text-site-muted">
+                      {matchResult.qty_for_sale} for sale / {matchResult.qty_on_hand} on hand
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-sm font-medium text-site-text mb-3">
+                  How should this new listing appear on the public storefront?
+                </p>
+
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStorefrontChoice('variant')}
+                    className="w-full rounded px-4 py-2.5 text-sm font-medium text-left bg-site-accent-dark text-white hover:bg-site-accent transition-colors"
+                  >
+                    Show as a variant on the existing product page
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStorefrontChoice('standalone')}
+                    className="w-full rounded px-4 py-2.5 text-sm font-medium text-left border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light transition-colors"
+                  >
+                    Give it its own storefront page
+                  </button>
+                </div>
+
+                <p className="text-xs text-site-muted mt-4">
+                  Either way, this listing is still grouped with the existing part in your admin records.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {errorMessage && (
         <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 mb-6">
           {errorMessage}
@@ -130,8 +217,9 @@ export function ProductForm({
       )}
 
       <form action={action}>
-        {/* Always-submitted hidden field for link decision */}
+        {/* Always-submitted hidden fields */}
         <input type="hidden" name="linked_listing_id" value={linkedListingId ?? ''} />
+        <input type="hidden" name="standalone_listing" value={storefrontChoice === 'standalone' ? 'true' : 'false'} />
 
         <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-6">
 
@@ -197,7 +285,10 @@ export function ProductForm({
                 id="visibility"
                 name="visibility"
                 value={visibility}
-                onChange={(e) => setVisibility(e.target.value as 'public' | 'internal' | 'ebay_only')}
+                onChange={(e) => {
+                  setVisibility(e.target.value as 'public' | 'internal' | 'ebay_only')
+                  setStorefrontChoice('unchosen')
+                }}
                 className={selectClass}
               >
                 <option value="internal">Internal</option>

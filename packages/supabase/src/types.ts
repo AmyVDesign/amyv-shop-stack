@@ -275,6 +275,7 @@ export type Database = {
           slug: string
           source: Database["public"]["Enums"]["product_source"]
           source_ref: string | null
+          standalone_listing: boolean
           title: string
           updated_at: string
           visibility: Database["public"]["Enums"]["product_visibility"]
@@ -298,6 +299,7 @@ export type Database = {
           slug: string
           source?: Database["public"]["Enums"]["product_source"]
           source_ref?: string | null
+          standalone_listing?: boolean
           title: string
           updated_at?: string
           visibility?: Database["public"]["Enums"]["product_visibility"]
@@ -321,6 +323,7 @@ export type Database = {
           slug?: string
           source?: Database["public"]["Enums"]["product_source"]
           source_ref?: string | null
+          standalone_listing?: boolean
           title?: string
           updated_at?: string
           visibility?: Database["public"]["Enums"]["product_visibility"]

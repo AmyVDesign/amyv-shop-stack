@@ -29,6 +29,7 @@ export default async function NewPartPage({
     const photoUrls = formData.getAll('photo_urls').filter(Boolean) as string[]
     const linkedListingIdRaw = String(formData.get('linked_listing_id') ?? '').trim()
     const linkedListingId = linkedListingIdRaw || null
+    const standaloneListing = visibility === 'public' && formData.get('standalone_listing') === 'true'
 
     const baseSlug = `${title}-${sku}`
       .toLowerCase()
@@ -53,6 +54,7 @@ export default async function NewPartPage({
       description,
       photo_urls: photoUrls,
       linked_listing_id: linkedListingId,
+      standalone_listing: standaloneListing,
       source: 'manual',
     })
 

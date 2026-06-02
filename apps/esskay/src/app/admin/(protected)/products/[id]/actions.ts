@@ -26,6 +26,7 @@ export async function updatePart(
   const photoUrls = formData.getAll('photo_urls').filter(Boolean) as string[]
   const linkedListingIdRaw = String(formData.get('linked_listing_id') ?? '').trim()
   const linkedListingId = linkedListingIdRaw || null
+  const standaloneListing = visibility === 'public' && formData.get('standalone_listing') === 'true'
 
   // Fetch previous link state to detect changes (needed for slug uniqueness)
   const { data: existing } = await supabase
@@ -61,6 +62,7 @@ export async function updatePart(
       description,
       photo_urls: photoUrls,
       linked_listing_id: linkedListingId,
+      standalone_listing: standaloneListing,
     })
     .eq('id', id)
 

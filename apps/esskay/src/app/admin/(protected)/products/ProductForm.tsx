@@ -44,8 +44,6 @@ const inputClass =
   'w-full rounded border border-site-border bg-white px-3 py-1.5 text-sm text-site-text focus:outline-none focus:ring-1 focus:ring-site-accent'
 const selectClass =
   'w-full rounded border border-site-border bg-white px-3 py-1.5 text-sm text-site-text focus:outline-none focus:ring-1 focus:ring-site-accent'
-const lockedClass =
-  'w-full rounded border border-site-border bg-site-bg px-3 py-1.5 text-sm text-site-muted cursor-not-allowed focus:outline-none'
 
 export function ProductForm({
   mode,
@@ -61,7 +59,6 @@ export function ProductForm({
   const [partNumber, setPartNumber] = useState(initialValues?.part_number ?? '')
   const [manufacturer, setManufacturer] = useState(initialValues?.manufacturer ?? '')
   const [visibility, setVisibility] = useState<'public' | 'internal' | 'ebay_only' | ''>(
-    // Create mode: no default — user must actively choose
     mode === 'edit' ? (initialValues?.visibility ?? 'internal') : ''
   )
   const [condition, setCondition] = useState<ProductCondition | ''>(
@@ -87,33 +84,13 @@ export function ProductForm({
     initialValues?.linked_listing_id ?? null
   )
 
-  // ── Controlled downstream fields that can be locked ─────────
+  // ── Editable downstream state ────────────────────────────────
   const [titleValue, setTitleValue] = useState(initialValues?.title ?? '')
   const [priceValue, setPriceValue] = useState(
     initialValues ? (initialValues.price_cents / 100).toFixed(2) : ''
   )
 
-  const isNewLinked = condition === 'new' && linkedListingId !== null && matchResult !== null
-  const titleDisabled = isNewLinked
-  const priceDisabled = isNewLinked
-  const photosInherited = isNewLinked
-
-  // In edit mode, skip auto-fill on the first matchResult load (keep saved title).
-  // After that, any transition to 'new' (user-driven) does trigger auto-fill.
-  const skipNextAutoFill = useRef(mode === 'edit')
-
-  useEffect(() => {
-    if (!isNewLinked || !matchResult) return
-    if (skipNextAutoFill.current) {
-      skipNextAutoFill.current = false
-      return
-    }
-    setTitleValue(`added ${partNumber.trim()} ${manufacturer.trim()} ${getTodayISO()}`)
-    setPriceValue((matchResult.price_cents / 100).toFixed(2))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [condition, linkedListingId, matchResult])
-
-  // ── Gating ──────────────────────────────────────────────────
+  // ── Derived display flags ────────────────────────────────────
   const gatingComplete = mode === 'edit' || (
     partNumber.trim() !== '' &&
     manufacturer.trim() !== '' &&
@@ -121,7 +98,25 @@ export function ProductForm({
     condition !== ''
   )
 
-  // On mount in edit mode: run the match check if part_number + manufacturer are set
+  const showBottom = gatingComplete && (
+    visibility !== 'public' ||
+    !matchResult ||
+    storefrontChoice !== 'unchosen'
+  )
+
+  // Linked + New: fields that differ from a fully custom listing
+  const isLinkedNewVariant = linkedListingId !== null && condition === 'new'
+
+  const showStorefrontModal =
+    visibility === 'public' &&
+    matchResult !== null &&
+    storefrontChoice === 'unchosen' &&
+    gatingComplete
+
+  const showConditionNotes = condition !== 'new' && condition !== ''
+  const showSummary = linkedListingId === null
+
+  // ── Mount effect: run match check in edit mode ───────────────
   useEffect(() => {
     if (!initialValues?.part_number || !initialValues.manufacturer) return
     const qId = ++latestQueryId.current
@@ -167,17 +162,6 @@ export function ProductForm({
       }
     }, 400)
   }
-
-  const showStorefrontModal =
-    visibility === 'public' &&
-    matchResult !== null &&
-    storefrontChoice === 'unchosen' &&
-    gatingComplete
-
-  // Conditional field visibility
-  const showConditionNotes = condition !== 'new' && condition !== ''
-  const showSummary = linkedListingId === null
-  const titleRequired = !(linkedListingId !== null && condition === 'new')
 
   return (
     <>
@@ -260,9 +244,8 @@ export function ProductForm({
         <input type="hidden" name="linked_listing_id" value={linkedListingId ?? ''} />
         <input type="hidden" name="standalone_listing" value={storefrontChoice === 'standalone' ? 'true' : 'false'} />
 
-        <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-6">
-
-          {/* ── Gating fields ─────────────────────────────────────────── */}
+        {/* ── Top card: gating fields (always visible) ─────────────── */}
+        <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-4">
 
           {/* Part Number */}
           <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
@@ -355,7 +338,7 @@ export function ProductForm({
 
           {/* Storefront choice confirmation pill */}
           {visibility === 'public' && matchResult && storefrontChoice !== 'unchosen' && (
-            <div className="px-4 py-3 bg-[#e8f0f8] border-t border-site-border">
+            <div className="px-4 py-3 bg-[#e8f0f8]">
               <div className="flex items-center gap-3 text-sm">
                 <span className="text-site-accent-dark font-semibold">✓</span>
                 <div className="flex-1 text-site-text">
@@ -385,64 +368,60 @@ export function ProductForm({
               </div>
             </div>
           )}
+        </div>
 
-          {/* ── Helper text + downstream fields ──────────────────────── */}
+        {/* ── Bottom card: downstream fields (only when showBottom) ─── */}
+        {showBottom && (
+          <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-6">
 
-          {!gatingComplete && mode === 'create' && (
-            <div className="px-4 py-2 bg-[#f8f5f0]">
-              <p className="text-xs text-site-muted">
-                Fill in part number, manufacturer, visibility, and condition above to continue.
-              </p>
-            </div>
-          )}
-
-          <div
-            className={
-              !gatingComplete && mode === 'create'
-                ? 'divide-y divide-site-border pointer-events-none opacity-50'
-                : 'divide-y divide-site-border'
-            }
-          >
-            {/* Title */}
-            <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
-              <label htmlFor="title" className="text-sm text-site-muted font-medium">
-                Title{titleRequired && <span className="text-red-500"> *</span>}
-              </label>
-              <div className="col-span-2">
+            {/* Hidden inputs for suppressed fields */}
+            {isLinkedNewVariant && (
+              <>
                 <input
-                  id="title"
+                  type="hidden"
                   name="title"
-                  type="text"
-                  required={titleRequired}
-                  value={titleValue}
-                  onChange={(e) => setTitleValue(e.target.value)}
-                  readOnly={titleDisabled}
-                  className={titleDisabled ? lockedClass : inputClass}
-                  placeholder="e.g. Mercruiser water pump impeller"
+                  value={`added ${partNumber.trim()} ${manufacturer.trim()} ${getTodayISO()}`}
                 />
-                {titleDisabled && (
-                  <p className="text-xs text-site-muted mt-1">
-                    New variants inherit the canonical product&apos;s title
-                  </p>
-                )}
-              </div>
-            </div>
+                <input
+                  type="hidden"
+                  name="price"
+                  value={matchResult ? (matchResult.price_cents / 100).toFixed(2) : '0.00'}
+                />
+              </>
+            )}
 
-            {/* Photos */}
-            <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
-              <span className="text-sm text-site-muted font-medium pt-1.5">Photos</span>
-              <div className="col-span-2">
-                {photosInherited ? (
-                  <p className="text-sm text-site-muted pt-1.5">
-                    Photos inherit from the canonical product listing
-                  </p>
-                ) : (
+            {/* Title — hidden for linked-new variants */}
+            {!isLinkedNewVariant && (
+              <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
+                <label htmlFor="title" className="text-sm text-site-muted font-medium">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                <div className="col-span-2">
+                  <input
+                    id="title"
+                    name="title"
+                    type="text"
+                    required
+                    value={titleValue}
+                    onChange={(e) => setTitleValue(e.target.value)}
+                    className={inputClass}
+                    placeholder="e.g. Mercruiser water pump impeller"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Photos — hidden for linked-new variants */}
+            {!isLinkedNewVariant && (
+              <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
+                <span className="text-sm text-site-muted font-medium pt-1.5">Photos</span>
+                <div className="col-span-2">
                   <PhotoUploader initialPhotoUrls={initialValues?.photo_urls ?? []} />
-                )}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* SKU */}
+            {/* SKU — always shown */}
             <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
               <label htmlFor="sku" className="text-sm text-site-muted font-medium">
                 SKU <span className="text-red-500">*</span>
@@ -460,34 +439,30 @@ export function ProductForm({
               </div>
             </div>
 
-            {/* Price */}
-            <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
-              <label htmlFor="price" className="text-sm text-site-muted font-medium">
-                Price (USD) <span className="text-red-500">*</span>
-              </label>
-              <div className="col-span-2">
-                <input
-                  id="price"
-                  name="price"
-                  type="number"
-                  required
-                  min="0"
-                  step="0.01"
-                  value={priceValue}
-                  onChange={(e) => setPriceValue(e.target.value)}
-                  readOnly={priceDisabled}
-                  className={priceDisabled ? lockedClass : inputClass}
-                  placeholder="0.00"
-                />
-                {priceDisabled && (
-                  <p className="text-xs text-site-muted mt-1">
-                    New variants share the canonical product&apos;s price
-                  </p>
-                )}
+            {/* Price — hidden for linked-new variants */}
+            {!isLinkedNewVariant && (
+              <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
+                <label htmlFor="price" className="text-sm text-site-muted font-medium">
+                  Price (USD) <span className="text-red-500">*</span>
+                </label>
+                <div className="col-span-2">
+                  <input
+                    id="price"
+                    name="price"
+                    type="number"
+                    required
+                    min="0"
+                    step="0.01"
+                    value={priceValue}
+                    onChange={(e) => setPriceValue(e.target.value)}
+                    className={inputClass}
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Qty On Hand */}
+            {/* Qty On Hand — always shown */}
             <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
               <label htmlFor="qty_on_hand" className="text-sm text-site-muted font-medium">
                 Qty On Hand
@@ -505,7 +480,7 @@ export function ProductForm({
               </div>
             </div>
 
-            {/* Qty For Sale */}
+            {/* Qty For Sale — always shown */}
             <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
               <label htmlFor="qty_for_sale" className="text-sm text-site-muted font-medium">
                 Qty For Sale
@@ -524,7 +499,7 @@ export function ProductForm({
               </div>
             </div>
 
-            {/* Condition Summary — per-listing notes for non-new items */}
+            {/* Condition Summary — non-new conditions only */}
             {showConditionNotes && (
               <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
                 <label htmlFor="condition_notes" className="text-sm text-site-muted font-medium pt-1.5">
@@ -543,7 +518,7 @@ export function ProductForm({
               </div>
             )}
 
-            {/* Summary — canonical product description, only for canonical/standalone listings */}
+            {/* Summary — canonical/standalone listings only */}
             {showSummary && (
               <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
                 <label htmlFor="description" className="text-sm text-site-muted font-medium pt-1.5">
@@ -562,15 +537,15 @@ export function ProductForm({
               </div>
             )}
           </div>
-        </div>
+        )}
 
         <div className="flex items-center gap-3">
           <button
             type="submit"
-            disabled={mode === 'create' && !gatingComplete}
+            disabled={mode === 'create' && !showBottom}
             className={[
               'rounded font-body font-medium transition-colors text-sm px-4 py-2',
-              mode === 'create' && !gatingComplete
+              mode === 'create' && !showBottom
                 ? 'bg-site-border text-site-muted cursor-not-allowed'
                 : 'bg-site-accent-dark text-white hover:bg-site-accent',
             ].join(' ')}

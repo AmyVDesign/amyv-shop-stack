@@ -39,6 +39,9 @@ export async function findMatchingPart(
     return null
   }
 
+  // Direct match equals the excluded row — no match
+  if (data && excludeId && data.id === excludeId) return null
+
   // Safety: if we somehow got a child row, follow its link to the canonical
   if (data && data.linked_listing_id) {
     const { data: root } = await supabase
@@ -46,6 +49,10 @@ export async function findMatchingPart(
       .select('id, title, photo_urls, condition, price_cents, qty_for_sale, qty_on_hand, visibility')
       .eq('id', data.linked_listing_id)
       .maybeSingle()
+
+    // If the resolved canonical IS the row being edited, there's no external match
+    if (root && excludeId && root.id === excludeId) return null
+
     return root as MatchedPart | null
   }
 

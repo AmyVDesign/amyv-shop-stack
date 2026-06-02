@@ -9,7 +9,7 @@ export default async function PartsPage() {
   const { data, error } = await supabase
     .from('products')
     .select(
-      'id, title, sku, part_number, manufacturer, photo_urls, price_cents, qty_on_hand, qty_for_sale, visibility, linked_listing_id'
+      'id, title, sku, part_number, manufacturer, condition, photo_urls, price_cents, qty_on_hand, qty_for_sale, visibility, linked_listing_id'
     )
     .order('created_at', { ascending: false })
     .limit(50)
@@ -55,6 +55,7 @@ export default async function PartsPage() {
                 <TableCell header>SKU</TableCell>
                 <TableCell header>Part No.</TableCell>
                 <TableCell header>Manufacturer</TableCell>
+                <TableCell header>Condition</TableCell>
                 <TableCell header>Visibility</TableCell>
                 <TableCell header>For Sale</TableCell>
                 <TableCell header>On Hand</TableCell>

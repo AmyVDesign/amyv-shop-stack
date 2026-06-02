@@ -2,6 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { Badge, TableRow, TableCell } from '@amyv/ui'
+import { conditionLabel } from '@/lib/product-labels'
+import type { ProductCondition } from '@/lib/product-labels'
 
 type Visibility = 'public' | 'internal' | 'ebay_only'
 
@@ -11,6 +13,7 @@ interface Part {
   sku: string
   part_number: string | null
   manufacturer: string | null
+  condition: ProductCondition | null
   photo_urls: string[]
   price_cents: number
   qty_on_hand: number
@@ -76,6 +79,13 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
             {/* Manufacturer */}
             <TableCell>
               <span className="text-site-muted">{part.manufacturer ?? '—'}</span>
+            </TableCell>
+
+            {/* Condition */}
+            <TableCell>
+              <span className="text-site-muted">
+                {part.condition ? conditionLabel[part.condition] : '—'}
+              </span>
             </TableCell>
 
             {/* Visibility */}

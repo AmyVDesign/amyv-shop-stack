@@ -62,6 +62,13 @@ export default async function PartDetailPage({
     condition_notes: p.condition_notes,
   }))
 
+  const variantIds = variants.map((v) => v.id)
+  const { data: events } = await supabase
+    .from('inventory_events')
+    .select('id, product_id, event_date, qty_on_hand_delta, qty_for_sale_delta, note')
+    .in('product_id', variantIds)
+    .order('event_date', { ascending: false })
+
   // Visibility breakdown across all variants
   const publicCount   = variants.filter((v) => v.visibility === 'public').length
   const internalCount = variants.filter((v) => v.visibility === 'internal').length
@@ -125,7 +132,7 @@ export default async function PartDetailPage({
       <h2 className="text-lg font-display font-semibold text-site-text mb-4">
         Listings ({variants.length})
       </h2>
-      <VariantsTable variants={variants} canonicalId={id} />
+      <VariantsTable variants={variants} canonicalId={id} events={events ?? []} />
     </div>
   )
 }

@@ -62,6 +62,44 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_events: {
+        Row: {
+          created_at: string
+          event_date: string
+          id: string
+          note: string | null
+          product_id: string
+          qty_for_sale_delta: number
+          qty_on_hand_delta: number
+        }
+        Insert: {
+          created_at?: string
+          event_date?: string
+          id?: string
+          note?: string | null
+          product_id: string
+          qty_for_sale_delta: number
+          qty_on_hand_delta: number
+        }
+        Update: {
+          created_at?: string
+          event_date?: string
+          id?: string
+          note?: string | null
+          product_id?: string
+          qty_for_sale_delta?: number
+          qty_on_hand_delta?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_events_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_movements: {
         Row: {
           actor_id: string | null

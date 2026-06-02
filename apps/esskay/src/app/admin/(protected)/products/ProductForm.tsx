@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { PhotoUploader } from './PhotoUploader'
 import { findMatchingPart } from './actions'
 import type { MatchedPart } from './actions'
-import { conditionLabel, productConditionOptions } from '@/lib/product-labels'
+import { productConditionOptions } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
 
 export interface ProductFormValues {
@@ -19,6 +19,7 @@ export interface ProductFormValues {
   qty_for_sale: number
   visibility: 'public' | 'internal' | 'ebay_only'
   description: string | null
+  condition_notes: string | null
   photo_urls: string[]
   linked_listing_id: string | null
   standalone_listing: boolean
@@ -39,6 +40,8 @@ const inputClass =
   'w-full rounded border border-site-border bg-white px-3 py-1.5 text-sm text-site-text focus:outline-none focus:ring-1 focus:ring-site-accent'
 const selectClass =
   'w-full rounded border border-site-border bg-white px-3 py-1.5 text-sm text-site-text focus:outline-none focus:ring-1 focus:ring-site-accent'
+const lockedClass =
+  'w-full rounded border border-site-border bg-site-bg px-3 py-1.5 text-sm text-site-muted cursor-not-allowed focus:outline-none'
 
 export function ProductForm({
   mode,
@@ -50,7 +53,7 @@ export function ProductForm({
   excludeId,
   onCancel,
 }: ProductFormProps) {
-  // Gating fields — controlled so we can derive gatingComplete and trigger match checks
+  // ── Gating fields ───────────────────────────────────────────
   const [partNumber, setPartNumber] = useState(initialValues?.part_number ?? '')
   const [manufacturer, setManufacturer] = useState(initialValues?.manufacturer ?? '')
   const [visibility, setVisibility] = useState<'public' | 'internal' | 'ebay_only'>(
@@ -60,7 +63,7 @@ export function ProductForm({
     initialValues?.condition ?? ''
   )
 
-  // Storefront display choice — only relevant when visibility=public and a match is found
+  // ── Storefront display choice ────────────────────────────────
   const [storefrontChoice, setStorefrontChoice] = useState<'unchosen' | 'variant' | 'standalone'>(
     initialValues?.standalone_listing
       ? 'standalone'
@@ -69,36 +72,40 @@ export function ProductForm({
         : 'unchosen'
   )
 
-  // Match detection
+  // ── Match detection ─────────────────────────────────────────
   const [matchResult, setMatchResult] = useState<MatchedPart | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryId = useRef(0)
 
-  // Link decision: auto-set from match detection, no user choice required
+  // ── Auto-link ───────────────────────────────────────────────
   const [linkedListingId, setLinkedListingId] = useState<string | null>(
     initialValues?.linked_listing_id ?? null
   )
 
-  // Price — controlled so we can lock it when this is a new linked variant
+  // ── Controlled downstream fields that can be locked ─────────
+  const [titleValue, setTitleValue] = useState(initialValues?.title ?? '')
   const [priceValue, setPriceValue] = useState(
     initialValues ? (initialValues.price_cents / 100).toFixed(2) : ''
   )
-  const priceDisabled = condition === 'new' && linkedListingId !== null && matchResult !== null
 
-  // Auto-fill price from canonical whenever lock conditions become true
+  const isNewLinked = condition === 'new' && linkedListingId !== null && matchResult !== null
+  const titleDisabled = isNewLinked
+  const priceDisabled = isNewLinked
+  const photosInherited = isNewLinked
+
+  // Auto-fill title and price from canonical when lock conditions become true
   useEffect(() => {
-    if (condition === 'new' && linkedListingId !== null && matchResult !== null) {
+    if (isNewLinked && matchResult) {
+      setTitleValue(matchResult.title)
       setPriceValue((matchResult.price_cents / 100).toFixed(2))
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [condition, linkedListingId, matchResult])
 
-  // In create mode, downstream fields gate on part number + manufacturer being filled.
-  // Visibility always has a value so it never blocks gating.
+  // ── Gating ──────────────────────────────────────────────────
   const gatingComplete = mode === 'edit' || (partNumber.trim() !== '' && manufacturer.trim() !== '')
 
-  // On mount in edit mode: run the match check if part_number + manufacturer are set,
-  // and auto-link if a match is found.
+  // On mount in edit mode: run the match check if part_number + manufacturer are set
   useEffect(() => {
     if (!initialValues?.part_number || !initialValues.manufacturer) return
     const qId = ++latestQueryId.current
@@ -115,8 +122,6 @@ export function ProductForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Linking is independent of visibility — fire the check whenever pn + mfr are both filled.
-  // Auto-links to the matched part; clears the link when no match.
   function scheduleCheck(pn: string, mfr: string) {
     setMatchResult(null)
     setLinkedListingId(null)
@@ -124,14 +129,12 @@ export function ProductForm({
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
-    // Bump ID before any early return so stale callbacks don't overwrite cleared state
     const qId = ++latestQueryId.current
 
     const trimPn = pn.trim()
     const trimMfr = mfr.trim()
     if (!trimPn || !trimMfr) return
 
-    // Edit mode: skip if values haven't changed from initial (avoids redundant check on first render)
     if (
       excludeId &&
       trimPn === (initialValues?.part_number?.trim() ?? '') &&
@@ -152,6 +155,10 @@ export function ProductForm({
   const showStorefrontModal =
     visibility === 'public' && matchResult !== null && storefrontChoice === 'unchosen'
 
+  // Conditional field visibility
+  const showConditionNotes = condition !== 'new' && condition !== ''
+  const showSummary = linkedListingId === null
+
   return (
     <>
       {showStorefrontModal && (
@@ -165,7 +172,6 @@ export function ProductForm({
                 </h2>
               </div>
               <div className="px-6 py-5">
-                {/* Match card */}
                 <div className="flex gap-4 mb-5 p-4 rounded border border-site-border bg-[#f8f5f0]">
                   {matchResult.photo_urls[0] ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -182,9 +188,6 @@ export function ProductForm({
                   <div className="min-w-0">
                     <p className="font-display font-semibold text-site-text leading-snug mb-1">
                       {matchResult.title}
-                    </p>
-                    <p className="text-sm text-site-muted">
-                      {matchResult.condition ? conditionLabel[matchResult.condition] : 'No condition'}
                     </p>
                     <p className="text-sm text-site-muted">
                       {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
@@ -234,21 +237,12 @@ export function ProductForm({
       )}
 
       <form action={action}>
-        {/* Always-submitted hidden fields */}
         <input type="hidden" name="linked_listing_id" value={linkedListingId ?? ''} />
         <input type="hidden" name="standalone_listing" value={storefrontChoice === 'standalone' ? 'true' : 'false'} />
 
         <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-6">
 
           {/* ── Gating fields ─────────────────────────────────────────── */}
-
-          {/* Photos */}
-          <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
-            <span className="text-sm text-site-muted font-medium pt-1.5">Photos</span>
-            <div className="col-span-2">
-              <PhotoUploader initialPhotoUrls={initialValues?.photo_urls ?? []} />
-            </div>
-          </div>
 
           {/* Part Number */}
           <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
@@ -315,6 +309,29 @@ export function ProductForm({
             </div>
           </div>
 
+          {/* Condition */}
+          <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
+            <label htmlFor="condition" className="text-sm text-site-muted font-medium">
+              Condition
+            </label>
+            <div className="col-span-2">
+              <select
+                id="condition"
+                name="condition"
+                value={condition}
+                onChange={(e) => setCondition(e.target.value as ProductCondition | '')}
+                className={selectClass}
+              >
+                <option value="">— Select condition (optional) —</option>
+                {productConditionOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           {/* Storefront choice confirmation pill */}
           {visibility === 'public' && matchResult && storefrontChoice !== 'unchosen' && (
             <div className="px-4 py-3 bg-[#e8f0f8] border-t border-site-border">
@@ -350,7 +367,6 @@ export function ProductForm({
 
           {/* ── Helper text + downstream fields ──────────────────────── */}
 
-          {/* Prompt — only in create mode while gating is incomplete */}
           {!gatingComplete && mode === 'create' && (
             <div className="px-4 py-2 bg-[#f8f5f0]">
               <p className="text-xs text-site-muted">
@@ -359,7 +375,6 @@ export function ProductForm({
             </div>
           )}
 
-          {/* Downstream fields — pointer-events off + faded until gating complete */}
           <div
             className={
               !gatingComplete && mode === 'create'
@@ -378,10 +393,31 @@ export function ProductForm({
                   name="title"
                   type="text"
                   required
-                  defaultValue={initialValues?.title ?? ''}
-                  className={inputClass}
+                  value={titleValue}
+                  onChange={(e) => setTitleValue(e.target.value)}
+                  readOnly={titleDisabled}
+                  className={titleDisabled ? lockedClass : inputClass}
                   placeholder="e.g. Mercruiser water pump impeller"
                 />
+                {titleDisabled && (
+                  <p className="text-xs text-site-muted mt-1">
+                    New variants inherit the canonical product&apos;s title
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Photos */}
+            <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
+              <span className="text-sm text-site-muted font-medium pt-1.5">Photos</span>
+              <div className="col-span-2">
+                {photosInherited ? (
+                  <p className="text-sm text-site-muted pt-1.5">
+                    Photos inherit from the canonical product listing
+                  </p>
+                ) : (
+                  <PhotoUploader initialPhotoUrls={initialValues?.photo_urls ?? []} />
+                )}
               </div>
             </div>
 
@@ -403,29 +439,6 @@ export function ProductForm({
               </div>
             </div>
 
-            {/* Condition */}
-            <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
-              <label htmlFor="condition" className="text-sm text-site-muted font-medium">
-                Condition
-              </label>
-              <div className="col-span-2">
-                <select
-                  id="condition"
-                  name="condition"
-                  value={condition}
-                  onChange={(e) => setCondition(e.target.value as ProductCondition | '')}
-                  className={selectClass}
-                >
-                  <option value="">— Select condition (optional) —</option>
-                  {productConditionOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
             {/* Price */}
             <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
               <label htmlFor="price" className="text-sm text-site-muted font-medium">
@@ -442,10 +455,7 @@ export function ProductForm({
                   value={priceValue}
                   onChange={(e) => setPriceValue(e.target.value)}
                   readOnly={priceDisabled}
-                  className={[
-                    inputClass,
-                    priceDisabled ? 'bg-site-bg text-site-muted cursor-not-allowed' : '',
-                  ].join(' ')}
+                  className={priceDisabled ? lockedClass : inputClass}
                   placeholder="0.00"
                 />
                 {priceDisabled && (
@@ -493,31 +503,43 @@ export function ProductForm({
               </div>
             </div>
 
-            {/* Notes / Condition notes */}
-            {(() => {
-              const isNonNew = condition !== '' && condition !== 'new'
-              return (
-                <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
-                  <label htmlFor="description" className="text-sm text-site-muted font-medium pt-1.5">
-                    {isNonNew ? 'Condition notes' : 'Notes'}
-                  </label>
-                  <div className="col-span-2">
-                    <textarea
-                      id="description"
-                      name="description"
-                      rows={3}
-                      defaultValue={initialValues?.description ?? ''}
-                      className={`${inputClass} resize-none`}
-                      placeholder={
-                        isNonNew
-                          ? 'Describe the specific condition: minor patina, missing hardware, light pitting, etc.'
-                          : 'Additional notes about this part (optional)'
-                      }
-                    />
-                  </div>
+            {/* Condition Summary — per-listing notes for non-new items */}
+            {showConditionNotes && (
+              <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
+                <label htmlFor="condition_notes" className="text-sm text-site-muted font-medium pt-1.5">
+                  Condition Summary
+                </label>
+                <div className="col-span-2">
+                  <textarea
+                    id="condition_notes"
+                    name="condition_notes"
+                    rows={2}
+                    defaultValue={initialValues?.condition_notes ?? ''}
+                    className={`${inputClass} resize-none`}
+                    placeholder="Describe the specific condition: minor patina, missing hardware, light pitting, etc."
+                  />
                 </div>
-              )
-            })()}
+              </div>
+            )}
+
+            {/* Summary — canonical product description, only for standalone/canonical listings */}
+            {showSummary && (
+              <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
+                <label htmlFor="description" className="text-sm text-site-muted font-medium pt-1.5">
+                  Summary
+                </label>
+                <div className="col-span-2">
+                  <textarea
+                    id="description"
+                    name="description"
+                    rows={3}
+                    defaultValue={initialValues?.description ?? ''}
+                    className={`${inputClass} resize-none`}
+                    placeholder="Describe this product (visible on the storefront)"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

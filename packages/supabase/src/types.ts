@@ -261,6 +261,7 @@ export type Database = {
           compatibility: string[]
           compatibility_likely: string[]
           condition: Database["public"]["Enums"]["product_condition"] | null
+          condition_notes: string | null
           created_at: string
           description: string | null
           id: string
@@ -285,6 +286,7 @@ export type Database = {
           compatibility?: string[]
           compatibility_likely?: string[]
           condition?: Database["public"]["Enums"]["product_condition"] | null
+          condition_notes?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -309,6 +311,7 @@ export type Database = {
           compatibility?: string[]
           compatibility_likely?: string[]
           condition?: Database["public"]["Enums"]["product_condition"] | null
+          condition_notes?: string | null
           created_at?: string
           description?: string | null
           id?: string

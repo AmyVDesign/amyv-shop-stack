@@ -6,7 +6,7 @@ import { conditionLabel } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
 
 const SELECT =
-  'id, title, slug, part_number, manufacturer, condition, price_cents, qty_for_sale, description, photo_urls, linked_listing_id, standalone_listing, visibility'
+  'id, title, slug, part_number, manufacturer, condition, price_cents, qty_for_sale, description, condition_notes, photo_urls, linked_listing_id, standalone_listing, visibility'
 
 function formatPrice(cents: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
@@ -22,6 +22,7 @@ type Row = {
   price_cents: number
   qty_for_sale: number
   description: string | null
+  condition_notes: string | null
   photo_urls: string[]
   linked_listing_id: string | null
   standalone_listing: boolean
@@ -223,8 +224,8 @@ function OtherVariantCard({ variant: v }: { variant: Row }) {
       {/* Details */}
       <div className="flex-1 min-w-0">
         <p className="font-medium text-site-text mb-0.5">{condLabel}</p>
-        {v.description && (
-          <p className="text-sm text-site-muted leading-snug">{v.description}</p>
+        {v.condition_notes && (
+          <p className="text-sm text-site-muted leading-snug">{v.condition_notes}</p>
         )}
         <p className={`text-xs mt-2 font-medium ${outOfStock ? 'text-site-muted' : 'text-green-700'}`}>
           {outOfStock ? 'Out of stock' : `${v.qty_for_sale} in stock`}

@@ -23,6 +23,9 @@ export async function updatePart(
   const qtyForSale = Math.max(0, parseInt(String(formData.get('qty_for_sale') ?? '0'), 10) || 0)
   const visibility = String(formData.get('visibility') ?? 'internal') as 'public' | 'internal' | 'ebay_only'
   const description = String(formData.get('description') ?? '').trim() || null
+  const conditionNotes = conditionVal === 'new'
+    ? null
+    : String(formData.get('condition_notes') ?? '').trim() || null
   const photoUrls = formData.getAll('photo_urls').filter(Boolean) as string[]
   const linkedListingIdRaw = String(formData.get('linked_listing_id') ?? '').trim()
   const linkedListingId = linkedListingIdRaw || null
@@ -60,6 +63,7 @@ export async function updatePart(
       qty_for_sale: qtyForSale,
       visibility,
       description,
+      condition_notes: conditionNotes,
       photo_urls: photoUrls,
       linked_listing_id: linkedListingId,
       standalone_listing: standaloneListing,

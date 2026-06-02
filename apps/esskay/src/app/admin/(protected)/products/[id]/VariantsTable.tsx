@@ -117,6 +117,7 @@ export function VariantsTable({
           <TableHeader>
             <TableRow className="hover:bg-transparent border-0">
               <TableCell header>Photo</TableCell>
+              <TableCell header>Title</TableCell>
               <TableCell header>Date Added</TableCell>
               <TableCell header>Condition</TableCell>
               <TableCell header>Price</TableCell>
@@ -157,6 +158,10 @@ export function VariantsTable({
                         <div className="w-12 h-12 rounded bg-[#f8f5f0] border border-site-border" />
                       )}
                     </div>
+                  </TableCell>
+
+                  <TableCell>
+                    <span className="text-sm text-site-text">{keeper.title}</span>
                   </TableCell>
 
                   <TableCell>
@@ -206,7 +211,7 @@ export function VariantsTable({
 
                 {newIsExpanded && (
                   <tr className="bg-site-bg">
-                    <td colSpan={9} className="px-6 py-4">
+                    <td colSpan={10} className="px-6 py-4">
                       <p className="text-xs font-medium uppercase tracking-wide text-site-muted mb-3">
                         Inventory batches
                       </p>
@@ -281,6 +286,10 @@ export function VariantsTable({
                     </TableCell>
 
                     <TableCell>
+                      <span className="text-sm text-site-text">{variant.title}</span>
+                    </TableCell>
+
+                    <TableCell>
                       <span className="text-sm text-site-muted">{formatDate(variant.created_at)}</span>
                     </TableCell>
 
@@ -324,7 +333,7 @@ export function VariantsTable({
 
                   {isExpanded && (
                     <tr className="bg-site-bg">
-                      <td colSpan={9} className="px-6 py-4">
+                      <td colSpan={10} className="px-6 py-4">
                         <p className="text-xs font-medium uppercase tracking-wide text-site-muted mb-3">
                           Inventory history
                         </p>

@@ -20,6 +20,7 @@ interface Part {
   qty_for_sale: number
   visibility: Visibility
   linked_listing_id: string | null
+  created_at: string
 }
 
 const visibilityBadge: Record<Visibility, { variant: 'green' | 'gray' | 'orange'; label: string }> = {
@@ -30,6 +31,10 @@ const visibilityBadge: Record<Visibility, { variant: 'green' | 'gray' | 'orange'
 
 function formatPrice(cents: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 export function PartsTableBody({ parts }: { parts: Part[] }) {
@@ -61,9 +66,9 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
               )}
             </TableCell>
 
-            {/* Title */}
-            <TableCell className="max-w-[220px]">
-              <span className="line-clamp-2 leading-snug">{part.title}</span>
+            {/* Date Added */}
+            <TableCell>
+              <span className="text-site-muted">{formatDate(part.created_at)}</span>
             </TableCell>
 
             {/* SKU */}

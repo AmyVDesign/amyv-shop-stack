@@ -43,7 +43,9 @@ export function VariantsTable({
               <TableCell header>Title</TableCell>
               <TableCell header>Condition</TableCell>
               <TableCell header>Price</TableCell>
-              <TableCell header>Qty</TableCell>
+              <TableCell header className="text-right">On Hand</TableCell>
+              <TableCell header className="text-right">For Sale</TableCell>
+              <TableCell header className="text-right">Sold</TableCell>
               <TableCell header>Visibility</TableCell>
               <TableCell header />
             </TableRow>
@@ -88,9 +90,19 @@ export function VariantsTable({
                     {formatPrice(variant.price_cents)}
                   </TableCell>
 
-                  {/* Qty for sale / on hand */}
-                  <TableCell className="tabular-nums text-sm text-site-muted">
-                    {variant.qty_for_sale} / {variant.qty_on_hand}
+                  {/* On Hand */}
+                  <TableCell className="tabular-nums text-sm text-site-muted text-right">
+                    {variant.qty_on_hand}
+                  </TableCell>
+
+                  {/* For Sale */}
+                  <TableCell className="tabular-nums text-sm text-site-muted text-right">
+                    {variant.qty_for_sale}
+                  </TableCell>
+
+                  {/* TODO: when orders are implemented, sum qty from order_line_items where product_id = variant.id */}
+                  <TableCell className="tabular-nums text-sm text-site-muted text-right">
+                    0
                   </TableCell>
 
                   {/* Visibility */}

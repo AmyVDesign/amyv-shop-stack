@@ -8,10 +8,6 @@ import type { MatchedPart } from './actions'
 import { productConditionOptions } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
 
-function getTodayISO() {
-  return new Date().toISOString().slice(0, 10)
-}
-
 export interface ProductFormValues {
   title: string
   sku: string
@@ -383,7 +379,7 @@ export function ProductForm({
                 <input
                   type="hidden"
                   name="title"
-                  value={`added ${partNumber.trim()} ${manufacturer.trim()} ${getTodayISO()}`}
+                  value={matchResult?.title ?? ''}
                 />
                 <input
                   type="hidden"

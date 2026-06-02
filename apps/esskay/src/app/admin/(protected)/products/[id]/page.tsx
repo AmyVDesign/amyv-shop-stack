@@ -8,7 +8,7 @@ import type { ProductCondition } from '@/lib/product-labels'
 type Visibility = 'public' | 'internal' | 'ebay_only'
 
 const SELECT =
-  'id, title, sku, part_number, manufacturer, condition, price_cents, qty_on_hand, qty_for_sale, visibility, description, condition_notes, photo_urls, linked_listing_id, standalone_listing'
+  'id, title, sku, part_number, manufacturer, condition, price_cents, qty_on_hand, qty_for_sale, visibility, description, condition_notes, photo_urls, linked_listing_id, standalone_listing, created_at'
 
 export default async function PartDetailPage({
   params,
@@ -60,6 +60,7 @@ export default async function PartDetailPage({
     linked_listing_id: p.linked_listing_id,
     standalone_listing: p.standalone_listing,
     condition_notes: p.condition_notes,
+    created_at: p.created_at,
   }))
 
   const variantIds = variants.map((v) => v.id)

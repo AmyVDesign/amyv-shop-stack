@@ -10,6 +10,7 @@ type Visibility = 'public' | 'internal' | 'ebay_only'
 
 export interface VariantRow extends ProductFormValues {
   id: string
+  created_at: string
 }
 
 interface InventoryEvent {
@@ -18,6 +19,13 @@ interface InventoryEvent {
   event_date: string
   qty_on_hand_delta: number
   qty_for_sale_delta: number
+  note: string | null
+}
+
+interface Batch {
+  date: string
+  onHandAdded: number
+  forSaleAdded: number
   note: string | null
 }
 
@@ -31,13 +39,15 @@ function formatPrice(cents: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
 }
 
-function formatEventDate(iso: string) {
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(iso))
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function deltaLabel(n: number) {
   return n > 0 ? `+${n}` : String(n)
 }
+
+const NEW_AGG_KEY = 'new-aggregate'
 
 export function VariantsTable({
   variants,
@@ -59,14 +69,45 @@ export function VariantsTable({
     eventsByProduct.set(e.product_id, list)
   }
 
-  function toggleExpanded(id: string) {
+  function toggleExpanded(key: string) {
     setExpandedIds((prev) => {
       const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
   }
+
+  // Group new-condition variants into one aggregate row
+  const newVariants = variants.filter((v) => v.condition === 'new')
+  const otherVariants = variants.filter((v) => v.condition !== 'new')
+  const sortedNew = [...newVariants].sort((a, b) => b.price_cents - a.price_cents)
+  const keeper = sortedNew[0] ?? null
+
+  // Build unified batch list for the "New" accordion
+  const allBatches: Batch[] = keeper
+    ? [
+        ...(eventsByProduct.get(keeper.id) ?? []).map((e) => ({
+          date: e.event_date,
+          onHandAdded: e.qty_on_hand_delta,
+          forSaleAdded: e.qty_for_sale_delta,
+          note: e.note,
+        })),
+        ...newVariants
+          .filter((v) => v.id !== keeper.id)
+          .map((v) => ({
+            date: v.created_at,
+            onHandAdded: v.qty_on_hand,
+            forSaleAdded: v.qty_for_sale,
+            note: 'Added as separate listing',
+          })),
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    : []
+
+  const newTotalOnHand = newVariants.reduce((sum, v) => sum + v.qty_on_hand, 0)
+  const newTotalForSale = newVariants.reduce((sum, v) => sum + v.qty_for_sale, 0)
+  const newVisibilities = [...new Set(newVariants.map((v) => v.visibility))]
+  const newIsExpanded = expandedIds.has(NEW_AGG_KEY)
 
   // Modal renders as a fragment sibling of the table wrapper — never inside <table>
   return (
@@ -76,7 +117,7 @@ export function VariantsTable({
           <TableHeader>
             <TableRow className="hover:bg-transparent border-0">
               <TableCell header>Photo</TableCell>
-              <TableCell header>Title</TableCell>
+              <TableCell header>Date Added</TableCell>
               <TableCell header>Condition</TableCell>
               <TableCell header>Price</TableCell>
               <TableCell header className="text-right">On Hand</TableCell>
@@ -87,7 +128,121 @@ export function VariantsTable({
             </TableRow>
           </TableHeader>
           <tbody>
-            {variants.map((variant) => {
+            {/* ── Aggregate "New" row ─────────────────────────────── */}
+            {keeper && (
+              <Fragment key={NEW_AGG_KEY}>
+                <TableRow className="hover:bg-site-bg/60 transition-colors">
+                  <TableCell className="w-20">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-4 flex-none">
+                        <button
+                          type="button"
+                          onClick={() => toggleExpanded(NEW_AGG_KEY)}
+                          className="text-site-muted hover:text-site-text transition-colors leading-none text-xs"
+                          aria-label={newIsExpanded ? 'Collapse batches' : 'Expand batches'}
+                        >
+                          {newIsExpanded ? '▾' : '▸'}
+                        </button>
+                      </div>
+                      {keeper.photo_urls[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={keeper.photo_urls[0]}
+                          alt="New condition"
+                          width={48}
+                          height={48}
+                          className="w-12 h-12 object-cover rounded border border-site-border"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded bg-[#f8f5f0] border border-site-border" />
+                      )}
+                    </div>
+                  </TableCell>
+
+                  <TableCell>
+                    <span className="text-sm text-site-muted">—</span>
+                  </TableCell>
+
+                  <TableCell>
+                    <span className="text-sm text-site-muted">New</span>
+                  </TableCell>
+
+                  <TableCell className="tabular-nums text-sm">
+                    {formatPrice(keeper.price_cents)}
+                  </TableCell>
+
+                  <TableCell className="tabular-nums text-sm text-site-muted text-right">
+                    {newTotalOnHand}
+                  </TableCell>
+
+                  <TableCell className="tabular-nums text-sm text-site-muted text-right">
+                    {newTotalForSale}
+                  </TableCell>
+
+                  <TableCell className="tabular-nums text-sm text-site-muted text-right">
+                    0
+                  </TableCell>
+
+                  <TableCell>
+                    {newVisibilities.length === 1 ? (
+                      <Badge variant={visibilityBadge[newVisibilities[0] as Visibility].variant}>
+                        {visibilityBadge[newVisibilities[0] as Visibility].label}
+                      </Badge>
+                    ) : (
+                      <Badge variant="gray">Mixed</Badge>
+                    )}
+                  </TableCell>
+
+                  <TableCell>
+                    <button
+                      type="button"
+                      onClick={() => setEditingId(keeper.id)}
+                      className="rounded text-xs font-medium px-3 py-1 border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light transition-colors"
+                    >
+                      Edit
+                    </button>
+                  </TableCell>
+                </TableRow>
+
+                {newIsExpanded && (
+                  <tr className="bg-site-bg">
+                    <td colSpan={9} className="px-6 py-4">
+                      <p className="text-xs font-medium uppercase tracking-wide text-site-muted mb-3">
+                        Inventory batches
+                      </p>
+                      {allBatches.length === 0 ? (
+                        <p className="text-xs text-site-muted">No batch history recorded.</p>
+                      ) : (
+                        <table className="w-full text-xs text-site-muted">
+                          <thead>
+                            <tr className="border-b border-site-border">
+                              <th className="text-left pb-1.5 font-medium">Date</th>
+                              <th className="text-right pb-1.5 font-medium">On Hand +</th>
+                              <th className="text-right pb-1.5 font-medium">For Sale +</th>
+                              <th className="text-left pb-1.5 font-medium pl-4">Note</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allBatches.map((b, i) => (
+                              // eslint-disable-next-line react/no-array-index-key
+                              <tr key={i} className="border-b border-site-border/50 last:border-0">
+                                <td className="py-1.5">{formatDate(b.date)}</td>
+                                <td className="py-1.5 text-right tabular-nums">{deltaLabel(b.onHandAdded)}</td>
+                                <td className="py-1.5 text-right tabular-nums">{deltaLabel(b.forSaleAdded)}</td>
+                                <td className="py-1.5 pl-4">{b.note ?? '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            )}
+
+            {/* ── Individual non-new rows ─────────────────────────── */}
+            {otherVariants.map((variant) => {
               const badge = visibilityBadge[variant.visibility]
               const variantEvents = eventsByProduct.get(variant.id) ?? []
               const hasEvents = variantEvents.length > 0
@@ -96,7 +251,6 @@ export function VariantsTable({
               return (
                 <Fragment key={variant.id}>
                   <TableRow className="hover:bg-site-bg/60 transition-colors">
-                    {/* Photo + chevron */}
                     <TableCell className="w-20">
                       <div className="flex items-center gap-1.5">
                         <div className="w-4 flex-none">
@@ -126,29 +280,24 @@ export function VariantsTable({
                       </div>
                     </TableCell>
 
-                    {/* Title */}
                     <TableCell>
-                      <span className="text-sm text-site-text">{variant.title}</span>
+                      <span className="text-sm text-site-muted">{formatDate(variant.created_at)}</span>
                     </TableCell>
 
-                    {/* Condition */}
                     <TableCell>
                       <span className="text-sm text-site-muted">
                         {variant.condition ? conditionLabel[variant.condition] : '—'}
                       </span>
                     </TableCell>
 
-                    {/* Price */}
                     <TableCell className="tabular-nums text-sm">
                       {formatPrice(variant.price_cents)}
                     </TableCell>
 
-                    {/* On Hand */}
                     <TableCell className="tabular-nums text-sm text-site-muted text-right">
                       {variant.qty_on_hand}
                     </TableCell>
 
-                    {/* For Sale */}
                     <TableCell className="tabular-nums text-sm text-site-muted text-right">
                       {variant.qty_for_sale}
                     </TableCell>
@@ -158,12 +307,10 @@ export function VariantsTable({
                       0
                     </TableCell>
 
-                    {/* Visibility */}
                     <TableCell>
                       <Badge variant={badge.variant}>{badge.label}</Badge>
                     </TableCell>
 
-                    {/* Edit */}
                     <TableCell>
                       <button
                         type="button"
@@ -193,7 +340,7 @@ export function VariantsTable({
                           <tbody>
                             {variantEvents.map((e) => (
                               <tr key={e.id} className="border-b border-site-border/50 last:border-0">
-                                <td className="py-1.5">{formatEventDate(e.event_date)}</td>
+                                <td className="py-1.5">{formatDate(e.event_date)}</td>
                                 <td className="py-1.5 text-right tabular-nums">{deltaLabel(e.qty_for_sale_delta)}</td>
                                 <td className="py-1.5 text-right tabular-nums">{deltaLabel(e.qty_on_hand_delta)}</td>
                                 <td className="py-1.5 pl-4">{e.note ?? '—'}</td>

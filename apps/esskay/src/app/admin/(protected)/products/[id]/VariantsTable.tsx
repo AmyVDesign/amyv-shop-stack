@@ -40,6 +40,7 @@ export function VariantsTable({
           <TableHeader>
             <TableRow className="hover:bg-transparent border-0">
               <TableCell header>Photo</TableCell>
+              <TableCell header>Title</TableCell>
               <TableCell header>Condition</TableCell>
               <TableCell header>Price</TableCell>
               <TableCell header>Qty</TableCell>
@@ -68,6 +69,11 @@ export function VariantsTable({
                         <div className="w-12 h-12 rounded bg-[#f8f5f0] border border-site-border" />
                       )}
                     </div>
+                  </TableCell>
+
+                  {/* Title */}
+                  <TableCell>
+                    <span className="text-sm text-site-text">{variant.title}</span>
                   </TableCell>
 
                   {/* Condition */}

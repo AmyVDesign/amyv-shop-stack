@@ -23,10 +23,11 @@ export async function findMatchingPart(
 
   let q = supabase
     .from('products')
-    .select('id, title, photo_urls, condition, price_cents, qty_for_sale, qty_on_hand, visibility')
+    .select('id, title, photo_urls, condition, price_cents, qty_for_sale, qty_on_hand, visibility, linked_listing_id')
     .ilike('part_number', partNumber.trim())
     .ilike('manufacturer', manufacturer.trim())
-    .order('created_at', { ascending: false })
+    .order('linked_listing_id', { nullsFirst: true }) // prefer canonical (linked_listing_id IS NULL)
+    .order('created_at', { ascending: true })         // then oldest first
     .limit(1)
 
   if (excludeId) q = q.neq('id', excludeId)
@@ -36,6 +37,16 @@ export async function findMatchingPart(
   if (error) {
     console.error('[findMatchingPart] query failed:', error)
     return null
+  }
+
+  // Safety: if we somehow got a child row, follow its link to the canonical
+  if (data && data.linked_listing_id) {
+    const { data: root } = await supabase
+      .from('products')
+      .select('id, title, photo_urls, condition, price_cents, qty_for_sale, qty_on_hand, visibility')
+      .eq('id', data.linked_listing_id)
+      .maybeSingle()
+    return root as MatchedPart | null
   }
 
   return data as MatchedPart | null

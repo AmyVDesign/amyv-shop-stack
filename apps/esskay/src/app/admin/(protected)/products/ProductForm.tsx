@@ -21,6 +21,7 @@ export interface ProductFormValues {
   vendor: string | null
   google_category_id: string | null
   google_category_path: string | null
+  category_label: string | null
   product_type: string | null
   condition: ProductCondition | null
   price_cents: number
@@ -76,7 +77,11 @@ export function ProductForm({
   const [vendor, setVendor] = useState(initialValues?.vendor ?? '')
   const [category, setCategory] = useState<CategoryValue | null>(
     initialValues?.google_category_id && initialValues?.google_category_path
-      ? { id: initialValues.google_category_id, path: initialValues.google_category_path }
+      ? {
+          id: initialValues.google_category_id,
+          path: initialValues.google_category_path,
+          label: initialValues.category_label ?? '',
+        }
       : null
   )
   const [productType, setProductType] = useState(initialValues?.product_type ?? '')
@@ -318,6 +323,11 @@ export function ProductForm({
           type="hidden"
           name="google_category_path"
           value={isLinkedNewVariantFinal ? (matchResult?.google_category_path ?? '') : (category?.path ?? '')}
+        />
+        <input
+          type="hidden"
+          name="category_label"
+          value={isLinkedNewVariantFinal ? (matchResult?.category_label ?? '') : (category?.label ?? '')}
         />
         {isLinkedNewVariantFinal && (
           <input type="hidden" name="product_type" value={matchResult?.product_type ?? ''} />

@@ -9,7 +9,7 @@ import type { ProductCondition } from '@/lib/product-labels'
 type Visibility = 'public' | 'internal' | 'ebay_only'
 
 const SELECT =
-  'id, title, slug, sku, part_number, vendor, condition, price_cents, qty_on_hand, qty_for_sale, visibility, description, condition_notes, photo_urls, linked_listing_id, standalone_listing, created_at, google_category_id, google_category_path, product_type'
+  'id, title, slug, sku, part_number, vendor, condition, price_cents, qty_on_hand, qty_for_sale, visibility, description, condition_notes, photo_urls, linked_listing_id, standalone_listing, created_at, google_category_id, google_category_path, category_label, product_type'
 
 export default async function PartDetailPage({
   params,
@@ -64,6 +64,7 @@ export default async function PartDetailPage({
     created_at: p.created_at,
     google_category_id: p.google_category_id,
     google_category_path: p.google_category_path,
+    category_label: p.category_label,
     product_type: p.product_type,
   }))
 

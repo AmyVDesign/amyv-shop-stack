@@ -4,9 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import type { ProductCondition } from '@/lib/product-labels'
-import taxonomyJson from '@/data/google-taxonomy.json'
+import { MARINE_CATEGORIES } from '@/data/marine-categories'
 
-const validCategoryIds = new Set((taxonomyJson as Array<{ id: string }>).map((e) => e.id))
+const validCategoryIds = new Set(MARINE_CATEGORIES.map((c) => c.google_category_id))
 
 export async function updatePart(
   id: string,
@@ -34,11 +34,14 @@ export async function updatePart(
   const linkedListingId = linkedListingIdRaw || null
   const standaloneListing = visibility === 'public' && formData.get('standalone_listing') === 'true'
 
-  // Taxonomy fields — validate id against known taxonomy before saving
+  // Taxonomy fields — validate id against known marine categories before saving
   const rawCategoryId = String(formData.get('google_category_id') ?? '').trim() || null
   const googleCategoryId = rawCategoryId && validCategoryIds.has(rawCategoryId) ? rawCategoryId : null
   const googleCategoryPath = googleCategoryId
     ? String(formData.get('google_category_path') ?? '').trim() || null
+    : null
+  const categoryLabel = googleCategoryId
+    ? String(formData.get('category_label') ?? '').trim() || null
     : null
   const productType = String(formData.get('product_type') ?? '').trim() || null
 
@@ -80,6 +83,7 @@ export async function updatePart(
       standalone_listing: standaloneListing,
       google_category_id: googleCategoryId,
       google_category_path: googleCategoryPath,
+      category_label: categoryLabel,
       product_type: productType,
     })
     .eq('id', id)

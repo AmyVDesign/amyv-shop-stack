@@ -1,20 +1,12 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import taxonomyJson from '@/data/google-taxonomy.json'
-
-interface TaxonomyEntry {
-  id: string
-  path: string
-  name: string
-  parent_id: string | null
-}
-
-const taxonomy = taxonomyJson as TaxonomyEntry[]
+import { MARINE_CATEGORIES } from '@/data/marine-categories'
 
 export interface CategoryValue {
-  id: string
-  path: string
+  id: string    // google_category_id
+  path: string  // google_category_path
+  label: string // user-facing curated label
 }
 
 interface Props {
@@ -28,7 +20,7 @@ const inputClass =
   'w-full rounded border border-site-border bg-white px-3 py-1.5 text-sm text-site-text focus:outline-none focus:ring-1 focus:ring-site-accent'
 
 export function CategoryCombobox({ value, onChange, disabled }: Props) {
-  const [query, setQuery] = useState(value?.path ?? '')
+  const [query, setQuery] = useState(value?.label ?? '')
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -36,25 +28,23 @@ export function CategoryCombobox({ value, onChange, disabled }: Props) {
 
   // Keep query in sync with external value when dropdown is closed
   useEffect(() => {
-    if (!open) setQuery(value?.path ?? '')
+    if (!open) setQuery(value?.label ?? '')
   }, [value, open])
 
+  // Show all categories when query is empty; filter by label otherwise
   const filtered =
     query.trim().length === 0
-      ? []
-      : taxonomy
-          .filter((e) => {
-            const q = query.toLowerCase()
-            return e.path.toLowerCase().includes(q) || e.name.toLowerCase().includes(q)
-          })
-          .slice(0, 20)
+      ? MARINE_CATEGORIES
+      : MARINE_CATEGORIES.filter((c) =>
+          c.label.toLowerCase().includes(query.toLowerCase())
+        )
 
   // Close on click outside and revert query
   useEffect(() => {
     function onMouseDown(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false)
-        setQuery(value?.path ?? '')
+        setQuery(value?.label ?? '')
       }
     }
     document.addEventListener('mousedown', onMouseDown)
@@ -69,9 +59,9 @@ export function CategoryCombobox({ value, onChange, disabled }: Props) {
     }
   }, [activeIndex])
 
-  function select(entry: TaxonomyEntry) {
-    onChange({ id: entry.id, path: entry.path })
-    setQuery(entry.path)
+  function select(cat: (typeof MARINE_CATEGORIES)[number]) {
+    onChange({ id: cat.google_category_id, path: cat.google_category_path, label: cat.label })
+    setQuery(cat.label)
     setOpen(false)
     setActiveIndex(-1)
   }
@@ -89,7 +79,7 @@ export function CategoryCombobox({ value, onChange, disabled }: Props) {
       if (activeIndex >= 0 && filtered[activeIndex]) select(filtered[activeIndex])
     } else if (e.key === 'Escape') {
       setOpen(false)
-      setQuery(value?.path ?? '')
+      setQuery(value?.label ?? '')
     }
   }
 
@@ -105,10 +95,10 @@ export function CategoryCombobox({ value, onChange, disabled }: Props) {
             setActiveIndex(-1)
             if (!e.target.value) onChange(null)
           }}
-          onFocus={() => { if (query.trim()) setOpen(true) }}
+          onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
           disabled={disabled}
-          placeholder="Search categories (e.g. Watercraft Parts, Books, Charts)"
+          placeholder="Select a category (e.g. Marine Oil Filters, Nautical Books)"
           className={inputClass}
           autoComplete="off"
           aria-autocomplete="list"
@@ -138,28 +128,21 @@ export function CategoryCombobox({ value, onChange, disabled }: Props) {
           role="listbox"
           className="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded border border-site-border bg-white shadow-md"
         >
-          {filtered.map((entry, i) => {
-            const segments = entry.path.split(' > ')
-            const prefix = segments.length > 1 ? segments.slice(0, -1).join(' > ') : null
-            return (
-              <li
-                key={entry.id}
-                role="option"
-                aria-selected={i === activeIndex}
-                onMouseDown={() => select(entry)}
-                onMouseEnter={() => setActiveIndex(i)}
-                className={[
-                  'flex flex-col px-3 py-2 cursor-pointer',
-                  i === activeIndex ? 'bg-site-accent-light' : 'hover:bg-site-bg',
-                ].join(' ')}
-              >
-                <span className="text-sm font-medium text-site-text">{entry.name}</span>
-                {prefix && (
-                  <span className="text-xs text-site-muted truncate">{prefix}</span>
-                )}
-              </li>
-            )
-          })}
+          {filtered.map((cat, i) => (
+            <li
+              key={cat.label}
+              role="option"
+              aria-selected={i === activeIndex}
+              onMouseDown={() => select(cat)}
+              onMouseEnter={() => setActiveIndex(i)}
+              className={[
+                'px-3 py-2 cursor-pointer text-sm font-medium text-site-text',
+                i === activeIndex ? 'bg-site-accent-light' : 'hover:bg-site-bg',
+              ].join(' ')}
+            >
+              {cat.label}
+            </li>
+          ))}
         </ul>
       )}
     </div>

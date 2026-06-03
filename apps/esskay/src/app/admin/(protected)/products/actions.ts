@@ -14,11 +14,12 @@ export interface MatchedPart {
   visibility: 'public' | 'internal' | 'ebay_only'
   google_category_id: string | null
   google_category_path: string | null
+  category_label: string | null
   product_type: string | null
 }
 
 const MATCH_SELECT =
-  'id, title, photo_urls, condition, price_cents, qty_for_sale, qty_on_hand, visibility, linked_listing_id, google_category_id, google_category_path, product_type'
+  'id, title, photo_urls, condition, price_cents, qty_for_sale, qty_on_hand, visibility, linked_listing_id, google_category_id, google_category_path, category_label, product_type'
 
 export async function findMatchingPart(
   partNumber: string,

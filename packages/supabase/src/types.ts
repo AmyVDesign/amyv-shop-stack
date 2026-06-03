@@ -296,6 +296,7 @@ export type Database = {
       products: {
         Row: {
           acquired_date: string | null
+          category_label: string | null
           compatibility: string[]
           compatibility_likely: string[]
           condition: Database["public"]["Enums"]["product_condition"] | null
@@ -324,6 +325,7 @@ export type Database = {
         }
         Insert: {
           acquired_date?: string | null
+          category_label?: string | null
           compatibility?: string[]
           compatibility_likely?: string[]
           condition?: Database["public"]["Enums"]["product_condition"] | null
@@ -352,6 +354,7 @@ export type Database = {
         }
         Update: {
           acquired_date?: string | null
+          category_label?: string | null
           compatibility?: string[]
           compatibility_likely?: string[]
           condition?: Database["public"]["Enums"]["product_condition"] | null

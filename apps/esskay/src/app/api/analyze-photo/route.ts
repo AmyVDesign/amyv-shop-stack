@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server'
-import taxonomyJson from '@/data/google-taxonomy.json'
+import { MARINE_CATEGORIES } from '@/data/marine-categories'
 
 // ── Types ───────────────────────────────────────────────────────────────────
-
-interface TaxonomyEntry {
-  id: string
-  path: string
-  name: string
-}
 
 interface VisionResult {
   suggested_title: string | null
@@ -18,8 +12,6 @@ interface VisionResult {
   suggested_condition_notes: string | null
   confidence: Record<string, 'high' | 'medium' | 'low'>
 }
-
-const taxonomy = taxonomyJson as TaxonomyEntry[]
 
 // ── Rate limiting (in-memory, resets on server restart) ─────────────────────
 
@@ -37,42 +29,29 @@ function checkAndIncrementRate(max: number): boolean {
   return true
 }
 
-// ── Category matching (Jaccard token overlap) ────────────────────────────────
+// ── Category matching against curated marine categories ──────────────────────
 
-function tokenize(text: string): Set<string> {
-  return new Set(
-    text
-      .toLowerCase()
-      .split(/[\s>\/,&]+/)
-      .map((t) => t.replace(/[^a-z0-9]/g, ''))
-      .filter(Boolean)
-  )
-}
+function matchCategory(hint: string): { id: string; path: string; label: string } | null {
+  if (!hint.trim()) return null
+  const h = hint.toLowerCase()
 
-function jaccardScore(a: Set<string>, b: Set<string>): number {
-  let intersection = 0
-  for (const t of a) if (b.has(t)) intersection++
-  const union = a.size + b.size - intersection
-  return union === 0 ? 0 : intersection / union
-}
+  // First try direct substring match on label
+  const direct = MARINE_CATEGORIES.find((c) => c.label.toLowerCase().includes(h) || h.includes(c.label.toLowerCase()))
+  if (direct) return { id: direct.google_category_id, path: direct.google_category_path, label: direct.label }
 
-function matchCategory(hint: string): { id: string; path: string } | null {
-  const hintTokens = tokenize(hint)
-  if (hintTokens.size === 0) return null
-
+  // Fall back to token overlap scoring
+  const hTokens = h.split(/[\s>\/,&]+/).filter(Boolean)
+  let best: (typeof MARINE_CATEGORIES)[number] | null = null
   let bestScore = 0
-  let bestEntry: TaxonomyEntry | null = null
-
-  for (const entry of taxonomy) {
-    const score = jaccardScore(hintTokens, tokenize(entry.path))
-    if (score > bestScore) {
-      bestScore = score
-      bestEntry = entry
-    }
+  for (const cat of MARINE_CATEGORIES) {
+    const cTokens = cat.label.toLowerCase().split(/[\s>\/,&]+/).filter(Boolean)
+    const intersection = hTokens.filter((t) => cTokens.some((c) => c.includes(t) || t.includes(c))).length
+    const union = new Set([...hTokens, ...cTokens]).size
+    const score = union === 0 ? 0 : intersection / union
+    if (score > bestScore) { bestScore = score; best = cat }
   }
-
-  if (bestScore < 0.3 || !bestEntry) return null
-  return { id: bestEntry.id, path: bestEntry.path }
+  if (bestScore < 0.3 || !best) return null
+  return { id: best.google_category_id, path: best.google_category_path, label: best.label }
 }
 
 // ── Vision prompt ────────────────────────────────────────────────────────────

@@ -85,6 +85,23 @@ export default async function NewPartPage({
       redirect('/admin/products/new?error=save_failed')
     }
 
+    // Propagate category to the canonical if it predates category fields
+    if (linkedListingId && googleCategoryId) {
+      const { data: canonical } = await supabase
+        .from('products')
+        .select('google_category_id')
+        .eq('id', linkedListingId)
+        .single()
+      if (canonical && !canonical.google_category_id) {
+        await supabase.from('products').update({
+          google_category_id: googleCategoryId,
+          google_category_path: googleCategoryPath,
+          category_label: categoryLabel,
+          product_type: productType,
+        }).eq('id', linkedListingId)
+      }
+    }
+
     redirect('/admin/products')
   }
 

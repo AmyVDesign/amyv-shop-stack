@@ -157,6 +157,13 @@ export function ProductForm({
   const showSummary = linkedListingId === null
   const qtyError = qtyForSale > qtyOnHand
 
+  // Lock category/productType when a canonical with existing category data is found.
+  // If both are null the canonical predates category fields — leave inputs editable.
+  const isMatchLocked = matchResult !== null && (
+    matchResult.category_label !== null ||
+    matchResult.product_type !== null
+  )
+
   // ── Mount effect: run match check in edit mode ───────────────
   useEffect(() => {
     if (!initialValues?.part_number || !initialValues.vendor) return
@@ -173,6 +180,34 @@ export function ProductForm({
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ── Auto-fill category/productType from canonical when match detected ─
+  useEffect(() => {
+    if (!matchResult) return
+    const hasCategoryData = matchResult.category_label !== null || matchResult.google_category_id !== null
+    const hasProductType = matchResult.product_type !== null
+    // Old canonical with no category data — leave fields editable so user can set them
+    if (!hasCategoryData && !hasProductType) return
+    if (hasCategoryData && matchResult.google_category_id && matchResult.google_category_path) {
+      setCategory({
+        id: matchResult.google_category_id,
+        path: matchResult.google_category_path,
+        label: matchResult.category_label ?? '',
+      })
+    }
+    if (hasProductType) setProductType(matchResult.product_type ?? '')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchResult])
+
+  // ── Auto-fill title from part#, vendor, product type ─────────
+  useEffect(() => {
+    if (isLinkedNewVariant) return
+    if (titleValue !== '') return
+    const pn = partNumber.trim()
+    const vnd = vendor.trim()
+    const pt = productType.trim()
+    if (pn && vnd && pt) setTitleValue(`${pn} ${vnd} ${pt}`)
+  }, [partNumber, vendor, productType, titleValue, isLinkedNewVariant])
 
   // ── Auto-analyze cover photo when first uploaded ─────────────
   useEffect(() => {
@@ -405,16 +440,22 @@ export function ProductForm({
                 Category
               </label>
               <div className="col-span-2">
-                <CategoryCombobox value={category} onChange={setCategory} />
-                <SuggestionChip
-                  suggestion={suggestions?.category?.path ?? null}
-                  confidence={confidence.category ?? 'low'}
-                  onAccept={() => {
-                    setCategory(suggestions!.category!)
-                    clearSuggestion('category')
-                  }}
-                  onIgnore={() => clearSuggestion('category')}
-                />
+                <CategoryCombobox value={category} onChange={setCategory} disabled={isMatchLocked} />
+                {isMatchLocked ? (
+                  <p className="text-xs text-site-muted mt-1.5">
+                    Category and Product Type are inherited from this part&apos;s existing listing. To change them, edit the canonical product.
+                  </p>
+                ) : (
+                  <SuggestionChip
+                    suggestion={suggestions?.category?.label ?? null}
+                    confidence={confidence.category ?? 'low'}
+                    onAccept={() => {
+                      setCategory(suggestions!.category!)
+                      clearSuggestion('category')
+                    }}
+                    onIgnore={() => clearSuggestion('category')}
+                  />
+                )}
               </div>
             </div>
           )}
@@ -432,18 +473,21 @@ export function ProductForm({
                   type="text"
                   value={productType}
                   onChange={(e) => setProductType(e.target.value)}
-                  className={inputClass}
+                  disabled={isMatchLocked}
+                  className={`${inputClass} ${isMatchLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                   placeholder="Specific name (e.g. Oil Filter, Cruising Guide)"
                 />
-                <SuggestionChip
-                  suggestion={suggestions?.product_type ?? null}
-                  confidence={confidence.product_type ?? 'low'}
-                  onAccept={() => {
-                    setProductType(suggestions!.product_type!)
-                    clearSuggestion('product_type')
-                  }}
-                  onIgnore={() => clearSuggestion('product_type')}
-                />
+                {!isMatchLocked && (
+                  <SuggestionChip
+                    suggestion={suggestions?.product_type ?? null}
+                    confidence={confidence.product_type ?? 'low'}
+                    onAccept={() => {
+                      setProductType(suggestions!.product_type!)
+                      clearSuggestion('product_type')
+                    }}
+                    onIgnore={() => clearSuggestion('product_type')}
+                  />
+                )}
               </div>
             </div>
           )}

@@ -302,12 +302,15 @@ export type Database = {
           condition_notes: string | null
           created_at: string
           description: string | null
+          google_category_id: string | null
+          google_category_path: string | null
           id: string
           linked_listing_id: string | null
           manufacturer: string | null
           part_number: string | null
           photo_urls: string[]
           price_cents: number
+          product_type: string | null
           qty_for_sale: number
           qty_on_hand: number
           sku: string
@@ -317,6 +320,7 @@ export type Database = {
           standalone_listing: boolean
           title: string
           updated_at: string
+          vendor: string | null
           visibility: Database["public"]["Enums"]["product_visibility"]
         }
         Insert: {
@@ -327,12 +331,15 @@ export type Database = {
           condition_notes?: string | null
           created_at?: string
           description?: string | null
+          google_category_id?: string | null
+          google_category_path?: string | null
           id?: string
           linked_listing_id?: string | null
           manufacturer?: string | null
           part_number?: string | null
           photo_urls?: string[]
           price_cents: number
+          product_type?: string | null
           qty_for_sale?: number
           qty_on_hand?: number
           sku: string
@@ -342,6 +349,7 @@ export type Database = {
           standalone_listing?: boolean
           title: string
           updated_at?: string
+          vendor?: string | null
           visibility?: Database["public"]["Enums"]["product_visibility"]
         }
         Update: {
@@ -352,12 +360,15 @@ export type Database = {
           condition_notes?: string | null
           created_at?: string
           description?: string | null
+          google_category_id?: string | null
+          google_category_path?: string | null
           id?: string
           linked_listing_id?: string | null
           manufacturer?: string | null
           part_number?: string | null
           photo_urls?: string[]
           price_cents?: number
+          product_type?: string | null
           qty_for_sale?: number
           qty_on_hand?: number
           sku?: string
@@ -367,6 +378,7 @@ export type Database = {
           standalone_listing?: boolean
           title?: string
           updated_at?: string
+          vendor?: string | null
           visibility?: Database["public"]["Enums"]["product_visibility"]
         }
         Relationships: [

@@ -89,10 +89,21 @@ function SortableThumbnail({ photo, isCover, onRemove }: SortableThumbnailProps)
   )
 }
 
-export function PhotoUploader({ initialPhotoUrls = [] }: { initialPhotoUrls?: string[] }) {
+export function PhotoUploader({
+  initialPhotoUrls = [],
+  onPhotosChange,
+}: {
+  initialPhotoUrls?: string[]
+  onPhotosChange?: (urls: string[]) => void
+}) {
   const [photos, setPhotos] = useState<UploadedPhoto[]>(() =>
     initialPhotoUrls.map((url) => ({ path: pathFromUrl(url), url }))
   )
+
+  function updatePhotos(next: UploadedPhoto[]) {
+    setPhotos(next)
+    onPhotosChange?.(next.map((p) => p.url))
+  }
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -109,7 +120,9 @@ export function PhotoUploader({ initialPhotoUrls = [] }: { initialPhotoUrls?: st
       setPhotos((prev) => {
         const oldIndex = prev.findIndex((p) => p.url === active.id)
         const newIndex = prev.findIndex((p) => p.url === over.id)
-        return arrayMove(prev, oldIndex, newIndex)
+        const next = arrayMove(prev, oldIndex, newIndex)
+        onPhotosChange?.(next.map((p) => p.url))
+        return next
       })
     }
   }
@@ -139,14 +152,15 @@ export function PhotoUploader({ initialPhotoUrls = [] }: { initialPhotoUrls?: st
       newPhotos.push({ path, url: data.publicUrl })
     }
 
-    setPhotos((prev) => [...prev, ...newPhotos])
+    updatePhotos([...photos, ...newPhotos])
     setUploading(false)
 
     if (inputRef.current) inputRef.current.value = ''
   }
 
   function removePhoto(path: string) {
-    setPhotos((prev) => prev.filter((p) => p.path !== path))
+    const next = photos.filter((p) => p.path !== path)
+    updatePhotos(next)
 
     const supabase = createBrowserClient()
     supabase.storage

@@ -5,10 +5,14 @@ import { useEffect, useRef, useState } from 'react'
 import { PhotoUploader } from './PhotoUploader'
 import { CategoryCombobox } from './CategoryCombobox'
 import type { CategoryValue } from './CategoryCombobox'
+import { SuggestionChip } from './SuggestionChip'
+import type { Confidence } from './SuggestionChip'
 import { findMatchingPart } from './actions'
 import type { MatchedPart } from './actions'
 import { productConditionOptions } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ProductFormValues {
   title: string
@@ -30,6 +34,15 @@ export interface ProductFormValues {
   standalone_listing: boolean
 }
 
+interface Suggestions {
+  title: string | null
+  part_number: string | null
+  vendor: string | null
+  category: CategoryValue | null
+  product_type: string | null
+  condition_notes: string | null
+}
+
 interface ProductFormProps {
   mode: 'create' | 'edit'
   initialValues?: ProductFormValues
@@ -45,6 +58,8 @@ const inputClass =
   'w-full rounded border border-site-border bg-white px-3 py-1.5 text-sm text-site-text focus:outline-none focus:ring-1 focus:ring-site-accent'
 const selectClass =
   'w-full rounded border border-site-border bg-white px-3 py-1.5 text-sm text-site-text focus:outline-none focus:ring-1 focus:ring-site-accent'
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export function ProductForm({
   mode,
@@ -98,9 +113,16 @@ export function ProductForm({
   )
   const [qtyOnHand, setQtyOnHand] = useState(initialValues?.qty_on_hand ?? 0)
   const [qtyForSale, setQtyForSale] = useState(initialValues?.qty_for_sale ?? 0)
+  const [conditionNotes, setConditionNotes] = useState(initialValues?.condition_notes ?? '')
+
+  // ── Photo tracking for vision analysis ───────────────────────
+  const [photoUrls, setPhotoUrls] = useState<string[]>(initialValues?.photo_urls ?? [])
+  const [suggestions, setSuggestions] = useState<Suggestions | null>(null)
+  const [confidence, setConfidence] = useState<Partial<Record<string, Confidence>>>({})
+  const [analyzing, setAnalyzing] = useState(false)
+  const analyzedUrlRef = useRef<string | null>(null)
 
   // ── Derived display flags ────────────────────────────────────
-  // Linked + New: category/productType are inherited from canonical
   const isLinkedNewVariant = linkedListingId !== null && condition === 'new'
 
   const gatingComplete = mode === 'edit' || (
@@ -117,6 +139,8 @@ export function ProductForm({
     !matchResult ||
     storefrontChoice !== 'unchosen'
   )
+
+  const isLinkedNewVariantFinal = linkedListingId !== null && condition === 'new'
 
   const showStorefrontModal =
     visibility === 'public' &&
@@ -145,6 +169,31 @@ export function ProductForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // ── Auto-analyze cover photo when first uploaded ─────────────
+  useEffect(() => {
+    if (analyzing || suggestions !== null) return
+    if (photoUrls.length === 0) return
+    const url = photoUrls[0]
+    if (analyzedUrlRef.current === url) return
+    analyzedUrlRef.current = url
+    setAnalyzing(true)
+    fetch('/api/analyze-photo', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ photoUrl: url }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data: { suggestions: Suggestions; confidence: Record<string, Confidence> }) => {
+        setSuggestions(data.suggestions)
+        setConfidence(data.confidence ?? {})
+      })
+      .catch((err) => {
+        console.error('[analyze-photo] failed:', err)
+      })
+      .finally(() => setAnalyzing(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photoUrls])
+
   function scheduleCheck(pn: string, vnd: string) {
     setMatchResult(null)
     setLinkedListingId(null)
@@ -153,7 +202,6 @@ export function ProductForm({
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
     const qId = ++latestQueryId.current
-
     const trimPn = pn.trim()
     const trimVnd = vnd.trim()
     if (!trimPn || !trimVnd) return
@@ -173,6 +221,11 @@ export function ProductForm({
         setLinkedListingId(match?.id ?? null)
       }
     }, 400)
+  }
+
+  // ── Suggestion helpers ────────────────────────────────────────
+  function clearSuggestion(field: keyof Suggestions) {
+    setSuggestions((s) => s ? { ...s, [field]: null } : s)
   }
 
   return (
@@ -256,27 +309,26 @@ export function ProductForm({
         {/* Always-submitted hidden fields */}
         <input type="hidden" name="linked_listing_id" value={linkedListingId ?? ''} />
         <input type="hidden" name="standalone_listing" value={storefrontChoice === 'standalone' ? 'true' : 'false'} />
-        {/* Category and product type submitted via hidden inputs; values derived from state */}
         <input
           type="hidden"
           name="google_category_id"
-          value={isLinkedNewVariant ? (matchResult?.google_category_id ?? '') : (category?.id ?? '')}
+          value={isLinkedNewVariantFinal ? (matchResult?.google_category_id ?? '') : (category?.id ?? '')}
         />
         <input
           type="hidden"
           name="google_category_path"
-          value={isLinkedNewVariant ? (matchResult?.google_category_path ?? '') : (category?.path ?? '')}
+          value={isLinkedNewVariantFinal ? (matchResult?.google_category_path ?? '') : (category?.path ?? '')}
         />
-        {isLinkedNewVariant && (
+        {isLinkedNewVariantFinal && (
           <input type="hidden" name="product_type" value={matchResult?.product_type ?? ''} />
         )}
 
-        {/* ── Top card: gating fields (always visible) ─────────────── */}
+        {/* ── Top card: gating fields ───────────────────────────── */}
         <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-4">
 
           {/* Part Number */}
-          <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
-            <label htmlFor="part_number" className="text-sm text-site-muted font-medium">
+          <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
+            <label htmlFor="part_number" className="text-sm text-site-muted font-medium pt-1.5">
               Part Number
             </label>
             <div className="col-span-2">
@@ -292,12 +344,22 @@ export function ProductForm({
                 className={inputClass}
                 placeholder="OEM or aftermarket part number"
               />
+              <SuggestionChip
+                suggestion={suggestions?.part_number ?? null}
+                confidence={confidence.part_number ?? 'low'}
+                onAccept={() => {
+                  setPartNumber(suggestions!.part_number!)
+                  scheduleCheck(suggestions!.part_number!, vendor)
+                  clearSuggestion('part_number')
+                }}
+                onIgnore={() => clearSuggestion('part_number')}
+              />
             </div>
           </div>
 
           {/* Vendor */}
-          <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
-            <label htmlFor="vendor" className="text-sm text-site-muted font-medium">
+          <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
+            <label htmlFor="vendor" className="text-sm text-site-muted font-medium pt-1.5">
               Vendor
             </label>
             <div className="col-span-2">
@@ -313,25 +375,44 @@ export function ProductForm({
                 className={inputClass}
                 placeholder="e.g. Mercruiser"
               />
+              <SuggestionChip
+                suggestion={suggestions?.vendor ?? null}
+                confidence={confidence.vendor ?? 'low'}
+                onAccept={() => {
+                  setVendor(suggestions!.vendor!)
+                  scheduleCheck(partNumber, suggestions!.vendor!)
+                  clearSuggestion('vendor')
+                }}
+                onIgnore={() => clearSuggestion('vendor')}
+              />
             </div>
           </div>
 
-          {/* Category — hidden for linked-new variants (inherited) */}
-          {!isLinkedNewVariant && (
-            <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
-              <label className="text-sm text-site-muted font-medium">
+          {/* Category — hidden for linked-new variants */}
+          {!isLinkedNewVariantFinal && (
+            <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
+              <label className="text-sm text-site-muted font-medium pt-1.5">
                 Category
               </label>
               <div className="col-span-2">
                 <CategoryCombobox value={category} onChange={setCategory} />
+                <SuggestionChip
+                  suggestion={suggestions?.category?.path ?? null}
+                  confidence={confidence.category ?? 'low'}
+                  onAccept={() => {
+                    setCategory(suggestions!.category!)
+                    clearSuggestion('category')
+                  }}
+                  onIgnore={() => clearSuggestion('category')}
+                />
               </div>
             </div>
           )}
 
-          {/* Product Type — hidden for linked-new variants (inherited) */}
-          {!isLinkedNewVariant && (
-            <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
-              <label htmlFor="product_type" className="text-sm text-site-muted font-medium">
+          {/* Product Type — hidden for linked-new variants */}
+          {!isLinkedNewVariantFinal && (
+            <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
+              <label htmlFor="product_type" className="text-sm text-site-muted font-medium pt-1.5">
                 Product Type
               </label>
               <div className="col-span-2">
@@ -344,12 +425,21 @@ export function ProductForm({
                   className={inputClass}
                   placeholder="Specific name (e.g. Oil Filter, Cruising Guide)"
                 />
+                <SuggestionChip
+                  suggestion={suggestions?.product_type ?? null}
+                  confidence={confidence.product_type ?? 'low'}
+                  onAccept={() => {
+                    setProductType(suggestions!.product_type!)
+                    clearSuggestion('product_type')
+                  }}
+                  onIgnore={() => clearSuggestion('product_type')}
+                />
               </div>
             </div>
           )}
 
           {/* Inherited note for linked-new variants */}
-          {isLinkedNewVariant && (
+          {isLinkedNewVariantFinal && (
             <div className="px-4 py-3 bg-site-bg">
               <p className="text-xs text-site-muted">
                 Category, Product Type, Title, Photos, and Price are inherited from the canonical listing.
@@ -438,18 +528,14 @@ export function ProductForm({
           )}
         </div>
 
-        {/* ── Bottom card: downstream fields (only when showBottom) ─── */}
+        {/* ── Bottom card: downstream fields ─────────────────────── */}
         {showBottom && (
           <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-6">
 
-            {/* Hidden inputs for suppressed fields */}
-            {isLinkedNewVariant && (
+            {/* Hidden inputs for linked-new suppressed fields */}
+            {isLinkedNewVariantFinal && (
               <>
-                <input
-                  type="hidden"
-                  name="title"
-                  value={matchResult?.title ?? ''}
-                />
+                <input type="hidden" name="title" value={matchResult?.title ?? ''} />
                 <input
                   type="hidden"
                   name="price"
@@ -459,9 +545,9 @@ export function ProductForm({
             )}
 
             {/* Title — hidden for linked-new variants */}
-            {!isLinkedNewVariant && (
-              <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
-                <label htmlFor="title" className="text-sm text-site-muted font-medium">
+            {!isLinkedNewVariantFinal && (
+              <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
+                <label htmlFor="title" className="text-sm text-site-muted font-medium pt-1.5">
                   Title <span className="text-red-500">*</span>
                 </label>
                 <div className="col-span-2">
@@ -475,16 +561,33 @@ export function ProductForm({
                     className={inputClass}
                     placeholder="e.g. Mercruiser water pump impeller"
                   />
+                  <SuggestionChip
+                    suggestion={suggestions?.title ?? null}
+                    confidence={confidence.title ?? 'low'}
+                    onAccept={() => {
+                      setTitleValue(suggestions!.title!)
+                      clearSuggestion('title')
+                    }}
+                    onIgnore={() => clearSuggestion('title')}
+                  />
                 </div>
               </div>
             )}
 
             {/* Photos — hidden for linked-new variants */}
-            {!isLinkedNewVariant && (
+            {!isLinkedNewVariantFinal && (
               <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
                 <span className="text-sm text-site-muted font-medium pt-1.5">Photos</span>
                 <div className="col-span-2">
-                  <PhotoUploader initialPhotoUrls={initialValues?.photo_urls ?? []} />
+                  <PhotoUploader
+                    initialPhotoUrls={initialValues?.photo_urls ?? []}
+                    onPhotosChange={setPhotoUrls}
+                  />
+                  {analyzing && (
+                    <p className="text-xs text-site-muted mt-2 animate-pulse">
+                      Analyzing photo…
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -508,7 +611,7 @@ export function ProductForm({
             </div>
 
             {/* Price — hidden for linked-new variants */}
-            {!isLinkedNewVariant && (
+            {!isLinkedNewVariantFinal && (
               <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
                 <label htmlFor="price" className="text-sm text-site-muted font-medium">
                   Price (USD) <span className="text-red-500">*</span>
@@ -530,7 +633,7 @@ export function ProductForm({
               </div>
             )}
 
-            {/* Qty On Hand — always shown */}
+            {/* Qty On Hand */}
             <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
               <label htmlFor="qty_on_hand" className="text-sm text-site-muted font-medium">
                 Qty On Hand
@@ -549,7 +652,7 @@ export function ProductForm({
               </div>
             </div>
 
-            {/* Qty For Sale — always shown */}
+            {/* Qty For Sale */}
             <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
               <label htmlFor="qty_for_sale" className="text-sm text-site-muted font-medium">
                 Qty For Sale
@@ -585,9 +688,19 @@ export function ProductForm({
                     id="condition_notes"
                     name="condition_notes"
                     rows={2}
-                    defaultValue={initialValues?.condition_notes ?? ''}
+                    value={conditionNotes}
+                    onChange={(e) => setConditionNotes(e.target.value)}
                     className={`${inputClass} resize-none`}
                     placeholder="Describe the specific condition: minor patina, missing hardware, light pitting, etc."
+                  />
+                  <SuggestionChip
+                    suggestion={suggestions?.condition_notes ?? null}
+                    confidence={confidence.condition_notes ?? 'low'}
+                    onAccept={() => {
+                      setConditionNotes(suggestions!.condition_notes!)
+                      clearSuggestion('condition_notes')
+                    }}
+                    onIgnore={() => clearSuggestion('condition_notes')}
                   />
                 </div>
               </div>

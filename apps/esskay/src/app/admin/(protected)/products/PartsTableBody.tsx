@@ -12,7 +12,7 @@ interface Part {
   title: string
   sku: string
   part_number: string | null
-  manufacturer: string | null
+  vendor: string | null
   condition: ProductCondition | null
   photo_urls: string[]
   price_cents: number
@@ -81,9 +81,9 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
               <span className="text-site-muted">{part.part_number ?? '—'}</span>
             </TableCell>
 
-            {/* Manufacturer */}
+            {/* Vendor */}
             <TableCell>
-              <span className="text-site-muted">{part.manufacturer ?? '—'}</span>
+              <span className="text-site-muted">{part.vendor ?? '—'}</span>
             </TableCell>
 
             {/* Condition */}

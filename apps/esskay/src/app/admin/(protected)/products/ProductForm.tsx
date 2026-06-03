@@ -12,7 +12,7 @@ export interface ProductFormValues {
   title: string
   sku: string
   part_number: string | null
-  manufacturer: string | null
+  vendor: string | null
   condition: ProductCondition | null
   price_cents: number
   qty_on_hand: number
@@ -53,7 +53,7 @@ export function ProductForm({
 }: ProductFormProps) {
   // ── Gating fields ───────────────────────────────────────────
   const [partNumber, setPartNumber] = useState(initialValues?.part_number ?? '')
-  const [manufacturer, setManufacturer] = useState(initialValues?.manufacturer ?? '')
+  const [vendor, setVendor] = useState(initialValues?.vendor ?? '')
   const [visibility, setVisibility] = useState<'public' | 'internal' | 'ebay_only' | ''>(
     mode === 'edit' ? (initialValues?.visibility ?? 'internal') : ''
   )
@@ -91,7 +91,7 @@ export function ProductForm({
   // ── Derived display flags ────────────────────────────────────
   const gatingComplete = mode === 'edit' || (
     partNumber.trim() !== '' &&
-    manufacturer.trim() !== '' &&
+    vendor.trim() !== '' &&
     visibility !== '' &&
     condition !== ''
   )
@@ -117,11 +117,11 @@ export function ProductForm({
 
   // ── Mount effect: run match check in edit mode ───────────────
   useEffect(() => {
-    if (!initialValues?.part_number || !initialValues.manufacturer) return
+    if (!initialValues?.part_number || !initialValues.vendor) return
     const qId = ++latestQueryId.current
     findMatchingPart(
       initialValues.part_number.trim(),
-      initialValues.manufacturer.trim(),
+      initialValues.vendor.trim(),
       excludeId
     ).then((match) => {
       if (qId === latestQueryId.current && match) {
@@ -148,7 +148,7 @@ export function ProductForm({
     if (
       excludeId &&
       trimPn === (initialValues?.part_number?.trim() ?? '') &&
-      trimMfr === (initialValues?.manufacturer?.trim() ?? '')
+      trimMfr === (initialValues?.vendor?.trim() ?? '')
     ) {
       return
     }
@@ -259,7 +259,7 @@ export function ProductForm({
                 value={partNumber}
                 onChange={(e) => {
                   setPartNumber(e.target.value)
-                  scheduleCheck(e.target.value, manufacturer)
+                  scheduleCheck(e.target.value, vendor)
                 }}
                 className={inputClass}
                 placeholder="OEM or aftermarket part number"
@@ -267,19 +267,19 @@ export function ProductForm({
             </div>
           </div>
 
-          {/* Manufacturer */}
+          {/* Vendor */}
           <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
-            <label htmlFor="manufacturer" className="text-sm text-site-muted font-medium">
-              Manufacturer
+            <label htmlFor="vendor" className="text-sm text-site-muted font-medium">
+              Vendor
             </label>
             <div className="col-span-2">
               <input
-                id="manufacturer"
-                name="manufacturer"
+                id="vendor"
+                name="vendor"
                 type="text"
-                value={manufacturer}
+                value={vendor}
                 onChange={(e) => {
-                  setManufacturer(e.target.value)
+                  setVendor(e.target.value)
                   scheduleCheck(partNumber, e.target.value)
                 }}
                 className={inputClass}

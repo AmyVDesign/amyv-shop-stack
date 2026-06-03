@@ -6,7 +6,7 @@ import { conditionLabel } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
 
 const SELECT =
-  'id, title, slug, part_number, manufacturer, condition, price_cents, qty_for_sale, description, condition_notes, photo_urls, linked_listing_id, standalone_listing, visibility'
+  'id, title, slug, part_number, vendor, condition, price_cents, qty_for_sale, description, condition_notes, photo_urls, linked_listing_id, standalone_listing, visibility'
 
 function formatPrice(cents: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
@@ -17,7 +17,7 @@ type Row = {
   title: string
   slug: string
   part_number: string | null
-  manufacturer: string | null
+  vendor: string | null
   condition: string | null
   price_cents: number
   qty_for_sale: number
@@ -125,13 +125,13 @@ export default async function ProductPage({
             <h1 className="font-display text-4xl font-semibold text-site-text leading-tight mb-3">
               {product.title}
             </h1>
-            {(product.part_number || product.manufacturer) && (
+            {(product.part_number || product.vendor) && (
               <p className="text-sm text-site-muted mb-4">
                 {product.part_number && (
                   <span className="font-mono">Part #{product.part_number}</span>
                 )}
-                {product.part_number && product.manufacturer && ' · '}
-                {product.manufacturer}
+                {product.part_number && product.vendor && ' · '}
+                {product.vendor}
               </p>
             )}
             {product.description && (
@@ -266,13 +266,13 @@ function StandaloneLayout({ product }: { product: Row }) {
             <h1 className="font-display text-4xl font-semibold text-site-text leading-tight mb-3">
               {product.title}
             </h1>
-            {(product.part_number || product.manufacturer) && (
+            {(product.part_number || product.vendor) && (
               <p className="text-sm text-site-muted mb-4">
                 {product.part_number && (
                   <span className="font-mono">Part #{product.part_number}</span>
                 )}
-                {product.part_number && product.manufacturer && ' · '}
-                {product.manufacturer}
+                {product.part_number && product.vendor && ' · '}
+                {product.vendor}
               </p>
             )}
             {product.description && (

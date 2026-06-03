@@ -16,7 +16,7 @@ export interface MatchedPart {
 
 export async function findMatchingPart(
   partNumber: string,
-  manufacturer: string,
+  vendor: string,
   excludeId?: string,
 ): Promise<MatchedPart | null> {
   const supabase = await createClient()
@@ -25,7 +25,7 @@ export async function findMatchingPart(
     .from('products')
     .select('id, title, photo_urls, condition, price_cents, qty_for_sale, qty_on_hand, visibility, linked_listing_id')
     .ilike('part_number', partNumber.trim())
-    .ilike('manufacturer', manufacturer.trim())
+    .ilike('vendor', vendor.trim())
     .order('linked_listing_id', { nullsFirst: true }) // prefer canonical (linked_listing_id IS NULL)
     .order('created_at', { ascending: true })         // then oldest first
     .limit(1)

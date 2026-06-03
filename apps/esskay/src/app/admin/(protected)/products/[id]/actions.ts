@@ -15,7 +15,7 @@ export async function updatePart(
   const title = String(formData.get('title') ?? '').trim()
   const sku = String(formData.get('sku') ?? '').trim()
   const partNumber = String(formData.get('part_number') ?? '').trim() || null
-  const manufacturer = String(formData.get('manufacturer') ?? '').trim() || null
+  const vendor = String(formData.get('vendor') ?? '').trim() || null
   const conditionVal = (String(formData.get('condition') ?? '').trim() || null) as ProductCondition | null
   const priceStr = String(formData.get('price') ?? '0')
   const priceCents = Math.round(parseFloat(priceStr) * 100)
@@ -56,7 +56,7 @@ export async function updatePart(
       title,
       sku,
       part_number: partNumber,
-      manufacturer,
+      vendor,
       condition: conditionVal,
       price_cents: priceCents,
       qty_on_hand: qtyOnHand,

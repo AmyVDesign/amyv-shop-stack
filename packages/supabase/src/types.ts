@@ -306,7 +306,6 @@ export type Database = {
           google_category_path: string | null
           id: string
           linked_listing_id: string | null
-          manufacturer: string | null
           part_number: string | null
           photo_urls: string[]
           price_cents: number
@@ -335,7 +334,6 @@ export type Database = {
           google_category_path?: string | null
           id?: string
           linked_listing_id?: string | null
-          manufacturer?: string | null
           part_number?: string | null
           photo_urls?: string[]
           price_cents: number
@@ -364,7 +362,6 @@ export type Database = {
           google_category_path?: string | null
           id?: string
           linked_listing_id?: string | null
-          manufacturer?: string | null
           part_number?: string | null
           photo_urls?: string[]
           price_cents?: number

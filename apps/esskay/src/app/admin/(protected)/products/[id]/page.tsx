@@ -9,7 +9,7 @@ import type { ProductCondition } from '@/lib/product-labels'
 type Visibility = 'public' | 'internal' | 'ebay_only'
 
 const SELECT =
-  'id, title, slug, sku, part_number, manufacturer, condition, price_cents, qty_on_hand, qty_for_sale, visibility, description, condition_notes, photo_urls, linked_listing_id, standalone_listing, created_at'
+  'id, title, slug, sku, part_number, vendor, condition, price_cents, qty_on_hand, qty_for_sale, visibility, description, condition_notes, photo_urls, linked_listing_id, standalone_listing, created_at'
 
 export default async function PartDetailPage({
   params,
@@ -50,7 +50,7 @@ export default async function PartDetailPage({
     title: p.title,
     sku: p.sku,
     part_number: p.part_number,
-    manufacturer: p.manufacturer,
+    vendor: p.vendor,
     condition: p.condition as ProductCondition | null,
     price_cents: p.price_cents,
     qty_on_hand: p.qty_on_hand,
@@ -114,8 +114,8 @@ export default async function PartDetailPage({
           {product.part_number && (
             <p className="font-mono text-sm text-site-muted">{product.part_number}</p>
           )}
-          {product.manufacturer && (
-            <p className="text-sm text-site-muted">{product.manufacturer}</p>
+          {product.vendor && (
+            <p className="text-sm text-site-muted">{product.vendor}</p>
           )}
 
           {/* Visibility / listing stats */}

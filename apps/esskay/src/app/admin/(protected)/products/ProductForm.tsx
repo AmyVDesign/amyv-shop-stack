@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { PhotoUploader } from './PhotoUploader'
+import { CategoryCombobox } from './CategoryCombobox'
+import type { CategoryValue } from './CategoryCombobox'
 import { findMatchingPart } from './actions'
 import type { MatchedPart } from './actions'
 import { productConditionOptions } from '@/lib/product-labels'
@@ -13,6 +15,9 @@ export interface ProductFormValues {
   sku: string
   part_number: string | null
   vendor: string | null
+  google_category_id: string | null
+  google_category_path: string | null
+  product_type: string | null
   condition: ProductCondition | null
   price_cents: number
   qty_on_hand: number
@@ -54,6 +59,12 @@ export function ProductForm({
   // ── Gating fields ───────────────────────────────────────────
   const [partNumber, setPartNumber] = useState(initialValues?.part_number ?? '')
   const [vendor, setVendor] = useState(initialValues?.vendor ?? '')
+  const [category, setCategory] = useState<CategoryValue | null>(
+    initialValues?.google_category_id && initialValues?.google_category_path
+      ? { id: initialValues.google_category_id, path: initialValues.google_category_path }
+      : null
+  )
+  const [productType, setProductType] = useState(initialValues?.product_type ?? '')
   const [visibility, setVisibility] = useState<'public' | 'internal' | 'ebay_only' | ''>(
     mode === 'edit' ? (initialValues?.visibility ?? 'internal') : ''
   )
@@ -89,9 +100,14 @@ export function ProductForm({
   const [qtyForSale, setQtyForSale] = useState(initialValues?.qty_for_sale ?? 0)
 
   // ── Derived display flags ────────────────────────────────────
+  // Linked + New: category/productType are inherited from canonical
+  const isLinkedNewVariant = linkedListingId !== null && condition === 'new'
+
   const gatingComplete = mode === 'edit' || (
     partNumber.trim() !== '' &&
     vendor.trim() !== '' &&
+    (isLinkedNewVariant || category !== null) &&
+    (isLinkedNewVariant || productType.trim() !== '') &&
     visibility !== '' &&
     condition !== ''
   )
@@ -101,9 +117,6 @@ export function ProductForm({
     !matchResult ||
     storefrontChoice !== 'unchosen'
   )
-
-  // Linked + New: fields that differ from a fully custom listing
-  const isLinkedNewVariant = linkedListingId !== null && condition === 'new'
 
   const showStorefrontModal =
     visibility === 'public' &&
@@ -132,7 +145,7 @@ export function ProductForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function scheduleCheck(pn: string, mfr: string) {
+  function scheduleCheck(pn: string, vnd: string) {
     setMatchResult(null)
     setLinkedListingId(null)
     setStorefrontChoice('unchosen')
@@ -142,19 +155,19 @@ export function ProductForm({
     const qId = ++latestQueryId.current
 
     const trimPn = pn.trim()
-    const trimMfr = mfr.trim()
-    if (!trimPn || !trimMfr) return
+    const trimVnd = vnd.trim()
+    if (!trimPn || !trimVnd) return
 
     if (
       excludeId &&
       trimPn === (initialValues?.part_number?.trim() ?? '') &&
-      trimMfr === (initialValues?.vendor?.trim() ?? '')
+      trimVnd === (initialValues?.vendor?.trim() ?? '')
     ) {
       return
     }
 
     debounceRef.current = setTimeout(async () => {
-      const match = await findMatchingPart(trimPn, trimMfr, excludeId)
+      const match = await findMatchingPart(trimPn, trimVnd, excludeId)
       if (qId === latestQueryId.current) {
         setMatchResult(match)
         setLinkedListingId(match?.id ?? null)
@@ -240,8 +253,23 @@ export function ProductForm({
       )}
 
       <form action={action}>
+        {/* Always-submitted hidden fields */}
         <input type="hidden" name="linked_listing_id" value={linkedListingId ?? ''} />
         <input type="hidden" name="standalone_listing" value={storefrontChoice === 'standalone' ? 'true' : 'false'} />
+        {/* Category and product type submitted via hidden inputs; values derived from state */}
+        <input
+          type="hidden"
+          name="google_category_id"
+          value={isLinkedNewVariant ? (matchResult?.google_category_id ?? '') : (category?.id ?? '')}
+        />
+        <input
+          type="hidden"
+          name="google_category_path"
+          value={isLinkedNewVariant ? (matchResult?.google_category_path ?? '') : (category?.path ?? '')}
+        />
+        {isLinkedNewVariant && (
+          <input type="hidden" name="product_type" value={matchResult?.product_type ?? ''} />
+        )}
 
         {/* ── Top card: gating fields (always visible) ─────────────── */}
         <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-4">
@@ -287,6 +315,47 @@ export function ProductForm({
               />
             </div>
           </div>
+
+          {/* Category — hidden for linked-new variants (inherited) */}
+          {!isLinkedNewVariant && (
+            <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
+              <label className="text-sm text-site-muted font-medium">
+                Category
+              </label>
+              <div className="col-span-2">
+                <CategoryCombobox value={category} onChange={setCategory} />
+              </div>
+            </div>
+          )}
+
+          {/* Product Type — hidden for linked-new variants (inherited) */}
+          {!isLinkedNewVariant && (
+            <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
+              <label htmlFor="product_type" className="text-sm text-site-muted font-medium">
+                Product Type
+              </label>
+              <div className="col-span-2">
+                <input
+                  id="product_type"
+                  name="product_type"
+                  type="text"
+                  value={productType}
+                  onChange={(e) => setProductType(e.target.value)}
+                  className={inputClass}
+                  placeholder="Specific name (e.g. Oil Filter, Cruising Guide)"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Inherited note for linked-new variants */}
+          {isLinkedNewVariant && (
+            <div className="px-4 py-3 bg-site-bg">
+              <p className="text-xs text-site-muted">
+                Category, Product Type, Title, Photos, and Price are inherited from the canonical listing.
+              </p>
+            </div>
+          )}
 
           {/* Visibility */}
           <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">

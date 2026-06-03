@@ -12,7 +12,13 @@ export interface MatchedPart {
   qty_for_sale: number
   qty_on_hand: number
   visibility: 'public' | 'internal' | 'ebay_only'
+  google_category_id: string | null
+  google_category_path: string | null
+  product_type: string | null
 }
+
+const MATCH_SELECT =
+  'id, title, photo_urls, condition, price_cents, qty_for_sale, qty_on_hand, visibility, linked_listing_id, google_category_id, google_category_path, product_type'
 
 export async function findMatchingPart(
   partNumber: string,
@@ -23,7 +29,7 @@ export async function findMatchingPart(
 
   let q = supabase
     .from('products')
-    .select('id, title, photo_urls, condition, price_cents, qty_for_sale, qty_on_hand, visibility, linked_listing_id')
+    .select(MATCH_SELECT)
     .ilike('part_number', partNumber.trim())
     .ilike('vendor', vendor.trim())
     .order('linked_listing_id', { nullsFirst: true }) // prefer canonical (linked_listing_id IS NULL)
@@ -46,7 +52,7 @@ export async function findMatchingPart(
   if (data && data.linked_listing_id) {
     const { data: root } = await supabase
       .from('products')
-      .select('id, title, photo_urls, condition, price_cents, qty_for_sale, qty_on_hand, visibility')
+      .select(MATCH_SELECT)
       .eq('id', data.linked_listing_id)
       .maybeSingle()
 

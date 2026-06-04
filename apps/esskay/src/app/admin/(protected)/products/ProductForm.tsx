@@ -5,8 +5,6 @@ import { useEffect, useRef, useState } from 'react'
 import { PhotoUploader } from './PhotoUploader'
 import { CategoryCombobox } from './CategoryCombobox'
 import type { CategoryValue } from './CategoryCombobox'
-import { SuggestionChip } from './SuggestionChip'
-import type { Confidence } from './SuggestionChip'
 import { findMatchingPart } from './actions'
 import type { MatchedPart } from './actions'
 import { productConditionOptions } from '@/lib/product-labels'
@@ -33,15 +31,6 @@ export interface ProductFormValues {
   photo_urls: string[]
   linked_listing_id: string | null
   standalone_listing: boolean
-}
-
-interface Suggestions {
-  title: string | null
-  part_number: string | null
-  vendor: string | null
-  category: CategoryValue | null
-  product_type: string | null
-  condition_notes: string | null
 }
 
 interface ProductFormProps {
@@ -120,15 +109,20 @@ export function ProductForm({
   const [qtyForSale, setQtyForSale] = useState(initialValues?.qty_for_sale ?? 0)
   const [conditionNotes, setConditionNotes] = useState(initialValues?.condition_notes ?? '')
 
-  // ── Photo tracking for vision analysis ───────────────────────
+  // ── Photo analysis ───────────────────────────────────────────
   const [photoUrls, setPhotoUrls] = useState<string[]>(initialValues?.photo_urls ?? [])
-  const [suggestions, setSuggestions] = useState<Suggestions | null>(null)
-  const [confidence, setConfidence] = useState<Partial<Record<string, Confidence>>>({})
   const [analyzing, setAnalyzing] = useState(false)
+  const [lastAnalysisAt, setLastAnalysisAt] = useState<number | null>(null)
   const analyzedUrlRef = useRef<string | null>(null)
 
-  // ── Derived display flags ────────────────────────────────────
+  // ── Derived flags ────────────────────────────────────────────
   const isLinkedNewVariant = linkedListingId !== null && condition === 'new'
+
+  // Lock category/productType when canonical already has category data
+  const isMatchLocked = matchResult !== null && (
+    matchResult.category_label !== null ||
+    matchResult.product_type !== null
+  )
 
   const gatingComplete = mode === 'edit' || (
     partNumber.trim() !== '' &&
@@ -145,8 +139,6 @@ export function ProductForm({
     storefrontChoice !== 'unchosen'
   )
 
-  const isLinkedNewVariantFinal = linkedListingId !== null && condition === 'new'
-
   const showStorefrontModal =
     visibility === 'public' &&
     matchResult !== null &&
@@ -157,14 +149,7 @@ export function ProductForm({
   const showSummary = linkedListingId === null
   const qtyError = qtyForSale > qtyOnHand
 
-  // Lock category/productType when a canonical with existing category data is found.
-  // If both are null the canonical predates category fields — leave inputs editable.
-  const isMatchLocked = matchResult !== null && (
-    matchResult.category_label !== null ||
-    matchResult.product_type !== null
-  )
-
-  // ── Mount effect: run match check in edit mode ───────────────
+  // ── Mount: run match check in edit mode ──────────────────────
   useEffect(() => {
     if (!initialValues?.part_number || !initialValues.vendor) return
     const qId = ++latestQueryId.current
@@ -181,22 +166,21 @@ export function ProductForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ── Auto-fill category/productType from canonical when match detected ─
+  // ── Auto-fill category/productType from canonical ────────────
   useEffect(() => {
     if (!matchResult) return
-    const hasCategoryData = matchResult.category_label !== null || matchResult.google_category_id !== null
-    const hasProductType = matchResult.product_type !== null
-    // Old canonical with no category data — leave fields editable so user can set them
-    if (!hasCategoryData && !hasProductType) return
-    if (hasCategoryData && matchResult.google_category_id && matchResult.google_category_path) {
+    const hasCat = matchResult.category_label !== null || matchResult.google_category_id !== null
+    const hasPt = matchResult.product_type !== null
+    if (!hasCat && !hasPt) return // old canonical — leave editable
+    if (hasCat && matchResult.google_category_id && matchResult.google_category_path) {
       setCategory({
         id: matchResult.google_category_id,
         path: matchResult.google_category_path,
         label: matchResult.category_label ?? '',
       })
     }
-    if (hasProductType) setProductType(matchResult.product_type ?? '')
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (hasPt) setProductType(matchResult.product_type ?? '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchResult])
 
   // ── Auto-fill title from part#, vendor, product type ─────────
@@ -209,9 +193,9 @@ export function ProductForm({
     if (pn && vnd && pt) setTitleValue(`${pn} ${vnd} ${pt}`)
   }, [partNumber, vendor, productType, titleValue, isLinkedNewVariant])
 
-  // ── Auto-analyze cover photo when first uploaded ─────────────
+  // ── Auto-analyze cover photo; directly fill empty fields ─────
   useEffect(() => {
-    if (analyzing || suggestions !== null) return
+    if (analyzing) return
     if (photoUrls.length === 0) return
     const url = photoUrls[0]
     if (analyzedUrlRef.current === url) return
@@ -223,29 +207,41 @@ export function ProductForm({
       body: JSON.stringify({ photoUrl: url }),
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((data: { suggestions: Suggestions; confidence: Record<string, Confidence> }) => {
-        setSuggestions(data.suggestions)
-        setConfidence(data.confidence ?? {})
+      .then((data: { suggestions: { title: string | null; part_number: string | null; vendor: string | null; category: CategoryValue | null; product_type: string | null; condition_notes: string | null } }) => {
+        const s = data.suggestions
+        // Auto-fill only if the field is currently empty — user input always wins
+        const fillPn = s.part_number && !partNumber ? s.part_number : null
+        const fillVnd = s.vendor && !vendor ? s.vendor : null
+        if (fillPn) setPartNumber(fillPn)
+        if (fillVnd) setVendor(fillVnd)
+        if (s.category && !category) setCategory(s.category)
+        if (s.product_type && !productType) setProductType(s.product_type)
+        if (s.title && !titleValue) setTitleValue(s.title)
+        if (s.condition_notes && !conditionNotes) setConditionNotes(s.condition_notes)
+        setLastAnalysisAt(Date.now())
+        // Trigger match detection with the effective values
+        const effectivePn = fillPn ?? partNumber.trim()
+        const effectiveVnd = fillVnd ?? vendor.trim()
+        if ((fillPn || fillVnd) && effectivePn && effectiveVnd) {
+          scheduleCheck(effectivePn, effectiveVnd)
+        }
       })
       .catch((err) => {
         console.error('[analyze-photo] failed:', err)
       })
       .finally(() => setAnalyzing(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoUrls])
 
   function scheduleCheck(pn: string, vnd: string) {
     setMatchResult(null)
     setLinkedListingId(null)
     setStorefrontChoice('unchosen')
-
     if (debounceRef.current) clearTimeout(debounceRef.current)
-
     const qId = ++latestQueryId.current
     const trimPn = pn.trim()
     const trimVnd = vnd.trim()
     if (!trimPn || !trimVnd) return
-
     if (
       excludeId &&
       trimPn === (initialValues?.part_number?.trim() ?? '') &&
@@ -253,7 +249,6 @@ export function ProductForm({
     ) {
       return
     }
-
     debounceRef.current = setTimeout(async () => {
       const match = await findMatchingPart(trimPn, trimVnd, excludeId)
       if (qId === latestQueryId.current) {
@@ -263,13 +258,11 @@ export function ProductForm({
     }, 400)
   }
 
-  // ── Suggestion helpers ────────────────────────────────────────
-  function clearSuggestion(field: keyof Suggestions) {
-    setSuggestions((s) => s ? { ...s, [field]: null } : s)
-  }
+  // ── Render ────────────────────────────────────────────────────
 
   return (
     <>
+      {/* Storefront modal */}
       {showStorefrontModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-full items-start justify-center py-8 px-4">
@@ -308,11 +301,9 @@ export function ProductForm({
                     </p>
                   </div>
                 </div>
-
                 <p className="text-sm font-medium text-site-text mb-3">
                   How should this new listing appear on the public storefront?
                 </p>
-
                 <div className="flex flex-col gap-2">
                   <button
                     type="button"
@@ -329,7 +320,6 @@ export function ProductForm({
                     Give it its own storefront page
                   </button>
                 </div>
-
                 <p className="text-xs text-site-muted mt-4">
                   Either way, this listing is still grouped with the existing part in your admin records.
                 </p>
@@ -352,28 +342,55 @@ export function ProductForm({
         <input
           type="hidden"
           name="google_category_id"
-          value={isLinkedNewVariantFinal ? (matchResult?.google_category_id ?? '') : (category?.id ?? '')}
+          value={isLinkedNewVariant ? (matchResult?.google_category_id ?? '') : (category?.id ?? '')}
         />
         <input
           type="hidden"
           name="google_category_path"
-          value={isLinkedNewVariantFinal ? (matchResult?.google_category_path ?? '') : (category?.path ?? '')}
+          value={isLinkedNewVariant ? (matchResult?.google_category_path ?? '') : (category?.path ?? '')}
         />
         <input
           type="hidden"
           name="category_label"
-          value={isLinkedNewVariantFinal ? (matchResult?.category_label ?? '') : (category?.label ?? '')}
+          value={isLinkedNewVariant ? (matchResult?.category_label ?? '') : (category?.label ?? '')}
         />
-        {isLinkedNewVariantFinal && (
+        {isLinkedNewVariant && (
           <input type="hidden" name="product_type" value={matchResult?.product_type ?? ''} />
         )}
 
-        {/* ── Top card: gating fields ───────────────────────────── */}
+        {/* ── Photos — top of form, drives auto-analysis ────────── */}
+        {!isLinkedNewVariant && (
+          <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-4">
+            <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
+              <span className="text-sm text-site-muted font-medium pt-1.5">Photos</span>
+              <div className="col-span-2">
+                <PhotoUploader
+                  initialPhotoUrls={initialValues?.photo_urls ?? []}
+                  onPhotosChange={setPhotoUrls}
+                />
+                {analyzing && (
+                  <p className="text-xs text-site-muted mt-2 animate-pulse">
+                    Analyzing photo…
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Auto-fill note ──────────────────────────────────── */}
+        {lastAnalysisAt !== null && !isLinkedNewVariant && (
+          <p className="text-xs text-site-muted mb-4">
+            Auto-filled from photo analysis. Review and edit anything below as needed.
+          </p>
+        )}
+
+        {/* ── Top card: gating fields ─────────────────────────── */}
         <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-4">
 
           {/* Part Number */}
-          <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
-            <label htmlFor="part_number" className="text-sm text-site-muted font-medium pt-1.5">
+          <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
+            <label htmlFor="part_number" className="text-sm text-site-muted font-medium">
               Part Number
             </label>
             <div className="col-span-2">
@@ -389,22 +406,12 @@ export function ProductForm({
                 className={inputClass}
                 placeholder="OEM or aftermarket part number"
               />
-              <SuggestionChip
-                suggestion={suggestions?.part_number ?? null}
-                confidence={confidence.part_number ?? 'low'}
-                onAccept={() => {
-                  setPartNumber(suggestions!.part_number!)
-                  scheduleCheck(suggestions!.part_number!, vendor)
-                  clearSuggestion('part_number')
-                }}
-                onIgnore={() => clearSuggestion('part_number')}
-              />
             </div>
           </div>
 
           {/* Vendor */}
-          <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
-            <label htmlFor="vendor" className="text-sm text-site-muted font-medium pt-1.5">
+          <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
+            <label htmlFor="vendor" className="text-sm text-site-muted font-medium">
               Vendor
             </label>
             <div className="col-span-2">
@@ -420,50 +427,30 @@ export function ProductForm({
                 className={inputClass}
                 placeholder="e.g. Mercruiser"
               />
-              <SuggestionChip
-                suggestion={suggestions?.vendor ?? null}
-                confidence={confidence.vendor ?? 'low'}
-                onAccept={() => {
-                  setVendor(suggestions!.vendor!)
-                  scheduleCheck(partNumber, suggestions!.vendor!)
-                  clearSuggestion('vendor')
-                }}
-                onIgnore={() => clearSuggestion('vendor')}
-              />
             </div>
           </div>
 
           {/* Category — hidden for linked-new variants */}
-          {!isLinkedNewVariantFinal && (
+          {!isLinkedNewVariant && (
             <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
               <label className="text-sm text-site-muted font-medium pt-1.5">
                 Category
               </label>
               <div className="col-span-2">
                 <CategoryCombobox value={category} onChange={setCategory} disabled={isMatchLocked} />
-                {isMatchLocked ? (
+                {isMatchLocked && (
                   <p className="text-xs text-site-muted mt-1.5">
                     Category and Product Type are inherited from this part&apos;s existing listing. To change them, edit the canonical product.
                   </p>
-                ) : (
-                  <SuggestionChip
-                    suggestion={suggestions?.category?.label ?? null}
-                    confidence={confidence.category ?? 'low'}
-                    onAccept={() => {
-                      setCategory(suggestions!.category!)
-                      clearSuggestion('category')
-                    }}
-                    onIgnore={() => clearSuggestion('category')}
-                  />
                 )}
               </div>
             </div>
           )}
 
           {/* Product Type — hidden for linked-new variants */}
-          {!isLinkedNewVariantFinal && (
-            <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
-              <label htmlFor="product_type" className="text-sm text-site-muted font-medium pt-1.5">
+          {!isLinkedNewVariant && (
+            <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
+              <label htmlFor="product_type" className="text-sm text-site-muted font-medium">
                 Product Type
               </label>
               <div className="col-span-2">
@@ -477,23 +464,12 @@ export function ProductForm({
                   className={`${inputClass} ${isMatchLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                   placeholder="Specific name (e.g. Oil Filter, Cruising Guide)"
                 />
-                {!isMatchLocked && (
-                  <SuggestionChip
-                    suggestion={suggestions?.product_type ?? null}
-                    confidence={confidence.product_type ?? 'low'}
-                    onAccept={() => {
-                      setProductType(suggestions!.product_type!)
-                      clearSuggestion('product_type')
-                    }}
-                    onIgnore={() => clearSuggestion('product_type')}
-                  />
-                )}
               </div>
             </div>
           )}
 
           {/* Inherited note for linked-new variants */}
-          {isLinkedNewVariantFinal && (
+          {isLinkedNewVariant && (
             <div className="px-4 py-3 bg-site-bg">
               <p className="text-xs text-site-muted">
                 Category, Product Type, Title, Photos, and Price are inherited from the canonical listing.
@@ -587,7 +563,7 @@ export function ProductForm({
           <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-6">
 
             {/* Hidden inputs for linked-new suppressed fields */}
-            {isLinkedNewVariantFinal && (
+            {isLinkedNewVariant && (
               <>
                 <input type="hidden" name="title" value={matchResult?.title ?? ''} />
                 <input
@@ -599,9 +575,9 @@ export function ProductForm({
             )}
 
             {/* Title — hidden for linked-new variants */}
-            {!isLinkedNewVariantFinal && (
-              <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
-                <label htmlFor="title" className="text-sm text-site-muted font-medium pt-1.5">
+            {!isLinkedNewVariant && (
+              <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
+                <label htmlFor="title" className="text-sm text-site-muted font-medium">
                   Title <span className="text-red-500">*</span>
                 </label>
                 <div className="col-span-2">
@@ -613,35 +589,8 @@ export function ProductForm({
                     value={titleValue}
                     onChange={(e) => setTitleValue(e.target.value)}
                     className={inputClass}
-                    placeholder="e.g. Mercruiser water pump impeller"
+                    placeholder="e.g. GM28351 Kohler Spin-On Oil Filter"
                   />
-                  <SuggestionChip
-                    suggestion={suggestions?.title ?? null}
-                    confidence={confidence.title ?? 'low'}
-                    onAccept={() => {
-                      setTitleValue(suggestions!.title!)
-                      clearSuggestion('title')
-                    }}
-                    onIgnore={() => clearSuggestion('title')}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Photos — hidden for linked-new variants */}
-            {!isLinkedNewVariantFinal && (
-              <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
-                <span className="text-sm text-site-muted font-medium pt-1.5">Photos</span>
-                <div className="col-span-2">
-                  <PhotoUploader
-                    initialPhotoUrls={initialValues?.photo_urls ?? []}
-                    onPhotosChange={setPhotoUrls}
-                  />
-                  {analyzing && (
-                    <p className="text-xs text-site-muted mt-2 animate-pulse">
-                      Analyzing photo…
-                    </p>
-                  )}
                 </div>
               </div>
             )}
@@ -665,7 +614,7 @@ export function ProductForm({
             </div>
 
             {/* Price — hidden for linked-new variants */}
-            {!isLinkedNewVariantFinal && (
+            {!isLinkedNewVariant && (
               <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
                 <label htmlFor="price" className="text-sm text-site-muted font-medium">
                   Price (USD) <span className="text-red-500">*</span>
@@ -746,15 +695,6 @@ export function ProductForm({
                     onChange={(e) => setConditionNotes(e.target.value)}
                     className={`${inputClass} resize-none`}
                     placeholder="Describe the specific condition: minor patina, missing hardware, light pitting, etc."
-                  />
-                  <SuggestionChip
-                    suggestion={suggestions?.condition_notes ?? null}
-                    confidence={confidence.condition_notes ?? 'low'}
-                    onAccept={() => {
-                      setConditionNotes(suggestions!.condition_notes!)
-                      clearSuggestion('condition_notes')
-                    }}
-                    onIgnore={() => clearSuggestion('condition_notes')}
                   />
                 </div>
               </div>

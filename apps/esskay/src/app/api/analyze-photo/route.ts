@@ -82,7 +82,7 @@ Examine the image and return ONLY a JSON object (no markdown, no commentary) wit
 
 For category_hint, return a natural language description like "Watercraft Parts > Engine Components" or "Books > Boating Manuals" — we'll match to a real taxonomy node server-side.
 
-summary: a 1 to 3 sentence storefront-ready description. Describe the part, its use, and visible identifying features. Plain factual prose without marketing language.
+suggested_summary: a 1 to 3 sentence storefront product description written for customers browsing the shop. Describe the product itself — what the part is, what it's used for, and the key functional characteristics visible in the photos (size, fitting type, material, application). Do NOT describe the photos, packaging, or labels. Do NOT mention what languages text appears in. Do NOT use auction-style language ("genuine", "presented", "this is a"). Write in plain confident product-listing prose. Start with the part itself, not "This is" or "Here we have". Example tone: "Spin-on style oil filter for Kohler marine generators. Compatible with select Kohler engine models. Made in USA."
 
 If a field is not determinable from the image, set it to null and confidence to "low".`
 

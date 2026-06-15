@@ -10,6 +10,7 @@ interface VisionResult {
   suggested_category_hint: string | null
   suggested_product_type: string | null
   suggested_condition_notes: string | null
+  suggested_summary: string | null
   confidence: Record<string, 'high' | 'medium' | 'low'>
 }
 
@@ -67,17 +68,21 @@ Examine the image and return ONLY a JSON object (no markdown, no commentary) wit
   "suggested_category_hint": string | null,
   "suggested_product_type": string | null,
   "suggested_condition_notes": string | null,
+  "suggested_summary": string | null,
   "confidence": {
     "title": "high" | "medium" | "low",
     "part_number": "high" | "medium" | "low",
     "vendor": "high" | "medium" | "low",
     "category": "high" | "medium" | "low",
     "product_type": "high" | "medium" | "low",
-    "condition_notes": "high" | "medium" | "low"
+    "condition_notes": "high" | "medium" | "low",
+    "summary": "high" | "medium" | "low"
   }
 }
 
 For category_hint, return a natural language description like "Watercraft Parts > Engine Components" or "Books > Boating Manuals" — we'll match to a real taxonomy node server-side.
+
+summary: a 1 to 3 sentence storefront-ready description. Describe the part, its use, and visible identifying features. Plain factual prose without marketing language.
 
 If a field is not determinable from the image, set it to null and confidence to "low".`
 
@@ -119,7 +124,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
+        max_tokens: 1536,
         messages: [
           {
             role: 'user',
@@ -171,6 +176,7 @@ export async function POST(request: Request) {
       category:        matchedCategory,
       product_type:    parsed.suggested_product_type ?? null,
       condition_notes: parsed.suggested_condition_notes ?? null,
+      summary:         parsed.suggested_summary ?? null,
     },
     confidence: parsed.confidence ?? {},
   })

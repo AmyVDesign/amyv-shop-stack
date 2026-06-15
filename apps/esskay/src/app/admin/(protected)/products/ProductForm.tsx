@@ -108,6 +108,7 @@ export function ProductForm({
   const [qtyOnHand, setQtyOnHand] = useState(initialValues?.qty_on_hand ?? 0)
   const [qtyForSale, setQtyForSale] = useState(initialValues?.qty_for_sale ?? 0)
   const [conditionNotes, setConditionNotes] = useState(initialValues?.condition_notes ?? '')
+  const [summaryValue, setSummaryValue] = useState(initialValues?.description ?? '')
 
   // ── Photo analysis ───────────────────────────────────────────
   const [photoUrls, setPhotoUrls] = useState<string[]>(initialValues?.photo_urls ?? [])
@@ -207,7 +208,7 @@ export function ProductForm({
       body: JSON.stringify({ photoUrl: url }),
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((data: { suggestions: { title: string | null; part_number: string | null; vendor: string | null; category: CategoryValue | null; product_type: string | null; condition_notes: string | null } }) => {
+      .then((data: { suggestions: { title: string | null; part_number: string | null; vendor: string | null; category: CategoryValue | null; product_type: string | null; condition_notes: string | null; summary: string | null } }) => {
         const s = data.suggestions
         // Auto-fill only if the field is currently empty — user input always wins
         const fillPn = s.part_number && !partNumber ? s.part_number : null
@@ -218,6 +219,7 @@ export function ProductForm({
         if (s.product_type && !productType) setProductType(s.product_type)
         if (s.title && !titleValue) setTitleValue(s.title)
         if (s.condition_notes && !conditionNotes) setConditionNotes(s.condition_notes)
+        if (s.summary && !summaryValue) setSummaryValue(s.summary)
         setLastAnalysisAt(Date.now())
         // Trigger match detection with the effective values
         const effectivePn = fillPn ?? partNumber.trim()
@@ -227,10 +229,14 @@ export function ProductForm({
         }
       })
       .catch((err) => {
+        // intentional — surfaces fetch/API failures during development; no user-facing error shown
         console.error('[analyze-photo] failed:', err)
       })
       .finally(() => setAnalyzing(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Intentional stale closure: in create mode all fields are '' at photo-upload time so
+    // the "only fill if empty" guards are always accurate. In edit mode, analyzedUrlRef
+    // prevents re-runs on subsequent renders, so stale values are never acted on.
   }, [photoUrls])
 
   function scheduleCheck(pn: string, vnd: string) {
@@ -433,11 +439,11 @@ export function ProductForm({
           {/* Category — hidden for linked-new variants */}
           {!isLinkedNewVariant && (
             <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
-              <label className="text-sm text-site-muted font-medium pt-1.5">
+              <label htmlFor="category" className="text-sm text-site-muted font-medium pt-1.5">
                 Category
               </label>
               <div className="col-span-2">
-                <CategoryCombobox value={category} onChange={setCategory} disabled={isMatchLocked} />
+                <CategoryCombobox id="category" value={category} onChange={setCategory} disabled={isMatchLocked} />
                 {isMatchLocked && (
                   <p className="text-xs text-site-muted mt-1.5">
                     Category and Product Type are inherited from this part&apos;s existing listing. To change them, edit the canonical product.
@@ -711,7 +717,8 @@ export function ProductForm({
                     id="description"
                     name="description"
                     rows={3}
-                    defaultValue={initialValues?.description ?? ''}
+                    value={summaryValue}
+                    onChange={(e) => setSummaryValue(e.target.value)}
                     className={`${inputClass} resize-none`}
                     placeholder="Describe this product (visible on the storefront)"
                   />

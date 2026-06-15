@@ -58,22 +58,27 @@ Check packages/ui for an existing EmptyState primitive before building from scra
 
 ---
 
-### [READY] TASK-002: Standardize date formatting in shared util
+### [DONE] TASK-002: Standardize date formatting in shared util
 **Priority:** medium
 **Scope:** multi-file
+**Commit:** 170cfe7
 **Files:** apps/esskay/src/lib/format.ts, apps/esskay/src/app/admin/(protected)/products/[id]/VariantsTable.tsx, apps/esskay/src/app/admin/(protected)/products/PartsTableBody.tsx
 
 #### Acceptance criteria
-- [ ] `formatDateAdded(dateStr: string): string` exists in apps/esskay/src/lib/format.ts (create file if missing)
-- [ ] Returns "MMM D, YYYY" format (e.g., "Jun 3, 2026")
-- [ ] Replace inline date formatting in VariantsTable.tsx and PartsTableBody.tsx with this util
-- [ ] No regression: dates still display in both views
+- [x] `formatDateAdded(dateStr: string): string` exists in apps/esskay/src/lib/format.ts (create file if missing)
+- [x] Returns "MMM D, YYYY" format (e.g., "Jun 3, 2026")
+- [x] Replace inline date formatting in VariantsTable.tsx and PartsTableBody.tsx with this util
+- [x] No regression: dates still display in both views
 
 #### Context
 Date formatting is duplicated inline in at least two places.
 
 #### Notes
 Use `toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })`.
+
+#### Reviewer notes (WARN — not blocking)
+- `format.ts` is esskay-only for now; if Galaxy SF needs date formatting, move to a shared package before duplicating.
+- Empty-state guard in PartsTableBody was bundled into this commit (from TASK-001 work); harmless but outside scope.
 
 ---
 

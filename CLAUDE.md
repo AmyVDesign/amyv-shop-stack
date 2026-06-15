@@ -65,3 +65,9 @@ Database migrations get an additional check: after writing a migration, verify t
 - **At phase boundaries:** before starting work on a new phase, copy the current top-level file into `archive/` with a phase-numbered name (e.g., `archive/03-add-part-flow-phase-2-2.md`), then continue updating the top-level file.
 
 @AGENTS.md
+
+## Agent loop
+
+This project has a backlog-driven agent loop. The backlog is at `docs/backlog.md`, the orchestration is documented in `docs/AGENT_LOOP.md`, and two subagents support it: `.claude/agents/planner.md` and `.claude/agents/reviewer.md`.
+
+When invoking the loop, follow the protocol in `docs/AGENT_LOOP.md`. Do not pick up `[NEEDS_HUMAN]` tasks automatically.

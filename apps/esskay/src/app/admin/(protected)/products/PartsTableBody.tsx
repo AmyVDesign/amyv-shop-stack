@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Badge, TableRow, TableCell } from '@amyv/ui'
 import { conditionLabel } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
+import { formatDateAdded } from '@/lib/format'
 
 type Visibility = 'public' | 'internal' | 'ebay_only'
 
@@ -33,12 +34,20 @@ function formatPrice(cents: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
 export function PartsTableBody({ parts }: { parts: Part[] }) {
   const router = useRouter()
+
+  if (parts.length === 0) {
+    return (
+      <tbody>
+        <tr>
+          <td colSpan={10} className="py-16 text-center text-sm text-site-muted">
+            No parts found.
+          </td>
+        </tr>
+      </tbody>
+    )
+  }
 
   return (
     <tbody>
@@ -68,7 +77,7 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
 
             {/* Date Added */}
             <TableCell>
-              <span className="text-site-muted">{formatDate(part.created_at)}</span>
+              <span className="text-site-muted">{formatDateAdded(part.created_at)}</span>
             </TableCell>
 
             {/* SKU */}

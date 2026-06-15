@@ -3,6 +3,7 @@
 import { Fragment, useState } from 'react'
 import { Badge, Table, TableHeader, TableRow, TableCell } from '@amyv/ui'
 import { conditionLabel } from '@/lib/product-labels'
+import { formatDateAdded } from '@/lib/format'
 import { EditListingModal } from './EditListingModal'
 import type { ProductFormValues } from '../ProductForm'
 
@@ -37,10 +38,6 @@ const visibilityBadge: Record<Visibility, { variant: 'green' | 'gray' | 'orange'
 
 function formatPrice(cents: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function deltaLabel(n: number) {
@@ -231,7 +228,7 @@ export function VariantsTable({
                             {allBatches.map((b, i) => (
                               // eslint-disable-next-line react/no-array-index-key
                               <tr key={i} className="border-b border-site-border/50 last:border-0">
-                                <td className="py-1.5">{formatDate(b.date)}</td>
+                                <td className="py-1.5">{formatDateAdded(b.date)}</td>
                                 <td className="py-1.5 text-right tabular-nums">{deltaLabel(b.onHandAdded)}</td>
                                 <td className="py-1.5 text-right tabular-nums">{deltaLabel(b.forSaleAdded)}</td>
                                 <td className="py-1.5 pl-4">{b.note ?? '—'}</td>
@@ -290,7 +287,7 @@ export function VariantsTable({
                     </TableCell>
 
                     <TableCell>
-                      <span className="text-sm text-site-muted">{formatDate(variant.created_at)}</span>
+                      <span className="text-sm text-site-muted">{formatDateAdded(variant.created_at)}</span>
                     </TableCell>
 
                     <TableCell>
@@ -349,7 +346,7 @@ export function VariantsTable({
                           <tbody>
                             {variantEvents.map((e) => (
                               <tr key={e.id} className="border-b border-site-border/50 last:border-0">
-                                <td className="py-1.5">{formatDate(e.event_date)}</td>
+                                <td className="py-1.5">{formatDateAdded(e.event_date)}</td>
                                 <td className="py-1.5 text-right tabular-nums">{deltaLabel(e.qty_for_sale_delta)}</td>
                                 <td className="py-1.5 text-right tabular-nums">{deltaLabel(e.qty_on_hand_delta)}</td>
                                 <td className="py-1.5 pl-4">{e.note ?? '—'}</td>

@@ -15,9 +15,31 @@ In Claude Code, paste:
 
 > Use the planner agent to pick the next ready task from docs/backlog.md and draft an implementation plan. Then implement the plan as the main agent. After committing, use the a11y-reviewer agent to verify WCAG 2.2 AA compliance. If a11y-reviewer fails, halt and report findings. If a11y-reviewer passes, use the reviewer agent to verify general project conventions. If reviewer fails, halt and report findings. If both pass, update the task status to [DONE] with the commit hash in docs/backlog.md and commit that update.
 
-## Running multiple iterations (after the single-iteration version works)
+## Auto-iterate sessions
 
-> Repeat the loop above until either the backlog has no READY tasks or one iteration fails review. Report final state.
+Auto-iterate runs the loop continuously — planner picks a task, main agent implements and commits, a11y-reviewer and reviewer both verify, backlog is updated — then the planner picks the next task and repeats. The session ends when the backlog has no more READY tasks or a reviewer halts it with a failure. Designed for queued polish work where each task is self-contained and the outcomes are predictable enough that a reviewer can validate without a human in the loop.
+
+**When to use it:**
+- Batches of small, well-specified polish tasks (empty states, refactors, util extractions, copy edits, aria-label additions, etc.)
+- When you won't be at the keyboard to babysit each iteration
+- When tasks are independent — one task's implementation doesn't depend on decisions made in the previous iteration
+
+**When NOT to use it:**
+- Architectural changes
+- UX decisions that need real-time judgment
+- Schema migrations
+- Anything tagged `[NEEDS_HUMAN]`
+- When you're tired or distracted — the reviewers catch individual violations but compounding bugs across iterations are harder to unwind
+
+**Invocation prompt (paste-ready):**
+
+```
+Run the agent loop in auto-iterate mode. Use the planner agent to pick the next READY task from docs/backlog.md and draft an implementation plan. Implement the plan as the main agent. After committing, invoke the a11y-reviewer agent to verify WCAG 2.2 AA compliance. If a11y-reviewer fails, halt and report. If it passes, invoke the reviewer agent to verify project conventions. If reviewer fails, halt and report. If both pass, update the task status to [DONE] with the commit hash in docs/backlog.md and commit that update. Then immediately invoke the planner again to pick the next READY task and repeat. Continue until the backlog has no READY tasks or one iteration fails review. Report final state with a summary of all tasks completed.
+```
+
+**Adding tasks mid-session:** You can edit `docs/backlog.md` and add new `[READY]` tasks while the loop is running. The planner reads the file fresh at the start of each iteration — it is not cached — so new tasks are picked up automatically at the next iteration based on priority.
+
+**Stopping a session:** Stop the loop manually at any time. The current iteration finishes (or halts on reviewer failure) and the loop ends. The backlog is the source of truth for what was completed.
 
 ## What the loop is GOOD at
 

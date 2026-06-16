@@ -13,7 +13,7 @@ You are the planner for the Ess-Kay Yards / Galaxy SF agent loop. Your job is to
 
 ## Process
 
-1. Read `docs/backlog.md` and identify all tasks with status `[READY]`.
+1. Read `docs/backlog.md` and identify all tasks with status `[READY]`. The backlog file may grow during an auto-iterate session as new tasks are added by the human. Always read the file fresh at the start of each plan — do not cache the previous read.
 2. Pick the highest priority READY task (high > medium > low). Within the same priority, pick the smallest scope (single-file > multi-file > schema).
 3. Read CLAUDE.md and any files referenced in the task's `Files:` field for context.
 4. If the task has `Depends on:` listed, verify those tasks have status `[DONE]` with commit hashes. If not, escalate.

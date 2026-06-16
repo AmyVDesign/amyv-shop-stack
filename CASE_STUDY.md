@@ -130,6 +130,25 @@ On a successful iteration, the orchestrator updates the backlog status to `[DONE
 
 ---
 
+### Accessibility-driven token refinement
+
+**Situation:** Applied the coastal-modern palette to seven admin screens. The implementation plan specified azure-dark text on azure-light backgrounds for badges, coral-dark text on coral-light backgrounds, and azure-dark for secondary action buttons.
+
+**What the a11y-reviewer caught:** Every one of those specifications failed WCAG 1.4.3 contrast minimum on its target background. The agent computed contrast ratios and cited the criterion:
+- Azure-dark (#0284C7) on azure-light (#E0F2FE): 3.57:1 — fails 4.5:1
+- Driftwood-dark (#8F7649) on driftwood-light (#F3EBDD): 3.65:1 — fails 4.5:1
+- Coral-dark (#E5564A) on coral-light (#FFE4E0): 3.02:1 — fails 4.5:1
+- Azure-dark on white (action buttons): 4.10:1 — fails 4.5:1
+- Existing StockDot amber-500 on cream background: 1.97:1 — fails WCAG 1.4.11 (non-text contrast, 3.0:1 required)
+
+**Decision:** Substitute navy (#0F3A57) as badge text across all three tinted backgrounds. Navy yields 9.9–10.4:1 on the light tints and 11.9:1 on white — well past the threshold. Bump the amber stock indicator to amber-700 (#B45309) to clear the non-text contrast floor.
+
+**Outcome:** Five WCAG citations, five surgical fixes, single review pass. The original plan would have shipped visually coherent but technically inaccessible contrast. The badge strategy (tinted bg + navy text) became the documented rule in the style guide.
+
+**Why it's worth telling:** The accessibility commitment isn't a final-stage audit; it's a structural gate that ships every commit. The a11y-reviewer agent doesn't check a list — it computes contrast ratios, cites the criterion, and refuses to pass work that fails. The implementation plan was wrong in a specific, measurable way. The verification layer caught it before the commit.
+
+---
+
 ## Quotable paragraphs (ready for portfolio / interview)
 
 ### On AI-assisted development methodology

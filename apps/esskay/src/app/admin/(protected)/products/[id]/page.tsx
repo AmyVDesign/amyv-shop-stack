@@ -1,9 +1,11 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { Card } from '@amyv/ui'
 import { VariantsTable } from './VariantsTable'
 import type { VariantRow } from './VariantsTable'
 import { PublicUrlBlock } from './PublicUrlBlock'
+import { InventoryChart } from './InventoryChart'
 import type { ProductCondition } from '@/lib/product-labels'
 
 type Visibility = 'public' | 'internal' | 'ebay_only'
@@ -138,6 +140,14 @@ export default async function PartDetailPage({
           />
         </div>
       </div>
+
+      {/* Inventory history chart */}
+      <h2 className="text-lg font-display font-semibold text-site-text mb-4">
+        Inventory over time
+      </h2>
+      <Card className="mb-10">
+        <InventoryChart productId={id} />
+      </Card>
 
       {/* Variants / listings table — VariantsTable owns the card wrapper */}
       <h2 className="text-lg font-display font-semibold text-site-text mb-4">

@@ -34,9 +34,10 @@ interface SortableThumbnailProps {
   photo: UploadedPhoto
   isCover: boolean
   onRemove: (path: string) => void
+  index: number
 }
 
-function SortableThumbnail({ photo, isCover, onRemove }: SortableThumbnailProps) {
+function SortableThumbnail({ photo, isCover, onRemove, index }: SortableThumbnailProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: photo.url })
 
@@ -80,7 +81,7 @@ function SortableThumbnail({ photo, isCover, onRemove }: SortableThumbnailProps)
           e.stopPropagation()
           onRemove(photo.path)
         }}
-        aria-label="Remove photo"
+        aria-label={`Remove photo ${index}`}
         className="absolute top-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded-full bg-white/80 border border-gray-400 text-gray-600 text-xs leading-none opacity-70 hover:opacity-100 hover:scale-110 transition-all cursor-pointer"
       >
         ×
@@ -226,6 +227,7 @@ export function PhotoUploader({
                   photo={photo}
                   isCover={index === 0}
                   onRemove={removePhoto}
+                  index={index + 1}
                 />
               ))}
             </div>

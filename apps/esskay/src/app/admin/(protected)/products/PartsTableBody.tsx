@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Badge, TableRow, TableCell } from '@amyv/ui'
+import { TableRow, TableCell } from '@amyv/ui'
 import { conditionLabel } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
 import { formatDateAdded } from '@/lib/format'
@@ -25,20 +25,23 @@ export interface Part {
   category_label: string | null
 }
 
-const visibilityBadge: Record<Visibility, { variant: 'green' | 'gray' | 'orange'; label: string }> = {
-  public:    { variant: 'green',  label: 'Public'    },
-  internal:  { variant: 'gray',   label: 'Internal'  },
-  ebay_only: { variant: 'orange', label: 'eBay Only' },
+// Badge text uses navy (#0F3A57) on all tinted bgs — accent-dark values fail 4.5:1 on their light pairs
+const visibilityBadge: Record<Visibility, { className: string; label: string }> = {
+  public:    { className: 'bg-site-accent-azure-light text-site-accent-navy',       label: 'Public'    },
+  internal:  { className: 'bg-site-accent-driftwood-light text-site-accent-navy',    label: 'Internal'  },
+  ebay_only: { className: 'bg-site-accent-coral-light text-site-accent-navy',        label: 'eBay Only' },
 }
 
 function conditionStyles(condition: ProductCondition): string {
-  if (condition === 'new' || condition === 'nos') return 'bg-green-100 text-green-800'
-  if (condition === 'used_good' || condition === 'used_fair') return 'bg-gray-100 text-gray-700'
-  return 'bg-amber-100 text-amber-700'
+  if (condition === 'new' || condition === 'nos')
+    return 'bg-site-accent-azure-light text-site-accent-navy'
+  if (condition === 'used_good' || condition === 'used_fair')
+    return 'bg-gray-100 text-gray-700'
+  return 'bg-site-accent-driftwood-light text-site-accent-navy'
 }
 
 function ConditionBadge({ condition }: { condition: ProductCondition | null }) {
-  if (!condition) return <span className="text-site-muted">—</span>
+  if (!condition) return <span className="text-site-muted">&mdash;</span>
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${conditionStyles(condition)}`}>
       {conditionLabel[condition]}
@@ -56,7 +59,7 @@ function StockDot({ qty }: { qty: number }) {
   }
   if (qty <= 5) {
     return (
-      <svg aria-hidden="true" width="8" height="8" viewBox="0 0 8 8" className="inline-block mr-1 align-middle text-amber-500">
+      <svg aria-hidden="true" width="8" height="8" viewBox="0 0 8 8" className="inline-block mr-1 align-middle text-amber-700">
         <path d="M4 1A3 3 0 0 1 4 7Z" fill="currentColor" />
         <circle cx="4" cy="4" r="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
       </svg>
@@ -96,6 +99,8 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
           <TableRow
             key={part.id}
             onClick={() => router.push(`/admin/products/${part.linked_listing_id ?? part.id}`)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') router.push(`/admin/products/${part.linked_listing_id ?? part.id}`) }}
+            tabIndex={0}
             className="cursor-pointer hover:bg-site-bg/60 transition-colors"
           >
             {/* Photo */}
@@ -126,12 +131,12 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
 
             {/* Part Number */}
             <TableCell>
-              <span className="text-site-muted">{part.part_number ?? '—'}</span>
+              <span className="text-site-muted">{part.part_number ?? '\u2014'}</span>
             </TableCell>
 
             {/* Vendor */}
             <TableCell>
-              <span className="text-site-muted">{part.vendor ?? '—'}</span>
+              <span className="text-site-muted">{part.vendor ?? '\u2014'}</span>
             </TableCell>
 
             {/* Condition */}
@@ -141,7 +146,9 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
 
             {/* Visibility */}
             <TableCell>
-              <Badge variant={badge.variant}>{badge.label}</Badge>
+              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}>
+                {badge.label}
+              </span>
             </TableCell>
 
             {/* For Sale */}

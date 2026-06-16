@@ -120,8 +120,8 @@ function MultiFilterDropdown({
         className={[
           'inline-flex items-center gap-1.5 rounded border px-3 py-2 text-sm transition-colors whitespace-nowrap',
           hasActive
-            ? 'border-site-accent-dark bg-site-accent-light/40 text-site-accent-dark'
-            : 'border-site-border bg-white text-site-text hover:border-site-accent-light',
+            ? 'border-site-accent-navy bg-site-accent-azure-light/40 text-site-accent-navy'
+            : 'border-site-border bg-white text-site-text hover:border-site-accent-azure-light',
         ].join(' ')}
       >
         {buttonLabel}
@@ -141,7 +141,7 @@ function MultiFilterDropdown({
               type="checkbox"
               checked={isAll}
               onChange={toggleAll}
-              className="[accent-color:var(--site-accent)]"
+              className="[accent-color:var(--site-accent-azure)]"
             />
             All
           </label>
@@ -157,7 +157,7 @@ function MultiFilterDropdown({
                 type="checkbox"
                 checked={selected.includes(opt.value)}
                 onChange={() => toggleOption(opt.value)}
-                className="[accent-color:var(--site-accent)]"
+                className="[accent-color:var(--site-accent-azure)]"
               />
               {opt.label}
             </label>
@@ -212,7 +212,7 @@ function SortDropdown({
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
-        className="inline-flex items-center gap-1.5 rounded border border-site-border bg-white px-3 py-2 text-sm text-site-text hover:border-site-accent-light transition-colors whitespace-nowrap"
+        className="inline-flex items-center gap-1.5 rounded border border-site-border bg-white px-3 py-2 text-sm text-site-text hover:border-site-accent-azure-light transition-colors whitespace-nowrap"
       >
         {currentLabel}
         <ChevronDown />
@@ -237,7 +237,7 @@ function SortDropdown({
                 value={opt.value}
                 checked={value === opt.value}
                 onChange={() => { onChange(opt.value); setOpen(false) }}
-                className="[accent-color:var(--site-accent)]"
+                className="[accent-color:var(--site-accent-azure)]"
               />
               {opt.label}
             </label>
@@ -336,7 +336,7 @@ export function PartsClient({ parts }: { parts: Part[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by part number, vendor, or title"
-          className="min-w-0 flex-1 rounded border border-site-border bg-white px-3 py-2 text-sm text-site-text placeholder:text-site-muted focus:outline-none focus:ring-2 focus:ring-site-accent-light"
+          className="min-w-0 flex-1 rounded border border-site-border bg-white px-3 py-2 text-sm text-site-text placeholder:text-site-muted focus:outline-none focus:ring-2 focus:ring-site-accent-azure-light"
         />
         <MultiFilterDropdown
           label="Visibility"

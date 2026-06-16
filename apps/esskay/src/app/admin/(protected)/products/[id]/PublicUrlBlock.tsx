@@ -29,13 +29,13 @@ export function PublicUrlBlock({
 
   return (
     <div className="pt-3">
-      <p className="text-xs uppercase tracking-wide text-site-muted mb-1.5">Public URL</p>
+      <p className="text-xs uppercase text-site-muted mb-1.5" style={{ letterSpacing: 'var(--label-tracking)' }}>Public URL</p>
       <div className="flex items-center gap-2 flex-wrap">
         <span className="font-mono text-sm text-site-text">{path}</span>
         <button
           type="button"
           onClick={handleCopy}
-          className="rounded text-xs font-medium px-2.5 py-1 border border-site-border text-site-muted hover:text-site-text hover:border-site-accent-dark transition-colors"
+          className="rounded text-xs font-medium px-2.5 py-1 border border-site-border text-site-muted hover:text-site-accent-navy hover:border-site-accent-navy transition-colors"
         >
           {copyLabel}
         </button>
@@ -43,7 +43,7 @@ export function PublicUrlBlock({
           href={path}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs font-medium text-site-accent-dark hover:underline"
+          className="text-xs font-medium text-site-accent-navy hover:underline"
         >
           Open ↗
         </a>

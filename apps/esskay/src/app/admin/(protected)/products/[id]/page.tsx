@@ -92,7 +92,7 @@ export default async function PartDetailPage({
   return (
     <div className="px-6 py-8 max-w-5xl">
       <div className="mb-6">
-        <Link href="/admin/products" className="text-sm text-site-accent-dark hover:underline">
+        <Link href="/admin/products" className="text-sm text-site-accent-navy hover:underline">
           ← Parts
         </Link>
       </div>

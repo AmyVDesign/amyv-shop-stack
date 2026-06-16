@@ -45,9 +45,9 @@ interface ProductFormProps {
 }
 
 const inputClass =
-  'w-full rounded border border-site-border bg-white px-3 py-1.5 text-sm text-site-text focus:outline-none focus:ring-1 focus:ring-site-accent'
+  'w-full rounded border border-site-border bg-white px-3 py-1.5 text-sm text-site-text focus:outline-none focus:ring-1 focus:ring-site-accent-azure-light'
 const selectClass =
-  'w-full rounded border border-site-border bg-white px-3 py-1.5 text-sm text-site-text focus:outline-none focus:ring-1 focus:ring-site-accent'
+  'w-full rounded border border-site-border bg-white px-3 py-1.5 text-sm text-site-text focus:outline-none focus:ring-1 focus:ring-site-accent-azure-light'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -314,14 +314,14 @@ export function ProductForm({
                   <button
                     type="button"
                     onClick={() => setStorefrontChoice('variant')}
-                    className="w-full rounded px-4 py-2.5 text-sm font-medium text-left bg-site-accent-dark text-white hover:bg-site-accent transition-colors"
+                    className="w-full rounded px-4 py-2.5 text-sm font-medium text-left bg-site-accent-navy text-white hover:bg-site-accent-navy-dark transition-colors"
                   >
                     Show as a variant on the existing product page
                   </button>
                   <button
                     type="button"
                     onClick={() => setStorefrontChoice('standalone')}
-                    className="w-full rounded px-4 py-2.5 text-sm font-medium text-left border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light transition-colors"
+                    className="w-full rounded px-4 py-2.5 text-sm font-medium text-left border border-site-accent-navy text-site-accent-navy hover:bg-site-accent-azure-light transition-colors"
                   >
                     Give it its own storefront page
                   </button>
@@ -366,7 +366,7 @@ export function ProductForm({
 
         {/* ── Photos — top of form, drives auto-analysis ────────── */}
         {!isLinkedNewVariant && (
-          <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-4">
+          <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-accent-driftwood-light mb-4">
             <div className="grid grid-cols-3 px-4 py-3 items-start gap-4">
               <span className="text-sm text-site-muted font-medium pt-1.5">Photos</span>
               <div className="col-span-2">
@@ -387,12 +387,13 @@ export function ProductForm({
         {/* ── Auto-fill note ──────────────────────────────────── */}
         {lastAnalysisAt !== null && !isLinkedNewVariant && (
           <p className="text-xs text-site-muted mb-4">
+            <span className="text-site-accent-azure-dark mr-1" aria-hidden="true">&#9679;</span>
             Auto-filled from photo analysis. Review and edit anything below as needed.
           </p>
         )}
 
         {/* ── Top card: gating fields ─────────────────────────── */}
-        <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-4">
+        <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-accent-driftwood-light mb-4">
 
           {/* Part Number */}
           <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
@@ -532,9 +533,9 @@ export function ProductForm({
 
           {/* Storefront choice confirmation pill */}
           {visibility === 'public' && matchResult && storefrontChoice !== 'unchosen' && (
-            <div className="px-4 py-3 bg-site-accent-light/20">
+            <div className="px-4 py-3 bg-site-accent-azure-light/40">
               <div className="flex items-center gap-3 text-sm">
-                <span className="text-site-accent-dark font-semibold">✓</span>
+                <span className="text-site-accent-navy font-semibold">✓</span>
                 <div className="flex-1 text-site-text">
                   {storefrontChoice === 'variant' ? (
                     <>
@@ -543,7 +544,7 @@ export function ProductForm({
                         href={`/admin/products/${matchResult.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-display font-semibold text-site-accent-dark hover:underline"
+                        className="font-display font-semibold text-site-accent-navy hover:underline"
                       >
                         {matchResult.title}
                       </a>
@@ -555,7 +556,7 @@ export function ProductForm({
                 <button
                   type="button"
                   onClick={() => setStorefrontChoice('unchosen')}
-                  className="text-xs text-site-accent-dark hover:underline"
+                  className="text-xs text-site-accent-navy hover:underline"
                 >
                   Change
                 </button>
@@ -566,7 +567,7 @@ export function ProductForm({
 
         {/* ── Bottom card: downstream fields ─────────────────────── */}
         {showBottom && (
-          <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-border mb-6">
+          <div className="rounded-lg border border-site-border overflow-hidden bg-white divide-y divide-site-accent-driftwood-light mb-6">
 
             {/* Hidden inputs for linked-new suppressed fields */}
             {isLinkedNewVariant && (
@@ -584,7 +585,7 @@ export function ProductForm({
             {!isLinkedNewVariant && (
               <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
                 <label htmlFor="title" className="text-sm text-site-muted font-medium">
-                  Title <span className="text-red-500">*</span>
+                  Title <span className="text-red-600">*</span>
                 </label>
                 <div className="col-span-2">
                   <input
@@ -604,7 +605,7 @@ export function ProductForm({
             {/* SKU — always shown */}
             <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
               <label htmlFor="sku" className="text-sm text-site-muted font-medium">
-                SKU <span className="text-red-500">*</span>
+                SKU <span className="text-red-600">*</span>
               </label>
               <div className="col-span-2">
                 <input
@@ -623,7 +624,7 @@ export function ProductForm({
             {!isLinkedNewVariant && (
               <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
                 <label htmlFor="price" className="text-sm text-site-muted font-medium">
-                  Price (USD) <span className="text-red-500">*</span>
+                  Price (USD) <span className="text-red-600">*</span>
                 </label>
                 <div className="col-span-2">
                   <input
@@ -736,7 +737,7 @@ export function ProductForm({
               'rounded-lg font-body font-semibold transition-colors text-sm px-6 py-[11px] tracking-[0.015em]',
               (mode === 'create' && !showBottom) || qtyError
                 ? 'bg-site-border text-site-muted cursor-not-allowed'
-                : 'bg-site-accent-dark text-white hover:bg-site-accent',
+                : 'bg-site-accent-navy text-white hover:bg-site-accent-navy-dark',
             ].join(' ')}
           >
             {submitLabel}

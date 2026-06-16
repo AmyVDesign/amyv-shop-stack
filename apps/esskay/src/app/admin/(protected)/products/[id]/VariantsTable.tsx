@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useState } from 'react'
-import { Badge, Table, TableHeader, TableRow, TableCell } from '@amyv/ui'
+import { Table, TableHeader, TableRow, TableCell } from '@amyv/ui'
 import { conditionLabel } from '@/lib/product-labels'
 import { formatDateAdded } from '@/lib/format'
 import { EditListingModal } from './EditListingModal'
@@ -30,10 +30,11 @@ interface Batch {
   note: string | null
 }
 
-const visibilityBadge: Record<Visibility, { variant: 'green' | 'gray' | 'orange'; label: string }> = {
-  public:    { variant: 'green',  label: 'Public'    },
-  internal:  { variant: 'gray',   label: 'Internal'  },
-  ebay_only: { variant: 'orange', label: 'eBay Only' },
+// Badge text uses navy (#0F3A57) on all tinted bgs — accent-dark values fail 4.5:1 on their light pairs
+const visibilityBadge: Record<Visibility, { className: string; label: string }> = {
+  public:    { className: 'bg-site-accent-azure-light text-site-accent-navy',       label: 'Public'    },
+  internal:  { className: 'bg-site-accent-driftwood-light text-site-accent-navy',    label: 'Internal'  },
+  ebay_only: { className: 'bg-site-accent-coral-light text-site-accent-navy',        label: 'eBay Only' },
 }
 
 function formatPrice(cents: number) {
@@ -42,6 +43,14 @@ function formatPrice(cents: number) {
 
 function deltaLabel(n: number) {
   return n > 0 ? `+${n}` : String(n)
+}
+
+function conditionBadgeClass(condition: string): string {
+  if (condition === 'new' || condition === 'nos')
+    return 'bg-site-accent-azure-light text-site-accent-navy'
+  if (condition === 'used_good' || condition === 'used_fair')
+    return 'bg-gray-100 text-gray-700'
+  return 'bg-site-accent-driftwood-light text-site-accent-navy'
 }
 
 const NEW_AGG_KEY = 'new-aggregate'
@@ -166,7 +175,7 @@ export function VariantsTable({
                   </TableCell>
 
                   <TableCell>
-                    <span className="text-sm text-site-muted">New</span>
+                    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-site-accent-azure-light text-site-accent-navy">New</span>
                   </TableCell>
 
                   <TableCell className="tabular-nums text-sm">
@@ -187,11 +196,11 @@ export function VariantsTable({
 
                   <TableCell>
                     {newVisibilities.length === 1 ? (
-                      <Badge variant={visibilityBadge[newVisibilities[0] as Visibility].variant}>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${visibilityBadge[newVisibilities[0] as Visibility].className}`}>
                         {visibilityBadge[newVisibilities[0] as Visibility].label}
-                      </Badge>
+                      </span>
                     ) : (
-                      <Badge variant="gray">Mixed</Badge>
+                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-700">Mixed</span>
                     )}
                   </TableCell>
 
@@ -199,7 +208,7 @@ export function VariantsTable({
                     <button
                       type="button"
                       onClick={() => setEditingId(keeper.id)}
-                      className="rounded text-xs font-medium px-3 py-1 border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light transition-colors"
+                      className="rounded text-xs font-medium px-3 py-1 border border-site-accent-navy text-site-accent-navy hover:bg-site-accent-azure-light transition-colors"
                     >
                       Edit
                     </button>
@@ -291,9 +300,11 @@ export function VariantsTable({
                     </TableCell>
 
                     <TableCell>
-                      <span className="text-sm text-site-muted">
-                        {variant.condition ? conditionLabel[variant.condition] : null}
-                      </span>
+                      {variant.condition ? (
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${conditionBadgeClass(variant.condition)}`}>
+                          {conditionLabel[variant.condition]}
+                        </span>
+                      ) : null}
                     </TableCell>
 
                     <TableCell className="tabular-nums text-sm">
@@ -313,14 +324,16 @@ export function VariantsTable({
                     </TableCell>
 
                     <TableCell>
-                      <Badge variant={badge.variant}>{badge.label}</Badge>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}>
+                        {badge.label}
+                      </span>
                     </TableCell>
 
                     <TableCell>
                       <button
                         type="button"
                         onClick={() => setEditingId(variant.id)}
-                        className="rounded text-xs font-medium px-3 py-1 border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light transition-colors"
+                        className="rounded text-xs font-medium px-3 py-1 border border-site-accent-navy text-site-accent-navy hover:bg-site-accent-azure-light transition-colors"
                       >
                         Edit
                       </button>

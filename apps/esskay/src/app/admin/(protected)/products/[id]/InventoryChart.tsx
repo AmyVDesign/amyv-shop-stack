@@ -120,10 +120,10 @@ export function InventoryChart({ productId }: { productId: string }) {
           <Line
             type="monotone"
             dataKey="qty"
-            stroke="var(--site-accent)"
+            stroke="var(--site-accent-azure-dark)"
             strokeWidth={2}
-            dot={{ fill: 'var(--site-accent)', r: 3, strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: 'var(--site-accent)' }}
+            dot={{ fill: 'var(--site-accent-navy)', r: 3, strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: 'var(--site-accent-azure-dark)' }}
             isAnimationActive={false}
           />
         </LineChart>

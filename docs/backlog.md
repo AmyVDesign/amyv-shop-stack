@@ -82,6 +82,39 @@ Use `toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeri
 
 ---
 
+### [READY] TASK-004: Add tooltip to Save Part button
+**Priority:** low
+**Scope:** single-file
+**Files:** apps/esskay/src/app/admin/(protected)/products/ProductForm.tsx
+
+#### Acceptance criteria
+- [ ] Save Part button shows a tooltip on hover explaining when it's enabled vs disabled
+- [ ] Tooltip text is helpful, not redundant with the button label
+- [ ] Tooltip respects existing design tokens (no hardcoded colors)
+
+#### Context
+The Save Part button is disabled until required fields are filled. Users sometimes click it and wonder why nothing happens.
+
+#### Notes
+Use a native title attribute for simplicity, or a proper Tooltip component if one exists in packages/ui.
+
+---
+
+### [READY] TASK-005: Add aria-label to delete photo buttons
+**Priority:** medium
+**Scope:** single-file
+**Files:** apps/esskay/src/app/admin/(protected)/products/PhotoUploader.tsx
+
+#### Acceptance criteria
+- [ ] Each photo's delete (X) button has an aria-label like "Remove photo {n}"
+- [ ] Screen reader users can identify which photo each button removes
+- [ ] No visual regression to the button
+
+#### Context
+Icon-only buttons need accessible labels. Currently the X buttons on uploaded photos are just glyphs.
+
+---
+
 ### [NEEDS_HUMAN] TASK-003: Consolidate-on-add server logic
 **Priority:** high
 **Scope:** multi-file

@@ -114,6 +114,22 @@ On a successful iteration, the orchestrator updates the backlog status to `[DONE
 
 ---
 
+### Verification protocol in production: reviewer caught 4 violations before allowing ship
+
+**Situation:** Built three design-system pages (landing, theme, style guide) under `/design-system`. First implementation attempt was technically functional. Reviewer subagent ran on the commit.
+
+**What the reviewer caught:**
+1. Em dashes in JSX text content across all three pages
+2. Hardcoded hex value `border-[#2a2a35]` instead of a design-system token
+3. Duplicate `<h2>` "Color tokens" on the theme page (semantic violation)
+4. Brittle pattern: isDark hex array drifting from the underlying data
+
+**Outcome:** Loop halted. Implementation agent was directed to fix each violation. Second attempt: tsc clean, pattern scans clean, semantic structure clean, no drift. Then committed.
+
+**Why it's worth telling:** The reviewer subagent isn't a passing-checkbox. It catches real violations, halts work, and requires fixes before declaring done. That's V&V in production, not in a slide deck. Replace the project conventions with clinical safety conventions and the same architecture extends to surgical UI verification — specialized agents that refuse to ship non-compliant work, regardless of what the implementing agent generated.
+
+---
+
 ## Quotable paragraphs (ready for portfolio / interview)
 
 ### On AI-assisted development methodology

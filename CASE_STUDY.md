@@ -149,6 +149,44 @@ On a successful iteration, the orchestrator updates the backlog status to `[DONE
 
 ---
 
+### Removing a feature that did not fit the business
+
+**Situation:** The parts table showed a colored stock indicator (green, amber, red dot) next to the on-hand quantity, flagging low stock at a glance. It came from the instinct every inventory UI has: surface what is running low so someone can reorder.
+
+**Insight:** The marina sells obsolete, one-of-a-kind Onan parts. There is nothing to reorder. A "low stock" signal implies an action that does not exist for this business, so the dot was visual noise dressed up as information. The right affordance for a generic shop is the wrong one here.
+
+**Decision:** Remove the stock dots entirely. The on-hand number stays (still accurate, still accessible), only the status color comes off. Logged as reversible if the model ever changes.
+
+**Outcome:** Cleaner table, one less thing competing for attention, and an interface that reflects how the business actually works rather than a default e-commerce pattern.
+
+**Why it's worth telling:** Subtraction driven by domain understanding. Cutting a reasonable-looking feature because it does not map to the customer's reality is a stronger product signal than adding one.
+
+---
+
+### Design-system leverage: one edit, every table
+
+**Situation:** A visual review of the admin flagged the table header as dated: a filled warm-grey band behind the column labels.
+
+**Decision:** The fill lived on the shared Table component in the @amyv/ui package, not on the parts page. Removing one background class and keeping a single hairline border updated every table in the monorepo at once, across both the marina admin and the second client's app. The same pass standardized control corner-radius and left-aligned the quantity columns.
+
+**Outcome:** Headers went from filled-band to borderless platform-wide from a one-line change.
+
+**Why it's worth telling:** Design refinements compound through the shared component layer instead of being repeated per screen. The multi-tenant architecture is design-system reuse, not just code reuse.
+
+---
+
+### Treating accessibility as a verification protocol, not a checklist
+
+**Situation:** WCAG compliance is usually a one-time audit near launch. On this platform it runs on every commit through a dedicated accessibility reviewer that halts the pipeline on any failure.
+
+**Decision:** Formalize the reviewer gates as a written UI verification and validation protocol: seven WCAG 2.2 AA criteria as named test cases with methods and pass conditions, halt-on-fail semantics, and traceability from each commit to the criterion and the exact file and line.
+
+**Outcome:** Accessibility became a documented, repeatable protocol rather than tribal knowledge, and the doc doubles as the record of how the design system stays AA compliant as it grows.
+
+**Why it's worth telling:** Verification and validation is the language of regulated, high-stakes interface work. Showing AA compliance as an enforced protocol with traceable defect records, not a final-stage checklist, is the difference between "I made it accessible" and "I maintain accessibility as a process."
+
+---
+
 ## Quotable paragraphs (ready for portfolio / interview)
 
 ### On AI-assisted development methodology

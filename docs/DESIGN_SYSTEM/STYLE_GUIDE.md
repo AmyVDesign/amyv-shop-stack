@@ -58,6 +58,25 @@ Never mix serifs and sans-serifs at the same hierarchy level. A Source Serif 4 H
 
 ---
 
+## Labels and values
+
+Every label-over-value pair in the admin uses two canonical styles.
+
+| Role | Classes |
+|------|---------|
+| **Field label / column header** | `text-xs font-medium uppercase tracking-wide text-site-muted` |
+| **Value / cell text** | `text-site-text` at normal weight (`font-normal`) |
+
+These are the same classes used by `<TableCell header>` (from `@amyv/ui`) and its body cells. Use them identically in every other context -- stat cards, detail-card footers, description lists, form hints -- so all label-over-value pairs read as one consistent system.
+
+**Rules:**
+- Labels are always `text-site-muted`, never `text-site-text`. They orient the reader; they should recede.
+- Values are always `text-site-text`. They are the content; they should be readable without straining.
+- Never use reduced-opacity variants (`text-site-muted/70`, `opacity-60`) on a label that is the sole identifier for a value. Full `text-site-muted` is already appropriately subdued.
+- Null or empty values may use `text-site-muted italic` (e.g. "(empty)", "(unknown)"), but the label above them keeps its full label style.
+
+---
+
 ## Component selection guide
 
 | Component | Use for | Not for |

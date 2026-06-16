@@ -69,18 +69,18 @@ export function HistoryAccordion({ tasks, changes }: Props) {
                       {TASK_TYPE_LABEL[task.type] ?? task.type}
                     </p>
                     <p className="text-sm text-site-text mb-3">{task.body}</p>
-                    <div className="grid grid-cols-3 text-xs text-site-muted border-t border-site-border pt-3">
+                    <div className="grid grid-cols-3 text-xs border-t border-site-border pt-3">
                       <span>
-                        <span className="block text-[10px] text-site-muted/70 uppercase tracking-wide mb-0.5">Date Created</span>
-                        {formatDate(task.created_at)}
+                        <span className="block font-medium text-site-muted uppercase tracking-wide mb-0.5">Date Created</span>
+                        <span className="text-site-text">{formatDate(task.created_at)}</span>
                       </span>
                       <span className="text-center">
-                        <span className="block text-[10px] text-site-muted/70 uppercase tracking-wide mb-0.5">Date Completed</span>
-                        {formatDate(task.completed_at)}
+                        <span className="block font-medium text-site-muted uppercase tracking-wide mb-0.5">Date Completed</span>
+                        <span className="text-site-text">{formatDate(task.completed_at)}</span>
                       </span>
                       <span className="text-right">
-                        <span className="block text-[10px] text-site-muted/70 uppercase tracking-wide mb-0.5">Completed By</span>
-                        {task.completed_by ?? <span className="italic">(unknown)</span>}
+                        <span className="block font-medium text-site-muted uppercase tracking-wide mb-0.5">Completed By</span>
+                        <span className="text-site-text">{task.completed_by ?? <span className="text-site-muted italic">(unknown)</span>}</span>
                       </span>
                     </div>
                   </li>

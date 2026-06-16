@@ -31,14 +31,7 @@ Run on changed files in this commit:
 
 ### 3. Accessibility
 
-For any new form input or interactive component in the diff:
-- **WCAG 1.3.1** — `<label htmlFor>` exists for every form input; no input is label-less
-- **WCAG 2.1.1** — Custom comboboxes/dropdowns have keyboard handlers (`onKeyDown` for arrow / Enter / Escape)
-- **WCAG 4.1.2** — Buttons that act on state have `aria-label` or descriptive text content
-- **WCAG 1.4.1** — Color-coded indicators (confidence chips, status badges) include an icon or text alongside the color; color is never the sole signal for state
-- **WCAG 2.4.7** — All interactive elements have a visible focus indicator; no `outline: none` or `focus:outline-none` without a replacement focus style
-- **WCAG 2.4.3** — No element uses a positive `tabIndex` value (`tabIndex={1}` or higher); `tabIndex={0}` and `tabIndex={-1}` are acceptable
-- **WCAG 1.4.3** — Text contrast ratio is at least 4.5:1 for body text and 3:1 for large text (≥18pt or ≥14pt bold); flag any new color combination that cannot be verified against the design tokens
+Accessibility is verified by the dedicated a11y-reviewer subagent at `.claude/agents/a11y-reviewer.md`. That agent runs before this one in the loop. If a11y-reviewer has already flagged a failure, the loop has halted and this reviewer doesn't run.
 
 ### 4. Schema and data patterns
 

@@ -100,15 +100,16 @@ Use a native title attribute for simplicity, or a proper Tooltip component if on
 
 ---
 
-### [READY] TASK-005: Add aria-label to delete photo buttons
+### [DONE] TASK-005: Add aria-label to delete photo buttons
 **Priority:** medium
 **Scope:** single-file
+**Commit:** 55cfc3b
 **Files:** apps/esskay/src/app/admin/(protected)/products/PhotoUploader.tsx
 
 #### Acceptance criteria
-- [ ] Each photo's delete (X) button has an aria-label like "Remove photo {n}"
-- [ ] Screen reader users can identify which photo each button removes
-- [ ] No visual regression to the button
+- [x] Each photo's delete (X) button has an aria-label like "Remove photo {n}"
+- [x] Screen reader users can identify which photo each button removes
+- [x] No visual regression to the button
 
 #### Context
 Icon-only buttons need accessible labels. Currently the X buttons on uploaded photos are just glyphs.

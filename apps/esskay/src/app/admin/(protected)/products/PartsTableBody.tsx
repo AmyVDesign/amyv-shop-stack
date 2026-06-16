@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { TableRow, TableCell } from '@amyv/ui'
 import { conditionLabel } from '@/lib/product-labels'
@@ -36,12 +37,12 @@ function conditionStyles(condition: ProductCondition): string {
   if (condition === 'new' || condition === 'nos')
     return 'bg-site-accent-azure-light text-site-accent-navy'
   if (condition === 'used_good' || condition === 'used_fair')
-    return 'bg-gray-100 text-gray-700'
+    return 'bg-site-bg text-site-text'
   return 'bg-site-accent-driftwood-light text-site-accent-navy'
 }
 
 function ConditionBadge({ condition }: { condition: ProductCondition | null }) {
-  if (!condition) return <span className="text-site-muted">&mdash;</span>
+  if (!condition) return <span className="text-site-muted">--</span>
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${conditionStyles(condition)}`}>
       {conditionLabel[condition]}
@@ -72,13 +73,12 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
     <tbody>
       {parts.map((part) => {
         const badge = visibilityBadge[part.visibility]
+        const href = `/admin/products/${part.linked_listing_id ?? part.id}`
         return (
           <TableRow
             key={part.id}
-            onClick={() => router.push(`/admin/products/${part.linked_listing_id ?? part.id}`)}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') router.push(`/admin/products/${part.linked_listing_id ?? part.id}`) }}
-            tabIndex={0}
-            className="cursor-pointer hover:bg-site-bg/60 transition-colors"
+            interactive
+            onClick={() => router.push(href)}
           >
             {/* Photo */}
             <TableCell className="w-14">
@@ -101,19 +101,25 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
               <span className="text-site-muted">{formatDateAdded(part.created_at)}</span>
             </TableCell>
 
-            {/* SKU */}
+            {/* SKU -- Link is the keyboard target for this row */}
             <TableCell>
-              <span className="font-mono text-xs text-site-muted">{part.sku}</span>
+              <Link
+                href={href}
+                onClick={(e) => e.stopPropagation()}
+                className="font-mono text-xs text-site-muted hover:text-site-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy rounded"
+              >
+                {part.sku}
+              </Link>
             </TableCell>
 
             {/* Part Number */}
             <TableCell>
-              <span className="text-site-muted">{part.part_number ?? '\u2014'}</span>
+              <span className="text-site-muted">{part.part_number ?? '--'}</span>
             </TableCell>
 
             {/* Vendor */}
             <TableCell>
-              <span className="text-site-muted">{part.vendor ?? '\u2014'}</span>
+              <span className="text-site-muted">{part.vendor ?? '--'}</span>
             </TableCell>
 
             {/* Condition */}

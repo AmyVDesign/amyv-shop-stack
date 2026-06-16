@@ -1,5 +1,7 @@
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { EmptyState } from '@amyv/ui'
+import { CustomersTable } from './CustomersTable'
+import type { CustomerRow } from './CustomersTable'
 
 function displayName(c: { first_name: string | null; last_name: string | null; phone: string }): string {
   const name = [c.first_name, c.last_name].filter(Boolean).join(' ')
@@ -28,53 +30,23 @@ export default async function CustomersPage() {
     )
   }
 
+  const tableRows: CustomerRow[] = rows.map((c) => ({
+    phone: c.phone,
+    displayName: displayName(c),
+    email: c.email,
+    city: c.city ?? null,
+    state: c.state ?? null,
+    orderCount: orderCountByPhone.get(c.phone) ?? 0,
+  }))
+
   return (
     <div className="px-6 py-8 max-w-4xl">
       <h1 className="text-2xl font-display font-semibold text-site-text mb-6">Customers</h1>
 
-      {rows.length === 0 ? (
-        <p className="text-sm text-site-muted">No customers yet.</p>
+      {tableRows.length === 0 ? (
+        <EmptyState message="No customers yet." />
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-site-border">
-              <th scope="col" className="text-left pb-3 pr-4 font-medium text-site-muted">
-                Name
-              </th>
-              <th scope="col" className="text-left pb-3 pr-4 font-medium text-site-muted">
-                Phone
-              </th>
-              <th scope="col" className="text-left pb-3 pr-4 font-medium text-site-muted">
-                Email
-              </th>
-              <th scope="col" className="text-right pb-3 font-medium text-site-muted">
-                Orders
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((c) => (
-              <tr
-                key={c.phone}
-                className="border-b border-site-border/40 hover:bg-site-accent-navy-light/20 transition-colors"
-              >
-                <td className="py-3 pr-4">
-                  <Link
-                    href={`/admin/customers/${encodeURIComponent(c.phone)}`}
-                    className="font-medium text-site-text hover:text-site-accent-dark hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy rounded"
-                  >
-                    {displayName(c)}
-                  </Link>
-                </td>
-                <td className="py-3 pr-4 font-mono text-xs text-site-muted">{c.phone}</td>
-                <td className="py-3 pr-4 text-site-muted">{c.email ?? '--'}</td>
-                <td className="py-3 text-right text-site-muted">
-                  {orderCountByPhone.get(c.phone) ?? 0}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <CustomersTable customers={tableRows} />
       )}
     </div>
   )

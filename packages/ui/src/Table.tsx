@@ -1,5 +1,13 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 
+interface TableRowProps extends HTMLAttributes<HTMLTableRowElement> {
+  /** Adds hover highlight for clickable rows (mouse affordance).
+   *  The primary cell MUST contain a real <a> or <button> as the keyboard
+   *  target; the row onClick is for mouse users only and must not be the
+   *  sole path to the destination. */
+  interactive?: boolean
+}
+
 export function Table({ children, className = '', ...props }: HTMLAttributes<HTMLTableElement>) {
   return (
     <div className="w-full overflow-x-auto">
@@ -31,11 +39,12 @@ export function TableHeader({
 export function TableRow({
   children,
   className = '',
+  interactive = false,
   ...props
-}: HTMLAttributes<HTMLTableRowElement>) {
+}: TableRowProps) {
   return (
     <tr
-      className={`border-b border-site-border last:border-0 ${className}`}
+      className={`border-b border-site-border last:border-0${interactive ? ' cursor-pointer hover:bg-site-bg/60 transition-colors' : ''} ${className}`}
       {...props}
     >
       {children}
@@ -52,7 +61,7 @@ interface TableCellProps {
 export function TableCell({ children, header = false, className = '' }: TableCellProps) {
   if (header) {
     return (
-      <th className={`px-4 py-3 text-left text-xs font-medium text-site-muted uppercase tracking-wide ${className}`}>
+      <th scope="col" className={`px-4 py-3 text-left text-xs font-medium text-site-muted uppercase tracking-wide ${className}`}>
         {children}
       </th>
     )

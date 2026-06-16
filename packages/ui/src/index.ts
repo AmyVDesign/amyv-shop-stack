@@ -7,3 +7,7 @@ export { Button } from "./Button";
 export { Badge } from "./Badge";
 export { Table, TableHeader, TableRow, TableCell } from "./Table";
 export { EmptyState } from "./EmptyState";
+export { SearchInput } from "./SearchInput";
+export { FilterDropdown } from "./FilterDropdown";
+export { ResultCount } from "./ResultCount";
+export { DataToolbar } from "./DataToolbar";

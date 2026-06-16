@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { Table, TableHeader, TableRow, TableCell, EmptyState } from '@amyv/ui'
+import { Table, TableHeader, TableRow, TableCell, EmptyState, SearchInput, FilterDropdown, ResultCount, DataToolbar } from '@amyv/ui'
 import { PartsTableBody } from './PartsTableBody'
 import type { Part } from './PartsTableBody'
 
@@ -52,123 +52,7 @@ function ChevronDown() {
   )
 }
 
-// ── Multi-select dropdown (Visibility, Condition, Vendor) ─────────────────────
-
-function MultiFilterDropdown({
-  label,
-  options,
-  selected,
-  onChange,
-}: {
-  label: string
-  options: { value: string; label: string }[]
-  selected: string[]
-  onChange: (values: string[]) => void
-}) {
-  const [open, setOpen]               = useState(false)
-  const [announcement, setAnnouncement] = useState('')
-  const containerRef = useRef<HTMLDivElement>(null)
-  const buttonRef    = useRef<HTMLButtonElement>(null)
-
-  const isAll      = selected.length === 0
-  const hasActive  = selected.length > 0
-  const buttonLabel = hasActive ? `${label} (${selected.length})` : label
-
-  // close on outside click
-  useEffect(() => {
-    if (!open) return
-    function handler(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  function onPanelKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
-    if (e.key === 'Escape') {
-      setOpen(false)
-      buttonRef.current?.focus()
-    }
-  }
-
-  function toggleAll() {
-    onChange([])
-    setAnnouncement(`${label}: all`)
-  }
-
-  function toggleOption(value: string) {
-    const next = selected.includes(value)
-      ? selected.filter((v) => v !== value)
-      : [...selected, value]
-    onChange(next)
-    setAnnouncement(next.length === 0 ? `${label}: all` : `${label}: ${next.length} selected`)
-  }
-
-  return (
-    <div ref={containerRef} className="relative">
-      <span className="sr-only" aria-live="polite">{announcement}</span>
-
-      <button
-        ref={buttonRef}
-        type="button"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
-        className={[
-          'inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm transition-colors whitespace-nowrap',
-          hasActive
-            ? 'border-site-accent-navy bg-site-accent-azure-light/40 text-site-accent-navy'
-            : 'border-site-border bg-white text-site-text hover:border-site-accent-azure-dark hover:bg-site-accent-azure-light/40',
-        ].join(' ')}
-      >
-        {buttonLabel}
-        <ChevronDown />
-      </button>
-
-      {open && (
-        <div
-          role="listbox"
-          aria-multiselectable="true"
-          aria-label={label}
-          onKeyDown={onPanelKeyDown}
-          className="absolute left-0 top-full z-20 mt-1 min-w-[160px] rounded-xl border border-site-border bg-white py-1 shadow-lg"
-        >
-          <label className="flex cursor-pointer select-none items-center gap-2.5 px-3 py-2 text-sm hover:bg-site-bg">
-            <input
-              type="checkbox"
-              checked={isAll}
-              onChange={toggleAll}
-              className="[accent-color:var(--site-accent-azure-dark)]"
-            />
-            All
-          </label>
-
-          <div className="my-1 border-t border-site-border" />
-
-          {options.map((opt) => (
-            <label
-              key={opt.value}
-              className="flex cursor-pointer select-none items-center gap-2.5 px-3 py-2 text-sm hover:bg-site-bg"
-            >
-              <input
-                type="checkbox"
-                checked={selected.includes(opt.value)}
-                onChange={() => toggleOption(opt.value)}
-                className="[accent-color:var(--site-accent-azure-dark)]"
-              />
-              {opt.label}
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Single-select dropdown (Sort) ─────────────────────────────────────────────
+// ── Single-select sort dropdown (parts-specific) ───────────────────────────────
 
 function SortDropdown({
   options,
@@ -208,7 +92,7 @@ function SortDropdown({
       <button
         ref={buttonRef}
         type="button"
-        aria-haspopup="listbox"
+        aria-haspopup="true"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
@@ -220,8 +104,6 @@ function SortDropdown({
 
       {open && (
         <div
-          role="listbox"
-          aria-multiselectable="false"
           aria-label="Sort by"
           onKeyDown={onPanelKeyDown}
           className="absolute right-0 top-full z-20 mt-1 min-w-[180px] rounded-xl border border-site-border bg-white py-1 shadow-lg"
@@ -251,12 +133,12 @@ function SortDropdown({
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function PartsClient({ parts }: { parts: Part[] }) {
-  const [query, setQuery]                   = useState('')
-  const [debouncedQuery, setDebounced]       = useState('')
-  const [visSelected, setVisSelected]        = useState<string[]>([])
-  const [condSelected, setCondSelected]      = useState<string[]>([])
-  const [vendorSelected, setVendorSelected]  = useState<string[]>([])
-  const [sort, setSort]                      = useState<SortKey>('newest')
+  const [query, setQuery]                  = useState('')
+  const [debouncedQuery, setDebounced]     = useState('')
+  const [visSelected, setVisSelected]      = useState<string[]>([])
+  const [condSelected, setCondSelected]    = useState<string[]>([])
+  const [vendorSelected, setVendorSelected] = useState<string[]>([])
+  const [sort, setSort]                    = useState<SortKey>('newest')
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query), 200)
@@ -328,43 +210,37 @@ export function PartsClient({ parts }: { parts: Part[] }) {
 
   return (
     <div>
-      {/* Control bar: search + filter dropdowns + sort */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <input
-          type="search"
-          aria-label="Search parts"
+      <DataToolbar>
+        <SearchInput
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={setQuery}
+          aria-label="Search parts"
           placeholder="Search by part number, vendor, or title"
-          className="w-full sm:w-[360px] rounded-xl border border-site-border bg-white px-3 py-2 text-sm text-site-text placeholder:text-site-muted focus:outline-none focus:ring-2 focus:ring-site-accent-navy"
+          className="w-full sm:w-[360px]"
         />
-        <MultiFilterDropdown
+        <FilterDropdown
           label="Visibility"
           options={VISIBILITY_OPTIONS}
           selected={visSelected}
           onChange={setVisSelected}
         />
-        <MultiFilterDropdown
+        <FilterDropdown
           label="Condition"
           options={CONDITION_OPTIONS}
           selected={condSelected}
           onChange={setCondSelected}
         />
-        <MultiFilterDropdown
+        <FilterDropdown
           label="Vendor"
           options={topVendors}
           selected={vendorSelected}
           onChange={setVendorSelected}
         />
         <SortDropdown options={SORT_OPTIONS} value={sort} onChange={setSort} />
-      </div>
+      </DataToolbar>
 
-      {/* Result count */}
-      <p aria-live="polite" className="text-xs text-site-muted mb-4">
-        Showing {filtered.length} of {parts.length} parts
-      </p>
+      <ResultCount shown={filtered.length} total={parts.length} noun="parts" />
 
-      {/* Table or empty-filter state */}
       {filtered.length === 0 ? (
         <p className="py-16 text-center text-sm text-site-muted">
           No parts match{hasFilters ? ' your filters' : ''}.

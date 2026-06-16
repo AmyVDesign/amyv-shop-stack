@@ -273,6 +273,20 @@ by inspection and catching them by construction.
 
 ---
 
+### The blind spot my own gate had
+
+**Situation:** The filter checkboxes used azure as the checked color. Azure on white is about 2.9:1, which fails WCAG 1.4.11 non-text contrast, yet it passed every automated check.
+
+**Insight:** The gate verified text contrast (1.4.3) but had no non-text contrast criterion (1.4.11), and a control color set through accent-color is not a text color pair, so the static check could not see it. Automated axe does not cover 1.4.11 well either. The failure was real and invisible to tooling. I caught it by eye.
+
+**Decision:** Fix the control color to azure-dark (about 4.1:1, passing) and add 1.4.11 to the a11y-reviewer so control and state contrast is checked going forward, with the azure-on-light trap named explicitly.
+
+**Outcome:** The checkboxes pass, and the gate now covers the criterion that let the defect through.
+
+**Why it's worth telling:** Knowing the limits of your own automation is the senior skill. Static and jsdom checks cannot see computed control contrast and axe does not automate 1.4.11, so this class needs a human and a named rule. Finding the hole in my own gate and closing it is a stronger story than a gate that never had one.
+
+---
+
 ## Sections to add as we go
 
 - **Loom demo script** (when you record the walkthrough video)

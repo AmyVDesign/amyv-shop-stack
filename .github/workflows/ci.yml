@@ -33,3 +33,45 @@ jobs:
 
       - name: Test (@amyv/esskay)
         run: pnpm --filter @amyv/esskay test
+
+  # Playwright: real-browser axe scan of the public home page.
+  # Authenticated admin contrast checks (the palette-critical surface) run
+  # locally with E2E_EMAIL / E2E_PASSWORD -- they also need the Supabase env
+  # to boot the protected routes, so they stay out of CI for now.
+  playwright:
+    name: Playwright (public axe scan)
+    runs-on: ubuntu-latest
+    # Does not block the primary check job
+    needs: []
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11.1.2'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm --filter @amyv/esskay exec playwright install chromium --with-deps
+
+      - name: Build (@amyv/esskay)
+        run: pnpm --filter @amyv/esskay build
+        env:
+          # Public pages render without Supabase credentials; skip auth
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Start server and run public axe scan
+        run: pnpm --filter @amyv/esskay exec playwright test --project=chromium --grep "Public pages"
+        env:
+          CI: true
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}

@@ -261,6 +261,18 @@ by inspection and catching them by construction.
 
 ---
 
+### Runtime contrast verification in a real browser
+
+**Situation:** The accessibility gate and the component tests are strong, but both are static or jsdom-based, so neither can verify computed color contrast. Contrast was the exact failure class the palette pass had to fix by hand.
+
+**Decision:** Add a Playwright layer that runs axe-core in a real Chromium browser against the themed pages, with the color-contrast rule enabled, asserting zero serious or critical violations on the admin surface where the palette lives.
+
+**Outcome:** Contrast is now verified by machine in the environment where it actually renders, closing the one gap the static and jsdom layers could not reach. A regression that drops a token below the minimum ratio fails a test instead of shipping.
+
+**Why it's worth telling:** Knowing which check belongs at which layer is the point. Static grep for patterns, jsdom for structure and ARIA, a real browser for contrast and layout. Matching the verification method to what it can actually catch is the difference between testing theater and testing that holds.
+
+---
+
 ## Sections to add as we go
 
 - **Loom demo script** (when you record the walkthrough video)

@@ -5,3 +5,8 @@ node_modules
 dist
 .turbo
 *.log
+# Playwright saved auth state (contains session tokens)
+e2e/.auth/*.json
+# Playwright test results
+playwright-report/
+test-results/

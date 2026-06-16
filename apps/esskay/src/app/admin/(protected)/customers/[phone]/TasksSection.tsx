@@ -76,8 +76,10 @@ export function TasksSection({ phone, openTasks }: TasksSectionProps) {
   }
 
   function handleComplete(taskId: string) {
+    setFormError('')
     startTransition(async () => {
-      await completeTask(taskId, phone)
+      const result = await completeTask(taskId, phone)
+      if (result.error) setFormError(result.error)
     })
   }
 

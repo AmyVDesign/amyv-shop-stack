@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      customer_changes: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          customer_phone: string
+          field: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          customer_phone: string
+          field: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          customer_phone?: string
+          field?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_changes_customer_phone_fkey"
+            columns: ["customer_phone"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["phone"]
+          },
+        ]
+      }
       customer_tasks: {
         Row: {
           body: string

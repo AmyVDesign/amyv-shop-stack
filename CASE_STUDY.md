@@ -323,6 +323,24 @@ by inspection and catching them by construction.
 
 ---
 
+### Editable contact with an audited change log
+
+**Situation:** The contact card had an inline-editable boat note but the rest of the fields were read-only. Switching to edit mode required drilling into individual fields. And there was no record of what changed -- if a staff member updated a customer's email or address, the old value was gone.
+
+**Decision:** Two structural changes together.
+
+First, replace the per-field inline edits with one Edit button on the whole card. One click enters a labeled form covering name, email, boat, and address. Phone stays read-only because it is the row key. Save commits all changed fields at once, Cancel discards.
+
+Second, make the save action write an append-only audit row to `customer_changes` for every field that changed -- not a blob, but per-field rows: field name, old value, new value, who changed it, and when. RLS allows authenticated insert and select, no update or delete. The rows are immutable once written.
+
+The History section at the bottom of the profile merged both timelines: completed tasks and field-change events, sorted by date descending, displayed in the same accordion. A change renders as `{Field}: {old} → {new}` with `(empty)` for null.
+
+**Outcome:** The contact card is now a single-action edit with a full paper trail behind it. Staff can see not just what a customer's email is today, but what it was last week and who changed it. The audit table is structurally append-only at the database level -- no policy permits row deletion or update.
+
+**Why it's worth telling:** The immutability is not just a flag or a soft convention -- it is enforced by the absence of an UPDATE or DELETE policy on the table. The audit log cannot be silently altered after the fact. Designing compliance-grade data integrity into a small internal tool is the same pattern that scales to regulated environments; the mechanism is identical, only the stakes differ.
+
+---
+
 ## Sections to add as we go
 
 - **Loom demo script** (when you record the walkthrough video)

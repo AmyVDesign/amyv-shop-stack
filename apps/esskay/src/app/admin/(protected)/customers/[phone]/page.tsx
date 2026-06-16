@@ -6,9 +6,10 @@ import { OrderCard } from './OrderCard'
 import type { OrderWithItems } from './OrderCard'
 import { TasksSection } from './TasksSection'
 import { HistoryAccordion } from './HistoryAccordion'
-import { BoatNote } from './BoatNote'
+import { ContactCard } from './ContactCard'
 
-type CustomerTask = Database['public']['Tables']['customer_tasks']['Row']
+type CustomerTask   = Database['public']['Tables']['customer_tasks']['Row']
+type CustomerChange = Database['public']['Tables']['customer_changes']['Row']
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -30,7 +31,7 @@ export default async function CustomerProfilePage({
 
   const supabase = await createClient()
 
-  const [customerResult, ordersResult, tasksResult] = await Promise.all([
+  const [customerResult, ordersResult, tasksResult, changesResult] = await Promise.all([
     supabase.from('customers').select('*').eq('phone', phone).single(),
     supabase
       .from('orders')
@@ -42,6 +43,11 @@ export default async function CustomerProfilePage({
       .select('*')
       .eq('customer_phone', phone)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('customer_changes')
+      .select('*')
+      .eq('customer_phone', phone)
+      .order('changed_at', { ascending: false }),
   ])
 
   if (!customerResult.data) notFound()
@@ -49,6 +55,7 @@ export default async function CustomerProfilePage({
   const c = customerResult.data
   const orders = (ordersResult.data ?? []) as OrderWithItems[]
   const allTasks = (tasksResult.data ?? []) as CustomerTask[]
+  const changes = (changesResult.data ?? []) as CustomerChange[]
 
   const openTasks = allTasks.filter((t) => t.status === 'open')
   const doneTasks = allTasks.filter((t) => t.status === 'done')
@@ -75,68 +82,8 @@ export default async function CustomerProfilePage({
         {location && <p className="text-site-muted mt-1">{location}</p>}
       </div>
 
-      {/* Contact section */}
-      <section aria-labelledby="contact-heading" className="mb-6">
-        <h2
-          id="contact-heading"
-          className="text-lg font-display font-semibold text-site-text mb-3"
-        >
-          Contact
-        </h2>
-        <div className="border border-site-border rounded-xl p-6">
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-            {(c.first_name || c.last_name) && (
-              <div>
-                <dt className="text-site-muted">Name</dt>
-                <dd className="text-site-text font-medium mt-0.5">{displayName}</dd>
-              </div>
-            )}
-            <div>
-              <dt className="text-site-muted">Phone</dt>
-              <dd className="text-site-text font-mono mt-0.5">{formatPhone(c.phone)}</dd>
-            </div>
-            {c.email && (
-              <div>
-                <dt className="text-site-muted">Email</dt>
-                <dd className="text-site-text mt-0.5">{c.email}</dd>
-              </div>
-            )}
-            <div className="sm:col-span-2">
-              <dt className="text-site-muted">Boat</dt>
-              <dd className="mt-1">
-                <BoatNote phone={phone} initialNote={c.boat_note} />
-              </dd>
-            </div>
-
-            {c.address_line_1 && (
-              <div className="sm:col-span-2">
-                <dt className="text-site-muted">Address</dt>
-                <dd className="text-site-text mt-0.5">
-                  {c.address_line_1}
-                  {c.address_line_2 && (
-                    <>
-                      <br />
-                      {c.address_line_2}
-                    </>
-                  )}
-                  {(c.city || c.state || c.postal_code) && (
-                    <>
-                      <br />
-                      {[c.city, c.state, c.postal_code].filter(Boolean).join(', ')}
-                    </>
-                  )}
-                  {c.country && c.country !== 'US' && (
-                    <>
-                      <br />
-                      {c.country}
-                    </>
-                  )}
-                </dd>
-              </div>
-            )}
-          </dl>
-        </div>
-      </section>
+      {/* Contact card -- single Edit button, logs changes to customer_changes */}
+      <ContactCard phone={phone} customer={c} />
 
       {/* Summary row */}
       <div className="grid grid-cols-3 gap-4 mb-8">
@@ -178,10 +125,10 @@ export default async function CustomerProfilePage({
         <TasksSection phone={phone} openTasks={openTasks} />
       </div>
 
-      {/* History accordion -- collapsed by default */}
-      {doneTasks.length > 0 && (
+      {/* History -- merged timeline of done tasks and contact changes */}
+      {(doneTasks.length > 0 || changes.length > 0) && (
         <div className="mb-8">
-          <HistoryAccordion tasks={doneTasks} />
+          <HistoryAccordion tasks={doneTasks} changes={changes} />
         </div>
       )}
 

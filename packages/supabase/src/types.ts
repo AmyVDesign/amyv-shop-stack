@@ -56,6 +56,7 @@ export type Database = {
         Row: {
           body: string
           completed_at: string | null
+          completed_by: string | null
           created_at: string
           created_by: string | null
           customer_phone: string
@@ -67,6 +68,7 @@ export type Database = {
         Insert: {
           body: string
           completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           created_by?: string | null
           customer_phone: string
@@ -78,6 +80,7 @@ export type Database = {
         Update: {
           body?: string
           completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           created_by?: string | null
           customer_phone?: string

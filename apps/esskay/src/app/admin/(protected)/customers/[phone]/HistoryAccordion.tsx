@@ -15,6 +15,14 @@ const TASK_TYPE_LABEL: Record<string, string> = {
   other:       'Other',
 }
 
+function formatShortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    year:  '2-digit',
+    month: '2-digit',
+    day:   '2-digit',
+  })
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
     year:  'numeric',
@@ -75,11 +83,21 @@ export function HistoryAccordion({ tasks, changes }: Props) {
                     <p className="text-xs font-medium text-site-muted uppercase tracking-wide mb-1">
                       {TASK_TYPE_LABEL[task.type] ?? task.type}
                     </p>
-                    <p className="text-sm text-site-text">{task.body}</p>
-                    <p className="text-xs text-site-muted mt-1.5">
-                      {task.created_by ?? 'Staff'} &middot; {formatDate(task.created_at)}
-                      {task.completed_at && <> &middot; Done {formatDate(task.completed_at)}</>}
-                    </p>
+                    <p className="text-sm text-site-text mb-3">{task.body}</p>
+                    <div className="grid grid-cols-3 text-xs text-site-muted border-t border-site-border pt-3">
+                      <span>
+                        <span className="block text-[10px] text-site-muted/70 uppercase tracking-wide mb-0.5">Date Created</span>
+                        {formatShortDate(task.created_at)}
+                      </span>
+                      <span className="text-center">
+                        <span className="block text-[10px] text-site-muted/70 uppercase tracking-wide mb-0.5">Date Completed</span>
+                        {task.completed_at ? formatShortDate(task.completed_at) : '--'}
+                      </span>
+                      <span className="text-right">
+                        <span className="block text-[10px] text-site-muted/70 uppercase tracking-wide mb-0.5">Completed By</span>
+                        {task.completed_by ?? <span className="italic">(unknown)</span>}
+                      </span>
+                    </div>
                   </li>
                 ))}
             </ul>

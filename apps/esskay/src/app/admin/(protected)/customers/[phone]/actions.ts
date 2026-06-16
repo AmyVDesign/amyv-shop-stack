@@ -154,9 +154,15 @@ export async function completeTask(taskId: string, customer_phone: string): Prom
 
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+
   const { error } = await supabase
     .from('customer_tasks')
-    .update({ status: 'done', completed_at: new Date().toISOString() })
+    .update({
+      status:       'done',
+      completed_at: new Date().toISOString(),
+      completed_by: user?.email ?? null,
+    })
     .eq('id', taskId)
     .eq('customer_phone', customer_phone)
 

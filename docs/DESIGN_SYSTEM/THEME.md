@@ -73,9 +73,15 @@ Dark palette with neon green. Same token architecture, different values.
 
 ---
 
-## Page gutters
+## Page layout
 
-Admin pages inherit their horizontal and vertical gutter from the protected layout. The `<main>` element in `apps/esskay/src/app/admin/(protected)/layout.tsx` sets `px-8 lg:px-16 py-8`. Pages must not re-add page padding (`px-*`, `py-*`) on their outermost wrapper -- the layout is the single source of page spacing.
+Admin content is centered and width-capped by the protected layout. The `<main>` element in `apps/esskay/src/app/admin/(protected)/layout.tsx` sets:
+
+```
+mx-auto w-full max-w-7xl px-8 py-8
+```
+
+`max-w-7xl` (80rem / 1280px) is the width dial -- change it in one place and every admin screen inherits the change. `px-8` is the horizontal gutter. Pages must set neither their own `max-w-*` nor their own `px-*`/`py-*` on the outermost wrapper.
 
 ---
 

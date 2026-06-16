@@ -116,13 +116,13 @@ Azure and coral **must not** be used as foreground text color on light backgroun
 
 **Don't:** Ad-hoc inline padding values (`pt-3 pb-7 pl-4 pr-10`). Inconsistent across components.
 
-### Page gutters
+### Page layout
 
-Admin pages inherit their horizontal and vertical gutter from the protected layout (`apps/esskay/src/app/admin/(protected)/layout.tsx`). The `<main>` element is the single source of page spacing.
+Admin content is centered and width-capped by the protected layout. The `<main>` element in `apps/esskay/src/app/admin/(protected)/layout.tsx` is the single source of width and page spacing (`mx-auto max-w-7xl px-8 py-8`). To change the cap or gutter for all admin screens, edit that one element.
 
-**Do:** Let the layout supply the gutter. Page components start with `<div>` or `<section>`, no padding.
+**Do:** Let the layout supply centering, width cap, and gutter. Page components start with `<div>` or `<section>`, no padding or max-width.
 
-**Don't:** Add `px-*` or `py-*` to the outermost wrapper of an admin page. It creates inconsistent spacing when the layout gutter changes.
+**Don't:** Add `px-*`, `py-*`, or `max-w-*` to the outermost wrapper of an admin page. It fights the layout and creates inconsistency.
 
 ### Typography
 

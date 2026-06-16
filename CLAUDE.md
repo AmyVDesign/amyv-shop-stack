@@ -8,7 +8,23 @@ Auto-push enabled — every commit automatically pushes to origin/main via .git/
 
 ## Self-check protocol (mandatory before claiming any task is done)
 
-Before pausing at a checkpoint or saying a task is complete, run these checks and report results as a ✓ checklist. If any check fails, fix it before pausing — don't bring failures back to the user unless you genuinely cannot resolve them.
+Before pausing at a checkpoint or saying a task is complete, run these checks and report results as a ✓ checklist. For deterministic violations, fix them in the same pass and list what changed. Do not bring fixable problems back to the user.
+
+### Fix in place, list in the checklist
+- Em dashes in JSX text or string content → rewrite with a comma, parentheses, or `--`
+- Hardcoded hex in `.tsx`/`.css` → replace with the matching design token utility
+- `bg-white`, `bg-gray-*`, `text-gray-*` where a design token exists
+- `bg-site-bg-alt` fill on a card → remove (cards are flat)
+- Missing `scope="col"` on `<th>` elements
+- Missing `focus-visible:ring-2` on an interactive element with `outline-none` and no replacement
+- `px-6 py-8` on an admin page outer wrapper (the layout provides the gutter)
+- Never auto-stage unrelated or out-of-scope files; leave them unstaged and name them
+
+### Halt and surface — do not auto-fix
+- Missing RLS on a new table, missing or over-broad policy → security decision
+- Secrets or API keys in the diff → security decision
+- `qty_on_hand` / `qty_for_sale` exposed in public storefront routes → privacy decision
+- Any fix where the correct replacement is genuinely ambiguous
 
 For any task touching TypeScript files:
 
@@ -52,6 +68,7 @@ Report format example:
 ✓ Pattern scan: no issues found
 ✓ Smoke fetch: /admin/products/[id] → 307 (healthy)
 ✓ [feature-specific check]: passing
+Fixed: TasksSection.tsx:97 em dash → '--'; page.tsx:37 border-[#0F3A57]/10 → border-site-border
 ```
 
 Database migrations get an additional check: after writing a migration, verify the SQL handles common Postgres quirks — drop DEFAULTs before ALTER COLUMN TYPE, drop dependent policies before changing the column they reference, drop dependent triggers before dropping their function with CASCADE.

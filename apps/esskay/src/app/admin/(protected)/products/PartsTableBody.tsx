@@ -8,7 +8,7 @@ import { formatDateAdded } from '@/lib/format'
 
 type Visibility = 'public' | 'internal' | 'ebay_only'
 
-interface Part {
+export interface Part {
   id: string
   title: string
   sku: string
@@ -22,12 +22,51 @@ interface Part {
   visibility: Visibility
   linked_listing_id: string | null
   created_at: string
+  category_label: string | null
 }
 
 const visibilityBadge: Record<Visibility, { variant: 'green' | 'gray' | 'orange'; label: string }> = {
   public:    { variant: 'green',  label: 'Public'    },
   internal:  { variant: 'gray',   label: 'Internal'  },
   ebay_only: { variant: 'orange', label: 'eBay Only' },
+}
+
+function conditionStyles(condition: ProductCondition): string {
+  if (condition === 'new' || condition === 'nos') return 'bg-green-100 text-green-800'
+  if (condition === 'used_good' || condition === 'used_fair') return 'bg-gray-100 text-gray-700'
+  return 'bg-amber-100 text-amber-700'
+}
+
+function ConditionBadge({ condition }: { condition: ProductCondition | null }) {
+  if (!condition) return <span className="text-site-muted">—</span>
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${conditionStyles(condition)}`}>
+      {conditionLabel[condition]}
+    </span>
+  )
+}
+
+function StockDot({ qty }: { qty: number }) {
+  if (qty === 0) {
+    return (
+      <svg aria-hidden="true" width="8" height="8" viewBox="0 0 8 8" className="inline-block mr-1 align-middle text-red-500">
+        <circle cx="4" cy="4" r="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    )
+  }
+  if (qty <= 5) {
+    return (
+      <svg aria-hidden="true" width="8" height="8" viewBox="0 0 8 8" className="inline-block mr-1 align-middle text-amber-500">
+        <path d="M4 1A3 3 0 0 1 4 7Z" fill="currentColor" />
+        <circle cx="4" cy="4" r="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    )
+  }
+  return (
+    <svg aria-hidden="true" width="8" height="8" viewBox="0 0 8 8" className="inline-block mr-1 align-middle text-green-600">
+      <circle cx="4" cy="4" r="3.5" fill="currentColor" />
+    </svg>
+  )
 }
 
 function formatPrice(cents: number) {
@@ -97,9 +136,7 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
 
             {/* Condition */}
             <TableCell>
-              <span className="text-site-muted">
-                {part.condition ? conditionLabel[part.condition] : '—'}
-              </span>
+              <ConditionBadge condition={part.condition} />
             </TableCell>
 
             {/* Visibility */}
@@ -113,8 +150,11 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
             </TableCell>
 
             {/* On Hand */}
-            <TableCell className="tabular-nums text-right">
-              {part.qty_on_hand}
+            <TableCell className="tabular-nums">
+              <span className="inline-flex items-center gap-1">
+                <StockDot qty={part.qty_on_hand} />
+                {part.qty_on_hand}
+              </span>
             </TableCell>
 
             {/* Price */}

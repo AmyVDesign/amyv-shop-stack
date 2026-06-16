@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Table, TableHeader, TableRow, TableCell, EmptyState } from '@amyv/ui'
-import { PartsTableBody } from './PartsTableBody'
+import { PartsClient } from './PartsClient'
 
 export default async function PartsPage() {
   const supabase = await createClient()
@@ -9,10 +8,9 @@ export default async function PartsPage() {
   const { data, error } = await supabase
     .from('products')
     .select(
-      'id, title, sku, part_number, vendor, condition, photo_urls, price_cents, qty_on_hand, qty_for_sale, visibility, linked_listing_id, created_at'
+      'id, title, sku, part_number, vendor, condition, photo_urls, price_cents, qty_on_hand, qty_for_sale, visibility, linked_listing_id, created_at, category_label'
     )
     .order('created_at', { ascending: false })
-    .limit(50)
 
   if (error) {
     console.error('[products page] query failed:', error)
@@ -37,34 +35,8 @@ export default async function PartsPage() {
         <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
           Failed to load parts. Check server logs.
         </div>
-      ) : parts.length === 0 ? (
-        <EmptyState
-          message={
-            <>
-              No parts yet. Click <strong>Add Part</strong> to add your first one.
-            </>
-          }
-        />
       ) : (
-        <div className="rounded-lg border border-site-border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent border-0">
-                <TableCell header>Photo</TableCell>
-                <TableCell header>Date Added</TableCell>
-                <TableCell header>SKU</TableCell>
-                <TableCell header>Part No.</TableCell>
-                <TableCell header>Manufacturer</TableCell>
-                <TableCell header>Condition</TableCell>
-                <TableCell header>Visibility</TableCell>
-                <TableCell header>For Sale</TableCell>
-                <TableCell header>On Hand</TableCell>
-                <TableCell header>Price</TableCell>
-              </TableRow>
-            </TableHeader>
-            <PartsTableBody parts={parts} />
-          </Table>
-        </div>
+        <PartsClient parts={parts} />
       )}
     </div>
   )

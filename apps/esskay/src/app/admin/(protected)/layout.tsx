@@ -44,7 +44,7 @@ export default async function AdminLayout({
             <form action={signOut}>
               <button
                 type="submit"
-                className="text-sm text-site-accent-dark hover:underline whitespace-nowrap"
+                className="text-sm text-site-accent-dark hover:underline whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy rounded"
               >
                 Sign out
               </button>
@@ -53,7 +53,7 @@ export default async function AdminLayout({
         </div>
       </header>
 
-      <main className="w-full">{children}</main>
+      <main className="w-full px-8 lg:px-16 py-8">{children}</main>
     </div>
   )
 }

@@ -62,6 +62,7 @@ export type Database = {
         Row: {
           address_line_1: string | null
           address_line_2: string | null
+          boat_note: string | null
           city: string | null
           country: string | null
           created_at: string
@@ -77,6 +78,7 @@ export type Database = {
         Insert: {
           address_line_1?: string | null
           address_line_2?: string | null
+          boat_note?: string | null
           city?: string | null
           country?: string | null
           created_at?: string
@@ -92,6 +94,7 @@ export type Database = {
         Update: {
           address_line_1?: string | null
           address_line_2?: string | null
+          boat_note?: string | null
           city?: string | null
           country?: string | null
           created_at?: string

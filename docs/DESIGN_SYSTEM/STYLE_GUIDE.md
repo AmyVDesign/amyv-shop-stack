@@ -64,7 +64,7 @@ Never mix serifs and sans-serifs at the same hierarchy level. A Source Serif 4 H
 |-----------|---------|---------|
 | `<Button>` | Primary actions only: save, submit, confirm. | Navigation. For navigation, use a Link. |
 | `<Badge>` | Status display: condition, visibility, stock state. | Selectable filters. For filters, use chip-style buttons with `aria-pressed`. |
-| `<Card>` | Bounded content groups that carry their own context (product detail blocks, stat groups). | Every section on a page. Cards add visual weight; use sparingly. |
+| `<Card>` | Bounded content groups that carry their own context (product detail blocks, stat groups). Cards are flat: `border border-site-border rounded-xl`, no background fill. Use `<Card>`, do not hand-roll card divs. | Every section on a page. Cards add visual weight; use sparingly. |
 | `<EmptyState>` | Any list or table with zero items. | Loading states. Use a skeleton or spinner for in-progress fetches. |
 
 ---
@@ -115,6 +115,14 @@ Azure and coral **must not** be used as foreground text color on light backgroun
 **Do:** Consistent padding from the card primitive (`p-6`).
 
 **Don't:** Ad-hoc inline padding values (`pt-3 pb-7 pl-4 pr-10`). Inconsistent across components.
+
+### Page gutters
+
+Admin pages inherit their horizontal and vertical gutter from the protected layout (`apps/esskay/src/app/admin/(protected)/layout.tsx`). The `<main>` element is the single source of page spacing.
+
+**Do:** Let the layout supply the gutter. Page components start with `<div>` or `<section>`, no padding.
+
+**Don't:** Add `px-*` or `py-*` to the outermost wrapper of an admin page. It creates inconsistent spacing when the layout gutter changes.
 
 ### Typography
 

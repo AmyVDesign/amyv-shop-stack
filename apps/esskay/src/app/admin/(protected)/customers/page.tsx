@@ -40,7 +40,7 @@ export default async function CustomersPage() {
   }))
 
   return (
-    <div className="px-6 py-8 max-w-4xl">
+    <div>
       <h1 className="text-2xl font-display font-semibold text-site-text mb-6">Customers</h1>
 
       {tableRows.length === 0 ? (

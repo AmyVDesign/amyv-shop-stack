@@ -73,6 +73,12 @@ Dark palette with neon green. Same token architecture, different values.
 
 ---
 
+## Page gutters
+
+Admin pages inherit their horizontal and vertical gutter from the protected layout. The `<main>` element in `apps/esskay/src/app/admin/(protected)/layout.tsx` sets `px-8 lg:px-16 py-8`. Pages must not re-add page padding (`px-*`, `py-*`) on their outermost wrapper -- the layout is the single source of page spacing.
+
+---
+
 ## Spacing scale
 
 | Name | Value | Tailwind |

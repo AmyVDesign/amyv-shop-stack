@@ -6,6 +6,7 @@ import { OrderCard } from './OrderCard'
 import type { OrderWithItems } from './OrderCard'
 import { TasksSection } from './TasksSection'
 import { HistoryAccordion } from './HistoryAccordion'
+import { BoatNote } from './BoatNote'
 
 type CustomerTask = Database['public']['Tables']['customer_tasks']['Row']
 
@@ -58,7 +59,7 @@ export default async function CustomerProfilePage({
   const location = [c.city, c.state].filter(Boolean).join(', ')
 
   return (
-    <div className="px-6 py-8 max-w-4xl">
+    <div>
       <Link
         href="/admin/customers"
         className="text-sm text-site-muted hover:text-site-text mb-6 inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy rounded"
@@ -82,7 +83,7 @@ export default async function CustomerProfilePage({
         >
           Contact
         </h2>
-        <div className="border border-site-border rounded-xl p-6 bg-site-bg-alt">
+        <div className="border border-site-border rounded-xl p-6">
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
             {(c.first_name || c.last_name) && (
               <div>
@@ -100,6 +101,13 @@ export default async function CustomerProfilePage({
                 <dd className="text-site-text mt-0.5">{c.email}</dd>
               </div>
             )}
+            <div className="sm:col-span-2">
+              <dt className="text-site-muted">Boat</dt>
+              <dd className="mt-1">
+                <BoatNote phone={phone} initialNote={c.boat_note} />
+              </dd>
+            </div>
+
             {c.address_line_1 && (
               <div className="sm:col-span-2">
                 <dt className="text-site-muted">Address</dt>

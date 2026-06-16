@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import { createTask, completeTask } from './actions'
 import type { Database } from '@amyv/supabase/types'
 
@@ -43,12 +43,17 @@ export function TasksSection({ phone, openTasks }: TasksSectionProps) {
   const [confirmation, setConfirmation] = useState('')
   const [formError, setFormError] = useState('')
   const [isPending, startTransition] = useTransition()
+  const firstFieldRef = useRef<HTMLSelectElement>(null)
 
   useEffect(() => {
     if (!confirmation) return
     const t = setTimeout(() => setConfirmation(''), 4000)
     return () => clearTimeout(t)
   }, [confirmation])
+
+  useEffect(() => {
+    if (showForm) firstFieldRef.current?.focus()
+  }, [showForm])
 
   function resetForm() {
     setType('call_back')
@@ -94,7 +99,7 @@ export function TasksSection({ phone, openTasks }: TasksSectionProps) {
           <button
             type="button"
             onClick={() => setShowForm(true)}
-            className="text-sm font-medium text-site-accent-dark hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy rounded"
+            className="rounded-xl text-sm font-medium px-4 py-2 bg-site-bg border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy"
           >
             Add task
           </button>
@@ -112,7 +117,7 @@ export function TasksSection({ phone, openTasks }: TasksSectionProps) {
       </div>
 
       {showForm && (
-        <div className="border border-site-border rounded-xl p-4 mb-4 bg-site-bg-alt">
+        <div className="border border-site-border rounded-xl p-4 mb-4">
           <div className="space-y-3">
             <div>
               <label
@@ -122,6 +127,7 @@ export function TasksSection({ phone, openTasks }: TasksSectionProps) {
                 Type <span aria-hidden="true" className="text-site-accent-coral-dark">*</span>
               </label>
               <select
+                ref={firstFieldRef}
                 id={typeId}
                 value={type}
                 onChange={(e) => setType(e.target.value as TaskType)}
@@ -192,7 +198,7 @@ export function TasksSection({ phone, openTasks }: TasksSectionProps) {
         {openTasks.map((task) => (
           <li
             key={task.id}
-            className="border border-site-border rounded-xl p-4 bg-site-bg-alt"
+            className="border border-site-border rounded-xl p-4"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">

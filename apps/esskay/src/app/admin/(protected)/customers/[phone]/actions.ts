@@ -36,6 +36,26 @@ export async function createTask(
   return {}
 }
 
+export async function updateBoatNote(
+  customer_phone: string,
+  boat_note: string,
+): Promise<void> {
+  const trimmed = boat_note.trim()
+  if (trimmed.length > 1000) return
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('customers')
+    .update({ boat_note: trimmed || null })
+    .eq('phone', customer_phone)
+
+  if (error) {
+    console.error('[updateBoatNote]', error)
+  }
+
+  revalidatePath(`/admin/customers/${encodeURIComponent(customer_phone)}`)
+}
+
 export async function completeTask(taskId: string, customer_phone: string): Promise<void> {
   const supabase = await createClient()
 

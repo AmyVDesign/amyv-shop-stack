@@ -34,7 +34,7 @@ function StatCard({ count, label, href }: StatCardProps) {
   return (
     <Link
       href={href}
-      className="block bg-white border border-[#0F3A57]/10 rounded-lg p-6 hover:border-[#0F3A57]/30 transition-colors"
+      className="block border border-site-border rounded-xl p-6 hover:border-site-accent-dark/30 transition-colors"
     >
       <p className="text-4xl font-bold text-site-accent-dark">{count}</p>
       <p className="text-sm text-site-muted mt-1">{label}</p>
@@ -47,7 +47,7 @@ export default async function AdminHomePage() {
   const { partsInStock, ordersPending, watchListOpen } = await getCounts(supabase)
 
   return (
-    <div className="px-6 py-8">
+    <div>
       <h1 className="text-2xl font-semibold text-site-text mb-6">Welcome back</h1>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
         <StatCard

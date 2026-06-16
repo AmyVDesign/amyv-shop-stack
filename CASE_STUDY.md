@@ -311,6 +311,18 @@ by inspection and catching them by construction.
 
 ---
 
+### Editable boat note and a documented page gutter
+
+**Situation:** The profile sat jammed against the left edge, cards mixed filled and unfilled backgrounds, and a customer's boat, the single most useful thing for staff to know, had nowhere to live.
+
+**Decision:** Move the page gutter into the admin layout as one documented standard so every screen is spaced the same, flatten all cards to one treatment, and add an editable Boat note to the contact card backed by a single text column.
+
+**Outcome:** Consistent spacing and card styling across the admin from one source, plus a fast place for staff to record each customer's boat for parts matching.
+
+**Why it's worth telling:** Same theme as the table and card work: promote a one-off into a documented system rule so consistency is the default, not a per-screen cleanup. The boat note is designing to the domain rather than shipping a generic CRM.
+
+---
+
 ## Sections to add as we go
 
 - **Loom demo script** (when you record the walkthrough video)

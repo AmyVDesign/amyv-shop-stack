@@ -1,17 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useId } from 'react'
+import { Table, TableHeader, TableRow, TableCell } from '@amyv/ui'
 import type { Database } from '@amyv/supabase/types'
 
 type CustomerTask   = Database['public']['Tables']['customer_tasks']['Row']
 type CustomerChange = Database['public']['Tables']['customer_changes']['Row']
 
 const TASK_TYPE_LABEL: Record<string, string> = {
-  call_back:    'Call back',
-  refund:       'Refund',
-  follow_up:    'Follow up',
-  order_issue:  'Order issue',
-  other:        'Other',
+  call_back:   'Call back',
+  refund:      'Refund',
+  follow_up:   'Follow up',
+  order_issue: 'Order issue',
+  other:       'Other',
 }
 
 function formatDate(iso: string): string {
@@ -22,10 +23,6 @@ function formatDate(iso: string): string {
   })
 }
 
-type Entry =
-  | { kind: 'task';   date: string; data: CustomerTask }
-  | { kind: 'change'; date: string; data: CustomerChange }
-
 interface Props {
   tasks:   CustomerTask[]
   changes: CustomerChange[]
@@ -33,14 +30,8 @@ interface Props {
 
 export function HistoryAccordion({ tasks, changes }: Props) {
   const [open, setOpen] = useState(false)
-  const panelId = 'history-panel'
-
-  const entries: Entry[] = [
-    ...tasks.map((t): Entry => ({ kind: 'task',   date: t.completed_at ?? t.created_at, data: t })),
-    ...changes.map((c): Entry => ({ kind: 'change', date: c.changed_at, data: c })),
-  ].sort((a, b) => Date.parse(b.date) - Date.parse(a.date))
-
-  const count = entries.length
+  const panelId = useId()
+  const total = tasks.length + changes.length
 
   return (
     <section aria-labelledby="history-heading">
@@ -57,54 +48,90 @@ export function HistoryAccordion({ tasks, changes }: Props) {
           </span>
           History
           <span className="text-base font-normal text-site-muted">
-            ({count} {count === 1 ? 'event' : 'events'})
+            ({total} {total === 1 ? 'event' : 'events'})
           </span>
         </button>
       </h2>
 
-      <div id={panelId} hidden={!open}>
-        <ul className="space-y-3">
-          {entries.map((entry) => {
-            if (entry.kind === 'task') {
-              const task = entry.data
-              return (
-                <li key={`task-${task.id}`} className="border border-site-border rounded-xl p-4 opacity-70">
-                  <p className="text-xs font-medium text-site-muted uppercase tracking-wide mb-1">
-                    {TASK_TYPE_LABEL[task.type] ?? task.type}
-                  </p>
-                  <p className="text-sm text-site-text">{task.body}</p>
-                  <p className="text-xs text-site-muted mt-1.5">
-                    {task.created_by ?? 'Staff'} &middot; {formatDate(task.created_at)}
-                    {task.completed_at && <> &middot; Done {formatDate(task.completed_at)}</>}
-                  </p>
-                </li>
-              )
-            }
+      <div id={panelId} hidden={!open} className="space-y-8">
 
-            const change = entry.data
-            const oldVal = change.old_value
-            const newVal = change.new_value
-            return (
-              <li key={`change-${change.id}`} className="border border-site-border rounded-xl p-4 opacity-70">
-                <p className="text-xs font-medium text-site-muted uppercase tracking-wide mb-1">
-                  {change.field} changed
-                </p>
-                <p className="text-sm text-site-text">
-                  <span className={oldVal ? undefined : 'text-site-muted italic'}>
-                    {oldVal ?? '(empty)'}
-                  </span>
-                  {' → '}
-                  <span className={newVal ? undefined : 'text-site-muted italic'}>
-                    {newVal ?? '(empty)'}
-                  </span>
-                </p>
-                <p className="text-xs text-site-muted mt-1.5">
-                  {change.changed_by ?? 'Staff'} &middot; {formatDate(change.changed_at)}
-                </p>
-              </li>
-            )
-          })}
-        </ul>
+        {/* Task History */}
+        <section aria-labelledby="task-history-heading">
+          <h3
+            id="task-history-heading"
+            className="text-xs font-medium text-site-muted uppercase tracking-wide mb-3"
+          >
+            Task History
+          </h3>
+          {tasks.length === 0 ? (
+            <p className="text-sm text-site-muted">No tasks yet.</p>
+          ) : (
+            <ul className="space-y-3">
+              {tasks
+                .slice()
+                .sort((a, b) => Date.parse(b.completed_at ?? b.created_at) - Date.parse(a.completed_at ?? a.created_at))
+                .map((task) => (
+                  <li key={task.id} className="border border-site-border rounded-xl p-4 opacity-70">
+                    <p className="text-xs font-medium text-site-muted uppercase tracking-wide mb-1">
+                      {TASK_TYPE_LABEL[task.type] ?? task.type}
+                    </p>
+                    <p className="text-sm text-site-text">{task.body}</p>
+                    <p className="text-xs text-site-muted mt-1.5">
+                      {task.created_by ?? 'Staff'} &middot; {formatDate(task.created_at)}
+                      {task.completed_at && <> &middot; Done {formatDate(task.completed_at)}</>}
+                    </p>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Contact History */}
+        <section aria-labelledby="contact-history-heading">
+          <h3
+            id="contact-history-heading"
+            className="text-xs font-medium text-site-muted uppercase tracking-wide mb-3"
+          >
+            Contact History
+          </h3>
+          {changes.length === 0 ? (
+            <p className="text-sm text-site-muted">No changes yet.</p>
+          ) : (
+            <div className="border border-site-border rounded-xl overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableCell header>Original &rarr; New</TableCell>
+                    <TableCell header>Date Changed</TableCell>
+                    <TableCell header>Changed By</TableCell>
+                  </TableRow>
+                </TableHeader>
+                <tbody>
+                  {changes
+                    .slice()
+                    .sort((a, b) => Date.parse(b.changed_at) - Date.parse(a.changed_at))
+                    .map((change) => (
+                      <TableRow key={change.id}>
+                        <TableCell>
+                          <span className="block text-xs text-site-muted mb-0.5">{change.field}</span>
+                          <span className={change.old_value ? 'text-sm text-site-text' : 'text-sm text-site-muted italic'}>
+                            {change.old_value ?? '(empty)'}
+                          </span>
+                          {' → '}
+                          <span className={change.new_value ? 'text-sm text-site-text' : 'text-sm text-site-muted italic'}>
+                            {change.new_value ?? '(empty)'}
+                          </span>
+                        </TableCell>
+                        <TableCell>{formatDate(change.changed_at)}</TableCell>
+                        <TableCell>{change.changed_by ?? 'Staff'}</TableCell>
+                      </TableRow>
+                    ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
+        </section>
+
       </div>
     </section>
   )

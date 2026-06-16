@@ -125,12 +125,10 @@ export default async function CustomerProfilePage({
         <TasksSection phone={phone} openTasks={openTasks} />
       </div>
 
-      {/* History -- merged timeline of done tasks and contact changes */}
-      {(doneTasks.length > 0 || changes.length > 0) && (
-        <div className="mb-8">
-          <HistoryAccordion tasks={doneTasks} changes={changes} />
-        </div>
-      )}
+      {/* History -- task history + contact change log */}
+      <div className="mb-8">
+        <HistoryAccordion tasks={doneTasks} changes={changes} />
+      </div>
 
       {/* Stays placeholder */}
       <section aria-labelledby="stays-heading" className="mb-8">

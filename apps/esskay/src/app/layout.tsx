@@ -9,7 +9,7 @@ const inter = Inter({
 
 const sourceSerif4 = Source_Serif_4({
   subsets: ['latin'],
-  weight: ['400', '600'],
+  weight: ['300', '400', '500', '600', '700'],
   variable: '--font-display',
 })
 

@@ -3,7 +3,15 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
-  expect: { timeout: 8_000 },
+  expect: {
+    timeout: 8_000,
+    // Visual regression defaults -- applied to every toHaveScreenshot() call
+    toHaveScreenshot: {
+      animations: 'disabled',
+      // 1% pixel tolerance absorbs sub-pixel anti-aliasing differences
+      maxDiffPixelRatio: 0.01,
+    },
+  },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

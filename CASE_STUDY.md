@@ -287,6 +287,18 @@ by inspection and catching them by construction.
 
 ---
 
+### Visual regression guarding the design system
+
+**Situation:** Logic tests and accessibility checks pass even when the UI renders wrong. A token shift or a reverted style is invisible to them, exactly the class behind an earlier theme-not-rendering confusion.
+
+**Decision:** Add Playwright visual regression with the living style-guide page as the primary baseline. Because that page renders the whole component library and token system, and a second shot captures the alternate theme, one small suite guards the look of the entire design system. Dynamic content is masked and animations are disabled so diffs stay meaningful.
+
+**Outcome:** A color, layout, or token regression now surfaces as a failed pixel diff with a visible before and after, instead of shipping unnoticed.
+
+**Why it's worth telling:** This closes the last gap in the verification stack. Logic, structure, contrast, and now appearance are each guarded by the check best suited to catch them. The style-guide page earns a second job as the visual baseline for everything it documents.
+
+---
+
 ## Sections to add as we go
 
 - **Loom demo script** (when you record the walkthrough video)

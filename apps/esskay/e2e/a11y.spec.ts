@@ -75,6 +75,27 @@ test.describe('Authenticated admin pages', () => {
     expect(serious, 'Serious/critical axe violations on /admin/products').toHaveLength(0)
   })
 
+  test('/admin/design-system has no serious axe violations', async ({ page }) => {
+    const authed = await goToAdmin(page, '/admin/design-system')
+    if (!authed) {
+      test.skip(true, 'No admin credentials (E2E_EMAIL/E2E_PASSWORD not set) -- skipping')
+    }
+    await page.waitForLoadState('networkidle')
+
+    const results = await new AxeBuilder({ page })
+      .withTags(AXE_TAGS)
+      .options({ rules: ENABLED_RULES })
+      .analyze()
+
+    const serious = results.violations.filter(
+      (v) => v.impact === 'serious' || v.impact === 'critical'
+    )
+    if (serious.length) {
+      console.log('Axe violations on /admin/design-system:\n' + formatViolations(serious))
+    }
+    expect(serious, 'Serious/critical axe violations on /admin/design-system').toHaveLength(0)
+  })
+
   test('product detail page has no serious axe violations', async ({ page }) => {
     const authed = await goToAdmin(page, '/admin/products')
     if (!authed) {

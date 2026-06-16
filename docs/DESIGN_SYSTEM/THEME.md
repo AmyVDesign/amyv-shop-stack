@@ -28,7 +28,7 @@ The configuration. CSS variables, color values, font scales.
 
 ---
 
-## Color tokens &mdash; Ess-Kay Yards
+## Color tokens -- Ess-Kay Yards
 
 Coastal-modern palette: cream, navy, azure, driftwood, coral.
 
@@ -56,7 +56,7 @@ See [STYLE_GUIDE.md](STYLE_GUIDE.md) for when to use each accent.
 
 ---
 
-## Color tokens &mdash; Galaxy SF
+## Color tokens -- Galaxy SF
 
 Dark palette with neon green. Same token architecture, different values.
 
@@ -97,7 +97,7 @@ Dark palette with neon green. Same token architecture, different values.
 | lg | 12 | `rounded-lg` |
 | xl | 16 | `rounded-xl` (`--site-radius`) |
 | 2xl | 20 | `rounded-2xl` (`--site-card-radius`) |
-| full | &mdash; | `rounded-full` |
+| full | -- | `rounded-full` |
 
 Design-system tokens `--site-radius` (16px) and `--site-card-radius` (20px) map to `rounded-xl` and `rounded-2xl` respectively. Prefer the token over the raw Tailwind class in component style attributes.
 
@@ -111,6 +111,30 @@ Design-system tokens `--site-radius` (16px) and `--site-card-radius` (20px) map 
 | `--label-tracking` | `0.12em` | Uppercase labels, small caps |
 | `--site-body-size` | `16px` | Base font size |
 | `--site-h2-size` | `clamp(24px, 2.8vw, 32px)` | Fluid H2 |
+
+---
+
+## Motion tokens
+
+| Token | Value | Use |
+|-------|-------|-----|
+| `--site-duration-fast` | `120ms` | Hover, focus, and small single-property state transitions |
+| `--site-duration-base` | `200ms` | Larger or multi-property transitions |
+| `--site-ease` | `cubic-bezier(0.2, 0, 0, 1)` | Shared easing curve for all transitions |
+
+A `prefers-reduced-motion: reduce` block in `globals.css` collapses every animation and transition duration to `0.01ms` and sets `scroll-behavior: auto`. Motion degrades to instant without removing the visual state change itself.
+
+Reference the tokens in component styles rather than ad-hoc millisecond values:
+
+```css
+/* CSS property */
+transition: background-color var(--site-duration-fast) var(--site-ease);
+```
+
+```tsx
+{/* Tailwind arbitrary value */}
+className="transition-colors [transition-duration:var(--site-duration-fast)] [transition-timing-function:var(--site-ease)]"
+```
 
 ---
 

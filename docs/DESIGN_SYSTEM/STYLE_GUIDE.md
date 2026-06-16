@@ -82,7 +82,7 @@ Enforced by the a11y-reviewer subagent on every commit.
 7. No positive `tabIndex` values anywhere in the component tree. (WCAG 2.4.3)
 8. Color is never the sole indicator of state. Always pair with text, icon, or pattern. (WCAG 1.4.1)
 
-### Contrast reference &mdash; new palette
+### Contrast reference -- new palette
 
 | Pair | Ratio | Pass? |
 |------|-------|-------|
@@ -120,7 +120,7 @@ Azure and coral **must not** be used as foreground text color on light backgroun
 
 **Do:** `font-display` heading followed by `font-body` paragraph. Clear typographic hierarchy.
 
-**Don't:** Fonts swapped &mdash; sans-serif heading, serif body. Hierarchy collapses; both levels compete.
+**Don't:** Fonts swapped -- sans-serif heading, serif body. Hierarchy collapses; both levels compete.
 
 ---
 
@@ -128,5 +128,35 @@ Azure and coral **must not** be used as foreground text color on light backgroun
 
 These rules are enforced programmatically by two reviewer subagents running on every commit:
 
-- **a11y-reviewer** &mdash; checks WCAG 2.2 AA criteria per-criterion with explicit pass/warn/fail output. See `.claude/agents/a11y-reviewer.md`.
-- **reviewer** &mdash; checks UX conventions, schema patterns, and privacy (no hardcoded hex, no "AI" in user-facing strings, no em dashes in JSX text content). See `.claude/agents/reviewer.md`.
+- **a11y-reviewer** -- checks WCAG 2.2 AA criteria per-criterion with explicit pass/warn/fail output. See `.claude/agents/a11y-reviewer.md`.
+- **reviewer** -- checks UX conventions, schema patterns, and privacy (no hardcoded hex, no "AI" in user-facing strings, no em dashes in JSX text content). See `.claude/agents/reviewer.md`.
+
+---
+
+## Motion
+
+Motion communicates state change. It does not decorate.
+
+### Affordance rule
+
+Interactive elements signal interactivity through a **hover color shift**: a change in background color, border color, or text color. No element lifts, scales, or translates on hover. The visual affordance is color, not position.
+
+### Current behavior by component
+
+| Component | Hover | Focus | Active / selected |
+|-----------|-------|-------|-------------------|
+| `Button` primary | Background lightens: `bg-site-accent-dark` to `bg-site-accent` | n/a (pointer-only) | -- |
+| `Button` secondary | Background tints: to `bg-site-accent-light` | n/a | -- |
+| `Button` ghost | Underline appears | n/a | -- |
+| AdminNav link | Text and bg tint: `text-site-accent-dark bg-site-accent-dark/8` | `ring-2 ring-site-accent-navy` | Same as hover |
+| Filter/sort dropdown trigger | Border and bg tint: `border-site-accent-azure-dark bg-site-accent-azure-light/40` | -- | `border-site-accent-navy bg-site-accent-azure-light/40 text-site-accent-navy` |
+| Search input | -- | `ring-2 ring-site-accent-navy` | -- |
+
+All components use `transition-colors`. The motion tokens (`--site-duration-fast`, `--site-duration-base`, `--site-ease`) are defined in `globals.css` and applied in new component work; existing components will be migrated in a dedicated motion pass.
+
+### Rules
+
+- **Color shift, not lift.** Hover must not translate, scale, or shadow an element. Color change only.
+- **Focus ring always.** No `outline: none` or `outline-hidden` without a `focus-visible:ring-2` replacement. Ring color is `site-accent-navy` for admin controls.
+- **Token-driven timing.** New component work references `--site-duration-fast` (hover and small single-property transitions) or `--site-duration-base` (larger or multi-property transitions). No ad-hoc `ms` values in component files.
+- **Prefers-reduced-motion.** The `globals.css` block collapses all durations to `0.01ms` automatically. Components do not need their own `prefers-reduced-motion` guards.

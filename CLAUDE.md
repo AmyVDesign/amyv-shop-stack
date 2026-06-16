@@ -26,6 +26,15 @@ Before pausing at a checkpoint or saying a task is complete, run these checks an
 - `qty_on_hand` / `qty_for_sale` exposed in public storefront routes → privacy decision
 - Any fix where the correct replacement is genuinely ambiguous
 
+### Agent gating — which reviewers to run
+
+Before invoking a reviewer, check `git diff HEAD~1 HEAD --name-only`:
+
+- **reviewer** — run on any code or content change, scoped to the diff. For docs-only (`.md`) changes: em-dash and wording checks only.
+- **a11y-reviewer** — run only when the diff touches `.tsx`, `.jsx`, `.css`, `globals.css`, or files under `packages/ui/`. Skip for docs-only, config-only (`.json`, `.yaml`), or SQL-only changes.
+
+Both agents read the diff first; they open full files only when context requires it. Do not invoke either agent wider than the changed file set.
+
 For any task touching TypeScript files:
 
 - `cd apps/esskay && npx tsc --noEmit` → must produce no output (zero errors)

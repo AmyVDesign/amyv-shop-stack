@@ -121,7 +121,7 @@ function MultiFilterDropdown({
           'inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm transition-colors whitespace-nowrap',
           hasActive
             ? 'border-site-accent-navy bg-site-accent-azure-light/40 text-site-accent-navy'
-            : 'border-site-border bg-white text-site-text hover:border-site-accent-azure-light',
+            : 'border-site-border bg-white text-site-text hover:border-site-accent-azure-dark hover:bg-site-accent-azure-light/40',
         ].join(' ')}
       >
         {buttonLabel}
@@ -141,7 +141,7 @@ function MultiFilterDropdown({
               type="checkbox"
               checked={isAll}
               onChange={toggleAll}
-              className="[accent-color:var(--site-accent-azure)]"
+              className="[accent-color:var(--site-accent-azure-dark)]"
             />
             All
           </label>
@@ -157,7 +157,7 @@ function MultiFilterDropdown({
                 type="checkbox"
                 checked={selected.includes(opt.value)}
                 onChange={() => toggleOption(opt.value)}
-                className="[accent-color:var(--site-accent-azure)]"
+                className="[accent-color:var(--site-accent-azure-dark)]"
               />
               {opt.label}
             </label>
@@ -212,7 +212,7 @@ function SortDropdown({
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-site-border bg-white px-3 py-2 text-sm text-site-text hover:border-site-accent-azure-light transition-colors whitespace-nowrap"
+        className="inline-flex items-center gap-1.5 rounded-xl border border-site-border bg-white px-3 py-2 text-sm text-site-text hover:border-site-accent-azure-dark hover:bg-site-accent-azure-light/40 transition-colors whitespace-nowrap"
       >
         {currentLabel}
         <ChevronDown />
@@ -237,7 +237,7 @@ function SortDropdown({
                 value={opt.value}
                 checked={value === opt.value}
                 onChange={() => { onChange(opt.value); setOpen(false) }}
-                className="[accent-color:var(--site-accent-azure)]"
+                className="[accent-color:var(--site-accent-azure-dark)]"
               />
               {opt.label}
             </label>

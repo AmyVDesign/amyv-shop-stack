@@ -105,3 +105,59 @@ body {
 input, button, select, textarea {
   font-family: inherit;
 }
+
+/* Motion tokens */
+:root {
+  --site-duration-fast: 120ms;
+  --site-duration-base: 200ms;
+  --site-ease:          cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Reduced motion: keep focus indicators, remove non-essential motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1      !important;
+    transition-duration:       0.01ms !important;
+    scroll-behavior:           auto   !important;
+  }
+}
+
+/* Galaxy SF theme override -- sourced from apps/galaxy/src/app/globals.css
+   Applied via data-theme="galaxy" on a container element.
+   Stands in for the Galaxy SF token set when the shared component library
+   is previewed under the second brand surface. */
+[data-theme="galaxy"] {
+  --site-bg:                     #0a0a0f;
+  --site-bg-alt:                 #14141c;
+  --site-border:                 #2a2a35;
+  --site-text:                   #ffffff;
+  --site-text-soft:              #e0e0e0;
+  --site-muted:                  #9090a0;
+
+  --site-accent-navy:            #39ff14;
+  --site-accent-navy-dark:       #1f8a0a;
+  --site-accent-navy-light:      #c8ffb8;
+
+  --site-accent-azure:           #39ff14;
+  --site-accent-azure-dark:      #1f8a0a;
+  --site-accent-azure-light:     #1a3a1a;
+
+  --site-accent-driftwood:       #9090a0;
+  --site-accent-driftwood-dark:  #707080;
+  --site-accent-driftwood-light: #2a2a35;
+
+  --site-accent-coral:           #ff4466;
+  --site-accent-coral-dark:      #cc2244;
+  --site-accent-coral-light:     #3a1122;
+
+  --site-accent:                 var(--site-accent-navy);
+  --site-accent-dark:            var(--site-accent-navy-dark);
+  --site-accent-light:           var(--site-accent-navy-light);
+
+  --font-display:                system-ui, sans-serif;
+  --font-body:                   system-ui, sans-serif;
+
+  --site-radius:                 8px;
+  --site-card-radius:            8px;
+}

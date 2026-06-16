@@ -203,6 +203,33 @@ On a successful iteration, the orchestrator updates the backlog status to `[DONE
 
 ---
 
+### A living style guide, not just a markdown spec
+
+**Situation:** After the coastal-modern palette pass and the a11y verification cycle,
+the design system existed as a set of CSS variables in globals.css and a markdown
+document. Neither stays automatically in sync as components change.
+
+**Decision:** Build the style guide as a rendered admin route
+(/admin/design-system) that reads token values at runtime via `getComputedStyle`,
+renders all @amyv/ui components in every variant and state in the live token
+environment, shows the five WCAG catches from the palette pass as before/after
+swatch pairs, and demos the Galaxy SF theme by applying a `[data-theme="galaxy"]`
+attribute to a preview container -- no component source changes required.
+
+**Outcome:** One page that cannot drift from the code. Any change to globals.css
+or @amyv/ui shows up in the style guide on the next reload, because it is
+rendering the components in their actual environment, not screenshots or static
+copies. The token hex values are read client-side at mount via `getComputedStyle(document.documentElement)`,
+so the page satisfies the no-hardcoded-hex-in-source convention even while
+displaying resolved hex strings.
+
+**Why it's worth telling:** A static style guide is a documentation artifact that
+requires a second person to keep in sync with the codebase. A living style guide
+is a constraint: the code is the spec. Showing that distinction in a working demo
+is more convincing than describing it in a slide.
+
+---
+
 ## Sections to add as we go
 
 - **Loom demo script** (when you record the walkthrough video)

@@ -25,7 +25,7 @@ export default async function PartsPage() {
         <h1 className="text-2xl font-semibold text-site-text">Parts</h1>
         <Link
           href="/admin/products/new"
-          className="rounded font-body font-medium transition-colors text-sm px-4 py-2 bg-site-bg border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light"
+          className="rounded-xl font-body font-medium transition-colors text-sm px-4 py-2 bg-site-bg border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light"
         >
           Add Part
         </Link>

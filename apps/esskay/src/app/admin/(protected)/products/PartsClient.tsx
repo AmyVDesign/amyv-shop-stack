@@ -118,7 +118,7 @@ function MultiFilterDropdown({
         onClick={() => setOpen((o) => !o)}
         onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
         className={[
-          'inline-flex items-center gap-1.5 rounded border px-3 py-2 text-sm transition-colors whitespace-nowrap',
+          'inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm transition-colors whitespace-nowrap',
           hasActive
             ? 'border-site-accent-navy bg-site-accent-azure-light/40 text-site-accent-navy'
             : 'border-site-border bg-white text-site-text hover:border-site-accent-azure-light',
@@ -134,7 +134,7 @@ function MultiFilterDropdown({
           aria-multiselectable="true"
           aria-label={label}
           onKeyDown={onPanelKeyDown}
-          className="absolute left-0 top-full z-20 mt-1 min-w-[160px] rounded-lg border border-site-border bg-white py-1 shadow-lg"
+          className="absolute left-0 top-full z-20 mt-1 min-w-[160px] rounded-xl border border-site-border bg-white py-1 shadow-lg"
         >
           <label className="flex cursor-pointer select-none items-center gap-2.5 px-3 py-2 text-sm hover:bg-site-bg">
             <input
@@ -212,7 +212,7 @@ function SortDropdown({
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
-        className="inline-flex items-center gap-1.5 rounded border border-site-border bg-white px-3 py-2 text-sm text-site-text hover:border-site-accent-azure-light transition-colors whitespace-nowrap"
+        className="inline-flex items-center gap-1.5 rounded-xl border border-site-border bg-white px-3 py-2 text-sm text-site-text hover:border-site-accent-azure-light transition-colors whitespace-nowrap"
       >
         {currentLabel}
         <ChevronDown />
@@ -224,7 +224,7 @@ function SortDropdown({
           aria-multiselectable="false"
           aria-label="Sort by"
           onKeyDown={onPanelKeyDown}
-          className="absolute right-0 top-full z-20 mt-1 min-w-[180px] rounded-lg border border-site-border bg-white py-1 shadow-lg"
+          className="absolute right-0 top-full z-20 mt-1 min-w-[180px] rounded-xl border border-site-border bg-white py-1 shadow-lg"
         >
           {options.map((opt) => (
             <label
@@ -336,7 +336,7 @@ export function PartsClient({ parts }: { parts: Part[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by part number, vendor, or title"
-          className="min-w-0 flex-1 rounded border border-site-border bg-white px-3 py-2 text-sm text-site-text placeholder:text-site-muted focus:outline-none focus:ring-2 focus:ring-site-accent-azure-light"
+          className="w-full sm:w-[360px] rounded-xl border border-site-border bg-white px-3 py-2 text-sm text-site-text placeholder:text-site-muted focus:outline-none focus:ring-2 focus:ring-site-accent-navy"
         />
         <MultiFilterDropdown
           label="Visibility"
@@ -370,7 +370,7 @@ export function PartsClient({ parts }: { parts: Part[] }) {
           No parts match{hasFilters ? ' your filters' : ''}.
         </p>
       ) : (
-        <div className="rounded-lg border border-site-border overflow-hidden">
+        <div className="rounded-xl border border-site-border overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-0">

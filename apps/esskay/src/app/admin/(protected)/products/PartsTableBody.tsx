@@ -49,29 +49,6 @@ function ConditionBadge({ condition }: { condition: ProductCondition | null }) {
   )
 }
 
-function StockDot({ qty }: { qty: number }) {
-  if (qty === 0) {
-    return (
-      <svg aria-hidden="true" width="8" height="8" viewBox="0 0 8 8" className="inline-block mr-1 align-middle text-red-500">
-        <circle cx="4" cy="4" r="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      </svg>
-    )
-  }
-  if (qty <= 5) {
-    return (
-      <svg aria-hidden="true" width="8" height="8" viewBox="0 0 8 8" className="inline-block mr-1 align-middle text-amber-700">
-        <path d="M4 1A3 3 0 0 1 4 7Z" fill="currentColor" />
-        <circle cx="4" cy="4" r="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      </svg>
-    )
-  }
-  return (
-    <svg aria-hidden="true" width="8" height="8" viewBox="0 0 8 8" className="inline-block mr-1 align-middle text-green-600">
-      <circle cx="4" cy="4" r="3.5" fill="currentColor" />
-    </svg>
-  )
-}
-
 function formatPrice(cents: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
 }
@@ -152,16 +129,13 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
             </TableCell>
 
             {/* For Sale */}
-            <TableCell className="tabular-nums text-right">
+            <TableCell className="tabular-nums">
               {part.qty_for_sale}
             </TableCell>
 
             {/* On Hand */}
             <TableCell className="tabular-nums">
-              <span className="inline-flex items-center gap-1">
-                <StockDot qty={part.qty_on_hand} />
-                {part.qty_on_hand}
-              </span>
+              {part.qty_on_hand}
             </TableCell>
 
             {/* Price */}

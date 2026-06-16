@@ -20,7 +20,7 @@ export function TableHeader({
 }: HTMLAttributes<HTMLTableSectionElement>) {
   return (
     <thead
-      className={`bg-site-bg border-b border-site-border ${className}`}
+      className={`border-b border-site-border ${className}`}
       {...props}
     >
       {children}

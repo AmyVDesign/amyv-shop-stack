@@ -1,0 +1,5 @@
+# Playwright saved auth session -- contains session tokens, must never be committed
+e2e/.auth/
+
+# TypeScript incremental build artifact
+tsconfig.tsbuildinfo

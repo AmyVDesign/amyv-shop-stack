@@ -111,7 +111,7 @@ export function InventoryChart({ productId }: { productId: string }) {
             contentStyle={{
               background: 'var(--site-bg-alt)',
               border: '1px solid var(--site-border)',
-              borderRadius: '6px',
+              borderRadius: 'var(--site-radius)',
               fontSize: '12px',
               color: 'var(--site-text)',
             }}

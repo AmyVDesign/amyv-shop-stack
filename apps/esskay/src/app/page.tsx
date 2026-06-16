@@ -1,8 +1,8 @@
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <h1 className="text-4xl font-bold text-site-accent">Ess-Kay Yards</h1>
-      <p className="mt-4 text-site-muted">Marine parts &amp; service — coming soon.</p>
+      <h1 className="text-4xl font-bold text-site-text">Ess-Kay Yards</h1>
+      <p className="mt-4 text-site-muted">Marine parts &amp; service &mdash; coming soon.</p>
     </main>
   );
 }

@@ -10,6 +10,7 @@ export interface CategoryValue {
 }
 
 interface Props {
+  id?: string
   value: CategoryValue | null
   onChange: (value: CategoryValue | null) => void
   required?: boolean
@@ -19,7 +20,7 @@ interface Props {
 const inputClass =
   'w-full rounded border border-site-border bg-white px-3 py-1.5 text-sm text-site-text focus:outline-none focus:ring-1 focus:ring-site-accent'
 
-export function CategoryCombobox({ value, onChange, disabled }: Props) {
+export function CategoryCombobox({ id, value, onChange, disabled }: Props) {
   const [query, setQuery] = useState(value?.label ?? '')
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
@@ -87,6 +88,7 @@ export function CategoryCombobox({ value, onChange, disabled }: Props) {
     <div ref={containerRef} className="relative">
       <div className="relative">
         <input
+          id={id}
           type="text"
           value={query}
           onChange={(e) => {

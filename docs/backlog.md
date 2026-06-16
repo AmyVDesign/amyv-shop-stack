@@ -116,6 +116,25 @@ Icon-only buttons need accessible labels. Currently the X buttons on uploaded ph
 
 ---
 
+### [BLOCKED] TASK-006: Wire sold-qty column in VariantsTable
+**Priority:** low
+**Scope:** single-file
+**Files:** apps/esskay/src/app/admin/(protected)/products/[id]/VariantsTable.tsx
+**Depends on:** orders schema (TASK-003 prerequisite)
+
+#### Acceptance criteria
+- [ ] "Sold" column in VariantsTable shows real sold qty summed from `order_line_items` where `product_id = variant.id`
+- [ ] Displays 0 when no orders exist
+- [ ] Column stays right-aligned, tabular-nums, consistent with On Hand / For Sale columns
+
+#### Context
+Currently hard-coded to 0. Unblocks once the orders table and `order_line_items` schema exist.
+
+#### Notes
+Query: `select sum(qty) from order_line_items where product_id = $1`.
+
+---
+
 ### [NEEDS_HUMAN] TASK-003: Consolidate-on-add server logic
 **Priority:** high
 **Scope:** multi-file

@@ -152,7 +152,7 @@ export function VariantsTable({
                           className="w-12 h-12 object-cover rounded border border-site-border"
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded bg-[#f8f5f0] border border-site-border" />
+                        <div className="w-12 h-12 rounded bg-site-bg border border-site-border" />
                       )}
                     </div>
                   </TableCell>
@@ -162,7 +162,7 @@ export function VariantsTable({
                   </TableCell>
 
                   <TableCell>
-                    <span className="text-sm text-site-muted">—</span>
+                    <span className="text-sm text-site-muted">&mdash;</span>
                   </TableCell>
 
                   <TableCell>
@@ -209,7 +209,7 @@ export function VariantsTable({
                 {newIsExpanded && (
                   <tr className="bg-site-bg">
                     <td colSpan={10} className="px-6 py-4">
-                      <p className="text-xs font-medium uppercase tracking-wide text-site-muted mb-3">
+                      <p className="text-xs font-medium uppercase text-site-muted mb-3" style={{ letterSpacing: 'var(--label-tracking)' }}>
                         Inventory batches
                       </p>
                       {allBatches.length === 0 ? (
@@ -231,7 +231,7 @@ export function VariantsTable({
                                 <td className="py-1.5">{formatDateAdded(b.date)}</td>
                                 <td className="py-1.5 text-right tabular-nums">{deltaLabel(b.onHandAdded)}</td>
                                 <td className="py-1.5 text-right tabular-nums">{deltaLabel(b.forSaleAdded)}</td>
-                                <td className="py-1.5 pl-4">{b.note ?? '—'}</td>
+                                <td className="py-1.5 pl-4">{b.note}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -277,7 +277,7 @@ export function VariantsTable({
                             className="w-12 h-12 object-cover rounded border border-site-border"
                           />
                         ) : (
-                          <div className="w-12 h-12 rounded bg-[#f8f5f0] border border-site-border" />
+                          <div className="w-12 h-12 rounded bg-site-bg border border-site-border" />
                         )}
                       </div>
                     </TableCell>
@@ -292,7 +292,7 @@ export function VariantsTable({
 
                     <TableCell>
                       <span className="text-sm text-site-muted">
-                        {variant.condition ? conditionLabel[variant.condition] : '—'}
+                        {variant.condition ? conditionLabel[variant.condition] : null}
                       </span>
                     </TableCell>
 
@@ -308,7 +308,6 @@ export function VariantsTable({
                       {variant.qty_for_sale}
                     </TableCell>
 
-                    {/* TODO: when orders are implemented, sum qty from order_line_items where product_id = variant.id */}
                     <TableCell className="tabular-nums text-sm text-site-muted text-right">
                       0
                     </TableCell>
@@ -331,7 +330,7 @@ export function VariantsTable({
                   {isExpanded && (
                     <tr className="bg-site-bg">
                       <td colSpan={10} className="px-6 py-4">
-                        <p className="text-xs font-medium uppercase tracking-wide text-site-muted mb-3">
+                        <p className="text-xs font-medium uppercase text-site-muted mb-3" style={{ letterSpacing: 'var(--label-tracking)' }}>
                           Inventory history
                         </p>
                         <table className="w-full text-xs text-site-muted">
@@ -349,7 +348,7 @@ export function VariantsTable({
                                 <td className="py-1.5">{formatDateAdded(e.event_date)}</td>
                                 <td className="py-1.5 text-right tabular-nums">{deltaLabel(e.qty_for_sale_delta)}</td>
                                 <td className="py-1.5 text-right tabular-nums">{deltaLabel(e.qty_on_hand_delta)}</td>
-                                <td className="py-1.5 pl-4">{e.note ?? '—'}</td>
+                                <td className="py-1.5 pl-4">{e.note}</td>
                               </tr>
                             ))}
                           </tbody>

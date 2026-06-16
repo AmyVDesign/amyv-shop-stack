@@ -110,13 +110,13 @@ export default async function PartDetailPage({
           <img
             src={product.photo_urls[0]}
             alt={product.title}
-            className="flex-none w-60 h-60 object-cover rounded-lg border border-site-border"
+            className="flex-none w-60 h-60 object-cover rounded-[var(--site-card-radius)] border border-site-border"
           />
         ) : (
-          <div className="flex-none w-60 h-60 rounded-lg bg-[#f8f5f0] border border-site-border" />
+          <div className="flex-none w-60 h-60 rounded-[var(--site-card-radius)] bg-site-bg border border-site-border" />
         )}
         <div className="space-y-1.5 pt-2">
-          <h1 className="text-2xl font-display font-semibold text-site-text">{product.title}</h1>
+          <h1 className="text-2xl font-display font-semibold text-site-text" style={{ letterSpacing: 'var(--site-heading-letter-spacing)' }}>{product.title}</h1>
           {product.part_number && (
             <p className="font-mono text-sm text-site-muted">{product.part_number}</p>
           )}
@@ -128,7 +128,7 @@ export default async function PartDetailPage({
           <div className="grid grid-cols-4 gap-6 pt-3">
             {stats.map(([label, value]) => (
               <div key={label}>
-                <p className="text-xs uppercase tracking-wide text-site-muted">{label}</p>
+                <p className="text-xs uppercase text-site-muted" style={{ letterSpacing: 'var(--label-tracking)' }}>{label}</p>
                 <p className="text-lg font-semibold text-site-text mt-0.5">{value}</p>
               </div>
             ))}
@@ -142,7 +142,7 @@ export default async function PartDetailPage({
       </div>
 
       {/* Inventory history chart */}
-      <h2 className="text-lg font-display font-semibold text-site-text mb-4">
+      <h2 className="text-lg font-display font-semibold text-site-text mb-4" style={{ letterSpacing: 'var(--site-heading-letter-spacing)' }}>
         Inventory over time
       </h2>
       <Card className="mb-10">
@@ -150,7 +150,7 @@ export default async function PartDetailPage({
       </Card>
 
       {/* Variants / listings table — VariantsTable owns the card wrapper */}
-      <h2 className="text-lg font-display font-semibold text-site-text mb-4">
+      <h2 className="text-lg font-display font-semibold text-site-text mb-4" style={{ letterSpacing: 'var(--site-heading-letter-spacing)' }}>
         Listings ({variants.length})
       </h2>
       <VariantsTable variants={variants} canonicalId={id} events={events ?? []} />

@@ -280,7 +280,7 @@ export function ProductForm({
                 </h2>
               </div>
               <div className="px-6 py-5">
-                <div className="flex gap-4 mb-5 p-4 rounded border border-site-border bg-[#f8f5f0]">
+                <div className="flex gap-4 mb-5 p-4 rounded border border-site-border bg-site-bg">
                   {matchResult.photo_urls[0] ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -499,7 +499,7 @@ export function ProductForm({
                 }}
                 className={selectClass}
               >
-                <option value="" disabled>— Select visibility —</option>
+                <option value="" disabled>Select visibility</option>
                 <option value="internal">Internal</option>
                 <option value="public">Public</option>
                 <option value="ebay_only">eBay Only</option>
@@ -520,7 +520,7 @@ export function ProductForm({
                 onChange={(e) => setCondition(e.target.value as ProductCondition | '')}
                 className={selectClass}
               >
-                <option value="" disabled>— Select condition —</option>
+                <option value="" disabled>Select condition</option>
                 {productConditionOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
@@ -532,7 +532,7 @@ export function ProductForm({
 
           {/* Storefront choice confirmation pill */}
           {visibility === 'public' && matchResult && storefrontChoice !== 'unchosen' && (
-            <div className="px-4 py-3 bg-[#e8f0f8]">
+            <div className="px-4 py-3 bg-site-accent-light/20">
               <div className="flex items-center gap-3 text-sm">
                 <span className="text-site-accent-dark font-semibold">✓</span>
                 <div className="flex-1 text-site-text">
@@ -555,7 +555,7 @@ export function ProductForm({
                 <button
                   type="button"
                   onClick={() => setStorefrontChoice('unchosen')}
-                  className="text-xs text-site-accent hover:underline"
+                  className="text-xs text-site-accent-dark hover:underline"
                 >
                   Change
                 </button>
@@ -732,8 +732,8 @@ export function ProductForm({
           <button
             type="submit"
             disabled={(mode === 'create' && !showBottom) || qtyError}
-            className={[
-              'rounded font-body font-medium transition-colors text-sm px-4 py-2',
+              className={[
+              'rounded-lg font-body font-semibold transition-colors text-sm px-6 py-[11px] tracking-[0.015em]',
               (mode === 'create' && !showBottom) || qtyError
                 ? 'bg-site-border text-site-muted cursor-not-allowed'
                 : 'bg-site-accent-dark text-white hover:bg-site-accent',

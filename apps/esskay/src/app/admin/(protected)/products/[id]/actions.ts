@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import type { ProductCondition } from '@/lib/product-labels'
 import { MARINE_CATEGORIES } from '@/data/marine-categories'
+import { clampQtyForSale } from '@/lib/qty-guard'
 
 const validCategoryIds = new Set(MARINE_CATEGORIES.map((c) => c.google_category_id))
 
@@ -23,7 +24,7 @@ export async function updatePart(
   const priceStr = String(formData.get('price') ?? '0')
   const priceCents = Math.round(parseFloat(priceStr) * 100)
   const qtyOnHand = Math.max(0, parseInt(String(formData.get('qty_on_hand') ?? '0'), 10) || 0)
-  const qtyForSale = Math.max(0, parseInt(String(formData.get('qty_for_sale') ?? '0'), 10) || 0)
+  const qtyForSale = clampQtyForSale(Math.max(0, parseInt(String(formData.get('qty_for_sale') ?? '0'), 10) || 0), qtyOnHand)
   const visibility = String(formData.get('visibility') ?? 'internal') as 'public' | 'internal' | 'ebay_only'
   const description = String(formData.get('description') ?? '').trim() || null
   const conditionNotes = conditionVal === 'new'

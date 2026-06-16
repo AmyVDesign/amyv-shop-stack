@@ -9,6 +9,7 @@ import { findMatchingPart } from './actions'
 import type { MatchedPart } from './actions'
 import { productConditionOptions } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
+import { qtyForSaleExceedsOnHand } from '@/lib/qty-guard'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -115,6 +116,7 @@ export function ProductForm({
   const [analyzing, setAnalyzing] = useState(false)
   const [lastAnalysisAt, setLastAnalysisAt] = useState<number | null>(null)
   const analyzedUrlRef = useRef<string | null>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
 
   // ── Derived flags ────────────────────────────────────────────
   const isLinkedNewVariant = linkedListingId !== null && condition === 'new'
@@ -148,7 +150,7 @@ export function ProductForm({
 
   const showConditionNotes = condition !== 'new' && condition !== ''
   const showSummary = linkedListingId === null
-  const qtyError = qtyForSale > qtyOnHand
+  const qtyError = qtyForSaleExceedsOnHand(qtyForSale, qtyOnHand)
 
   // ── Mount: run match check in edit mode ──────────────────────
   useEffect(() => {
@@ -264,6 +266,28 @@ export function ProductForm({
     }, 400)
   }
 
+  // ── Modal focus trap ─────────────────────────────────────────
+  useEffect(() => {
+    if (!showStorefrontModal || !modalRef.current) return
+    const modal = modalRef.current
+    const focusable = modal.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    first?.focus()
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Tab') return
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus() }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus() }
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [showStorefrontModal])
+
   // ── Render ────────────────────────────────────────────────────
 
   return (
@@ -273,9 +297,15 @@ export function ProductForm({
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-full items-start justify-center py-8 px-4">
             <div className="fixed inset-0 bg-black/50" />
-            <div className="relative w-full max-w-lg bg-white rounded-lg border border-site-border shadow-xl overflow-hidden">
+            <div
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="storefront-modal-title"
+              className="relative w-full max-w-lg bg-white rounded-lg border border-site-border shadow-xl overflow-hidden"
+            >
               <div className="px-6 pt-6 pb-5 border-b border-site-border">
-                <h2 className="text-lg font-display font-semibold text-site-text">
+                <h2 id="storefront-modal-title" className="text-lg font-display font-semibold text-site-text">
                   This part already exists in the storefront
                 </h2>
               </div>
@@ -336,7 +366,7 @@ export function ProductForm({
       )}
 
       {errorMessage && (
-        <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 mb-6">
+        <div role="alert" className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 mb-6">
           {errorMessage}
         </div>
       )}
@@ -535,7 +565,7 @@ export function ProductForm({
           {visibility === 'public' && matchResult && storefrontChoice !== 'unchosen' && (
             <div className="px-4 py-3 bg-site-accent-azure-light/40">
               <div className="flex items-center gap-3 text-sm">
-                <span className="text-site-accent-navy font-semibold">✓</span>
+                <span aria-hidden="true" className="text-site-accent-navy font-semibold">✓</span>
                 <div className="flex-1 text-site-text">
                   {storefrontChoice === 'variant' ? (
                     <>
@@ -556,6 +586,7 @@ export function ProductForm({
                 <button
                   type="button"
                   onClick={() => setStorefrontChoice('unchosen')}
+                  aria-label="Change storefront display choice"
                   className="text-xs text-site-accent-navy hover:underline"
                 >
                   Change
@@ -585,7 +616,7 @@ export function ProductForm({
             {!isLinkedNewVariant && (
               <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
                 <label htmlFor="title" className="text-sm text-site-muted font-medium">
-                  Title <span className="text-red-600">*</span>
+                  Title <span aria-hidden="true" className="text-red-600">*</span>
                 </label>
                 <div className="col-span-2">
                   <input
@@ -605,7 +636,7 @@ export function ProductForm({
             {/* SKU — always shown */}
             <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
               <label htmlFor="sku" className="text-sm text-site-muted font-medium">
-                SKU <span className="text-red-600">*</span>
+                SKU <span aria-hidden="true" className="text-red-600">*</span>
               </label>
               <div className="col-span-2">
                 <input
@@ -624,7 +655,7 @@ export function ProductForm({
             {!isLinkedNewVariant && (
               <div className="grid grid-cols-3 px-4 py-3 items-center gap-4">
                 <label htmlFor="price" className="text-sm text-site-muted font-medium">
-                  Price (USD) <span className="text-red-600">*</span>
+                  Price (USD) <span aria-hidden="true" className="text-red-600">*</span>
                 </label>
                 <div className="col-span-2">
                   <input
@@ -677,10 +708,12 @@ export function ProductForm({
                   step="1"
                   value={qtyForSale}
                   onChange={(e) => setQtyForSale(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  aria-invalid={qtyError || undefined}
+                  aria-describedby={qtyError ? 'qty_for_sale_error' : undefined}
                   className={[inputClass, qtyError ? 'border-red-500' : ''].join(' ').trim()}
                 />
                 {qtyError && (
-                  <p className="text-xs text-red-600 mt-1">
+                  <p id="qty_for_sale_error" className="text-xs text-red-600 mt-1">
                     For Sale cannot exceed On Hand ({qtyOnHand})
                   </p>
                 )}

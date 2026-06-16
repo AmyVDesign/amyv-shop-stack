@@ -230,6 +230,37 @@ is more convincing than describing it in a slide.
 
 ---
 
+### Layered verification: static gate plus runtime tests plus CI
+
+**Situation:** Quality was enforced by two reviewer subagents that grep each diff. Effective,
+but heuristic and dependent on the agent loop running.
+
+**Decision:** Add a deterministic layer underneath the agents: component tests that assert no
+accessibility violations at runtime (via axe-core in jsdom), unit tests on the rules I rely
+on (quantity defense-in-depth, combobox keyboard handling), a Zod schema validating the vision
+model output at the route boundary, and a GitHub Actions CI workflow that runs typecheck, lint,
+and tests on every push and pull request independent of the agent loop.
+
+The qty_for_sale rule was inline in the form. Extracting it to a pure helper
+(src/lib/qty-guard.ts) made it testable with passing and failing cases and wired it into both
+server actions for server-side enforcement, not just client-side validation.
+
+The vision route previously trusted the model's JSON output with an unsafe type cast.
+The Zod schema (src/lib/vision-schema.ts) parses and validates the model's output before
+any field is read, returns a clean error on schema mismatch, and gives the test suite a
+boundary to assert against with valid and invalid payloads.
+
+**Outcome:** Accessibility, core logic, and untrusted model output are now verified by code
+on every push, not only by review. The reviewer agents remain the heuristic gate for
+conventions; the test suite and CI are the deterministic gate for correctness.
+
+**Why it's worth telling:** A single reviewer is a checkpoint. A layered pipeline (types,
+lint, runtime tests, boundary validation, CI) is a verification system. The second is what
+high-stakes interface work actually requires, and it is the difference between catching issues
+by inspection and catching them by construction.
+
+---
+
 ## Sections to add as we go
 
 - **Loom demo script** (when you record the walkthrough video)

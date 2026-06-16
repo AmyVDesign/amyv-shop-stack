@@ -1,18 +1,7 @@
 import { NextResponse } from 'next/server'
 import { MARINE_CATEGORIES } from '@/data/marine-categories'
-
-// ── Types ───────────────────────────────────────────────────────────────────
-
-interface VisionResult {
-  suggested_title: string | null
-  suggested_part_number: string | null
-  suggested_vendor: string | null
-  suggested_category_hint: string | null
-  suggested_product_type: string | null
-  suggested_condition_notes: string | null
-  suggested_summary: string | null
-  confidence: Record<string, 'high' | 'medium' | 'low'>
-}
+import { VisionResultSchema } from '@/lib/vision-schema'
+import type { VisionResult } from '@/lib/vision-schema'
 
 // ── Rate limiting (in-memory, resets on server restart) ─────────────────────
 
@@ -158,10 +147,16 @@ export async function POST(request: Request) {
 
   let parsed: VisionResult
   try {
-    parsed = JSON.parse(rawText) as VisionResult
+    const raw = JSON.parse(rawText)
+    const result = VisionResultSchema.safeParse(raw)
+    if (!result.success) {
+      console.error('[analyze-photo] Schema validation failed:', result.error.issues)
+      return NextResponse.json({ error: 'Vision model returned unexpected shape' }, { status: 502 })
+    }
+    parsed = result.data
   } catch {
-    console.error('[analyze-photo] Failed to parse Claude response:', rawText)
-    return NextResponse.json({ error: 'Unparseable response from vision API' }, { status: 502 })
+    console.error('[analyze-photo] Failed to parse vision model response:', rawText)
+    return NextResponse.json({ error: 'Unparseable response from vision model' }, { status: 502 })
   }
 
   const matchedCategory = parsed.suggested_category_hint

@@ -3,6 +3,7 @@
 import { useState, useId } from 'react'
 import { Table, TableHeader, TableRow, TableCell } from '@amyv/ui'
 import type { Database } from '@amyv/supabase/types'
+import { formatDate } from '@/lib/format'
 
 type CustomerTask   = Database['public']['Tables']['customer_tasks']['Row']
 type CustomerChange = Database['public']['Tables']['customer_changes']['Row']
@@ -13,22 +14,6 @@ const TASK_TYPE_LABEL: Record<string, string> = {
   follow_up:   'Follow up',
   order_issue: 'Order issue',
   other:       'Other',
-}
-
-function formatShortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    year:  '2-digit',
-    month: '2-digit',
-    day:   '2-digit',
-  })
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    year:  'numeric',
-    month: 'short',
-    day:   'numeric',
-  })
 }
 
 interface Props {
@@ -87,11 +72,11 @@ export function HistoryAccordion({ tasks, changes }: Props) {
                     <div className="grid grid-cols-3 text-xs text-site-muted border-t border-site-border pt-3">
                       <span>
                         <span className="block text-[10px] text-site-muted/70 uppercase tracking-wide mb-0.5">Date Created</span>
-                        {formatShortDate(task.created_at)}
+                        {formatDate(task.created_at)}
                       </span>
                       <span className="text-center">
                         <span className="block text-[10px] text-site-muted/70 uppercase tracking-wide mb-0.5">Date Completed</span>
-                        {task.completed_at ? formatShortDate(task.completed_at) : '--'}
+                        {formatDate(task.completed_at)}
                       </span>
                       <span className="text-right">
                         <span className="block text-[10px] text-site-muted/70 uppercase tracking-wide mb-0.5">Completed By</span>

@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect, useRef } from 'react'
 import { createTask, completeTask } from './actions'
 import type { Database } from '@amyv/supabase/types'
+import { formatDate } from '@/lib/format'
 
 type CustomerTask = Database['public']['Tables']['customer_tasks']['Row']
 type TaskType = Database['public']['Enums']['task_type']
@@ -21,14 +22,6 @@ const TASK_TYPE_LABEL: Record<TaskType, string> = {
   follow_up: 'Follow up',
   order_issue: 'Order issue',
   other: 'Other',
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
 }
 
 interface TasksSectionProps {

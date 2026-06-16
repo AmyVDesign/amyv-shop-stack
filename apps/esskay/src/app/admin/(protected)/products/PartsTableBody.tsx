@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { TableRow, TableCell } from '@amyv/ui'
 import { conditionLabel } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
-import { formatDateAdded } from '@/lib/format'
+import { formatDate } from '@/lib/format'
 
 type Visibility = 'public' | 'internal' | 'ebay_only'
 
@@ -98,7 +98,7 @@ export function PartsTableBody({ parts }: { parts: Part[] }) {
 
             {/* Date Added */}
             <TableCell>
-              <span className="text-site-muted">{formatDateAdded(part.created_at)}</span>
+              <span className="text-site-muted">{formatDate(part.created_at)}</span>
             </TableCell>
 
             {/* SKU -- Link is the keyboard target for this row */}

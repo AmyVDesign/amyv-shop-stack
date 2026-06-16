@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@/lib/supabase/client'
+import { formatDate } from '@/lib/format'
 import {
   LineChart,
   Line,
@@ -22,10 +23,6 @@ interface InventoryEvent {
 interface ChartPoint {
   date: string
   qty: number
-}
-
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 export function InventoryChart({ productId }: { productId: string }) {
@@ -86,7 +83,7 @@ export function InventoryChart({ productId }: { productId: string }) {
   let running = 0
   const data: ChartPoint[] = events.map((e) => {
     running += e.qty_on_hand_delta
-    return { date: fmtDate(e.event_date), qty: running }
+    return { date: formatDate(e.event_date), qty: running }
   })
 
   return (

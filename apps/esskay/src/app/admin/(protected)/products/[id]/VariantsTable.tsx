@@ -3,7 +3,7 @@
 import { Fragment, useState } from 'react'
 import { Table, TableHeader, TableRow, TableCell } from '@amyv/ui'
 import { conditionLabel } from '@/lib/product-labels'
-import { formatDateAdded } from '@/lib/format'
+import { formatDate } from '@/lib/format'
 import { EditListingModal } from './EditListingModal'
 import type { ProductFormValues } from '../ProductForm'
 
@@ -49,7 +49,7 @@ function conditionBadgeClass(condition: string): string {
   if (condition === 'new' || condition === 'nos')
     return 'bg-site-accent-azure-light text-site-accent-navy'
   if (condition === 'used_good' || condition === 'used_fair')
-    return 'bg-gray-100 text-gray-700'
+    return 'bg-site-bg text-site-text'
   return 'bg-site-accent-driftwood-light text-site-accent-navy'
 }
 
@@ -145,7 +145,7 @@ export function VariantsTable({
                         <button
                           type="button"
                           onClick={() => toggleExpanded(NEW_AGG_KEY)}
-                          className="text-site-muted hover:text-site-text transition-colors leading-none text-xs"
+                          className="text-site-muted hover:text-site-text transition-colors leading-none text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy rounded"
                           aria-label={newIsExpanded ? 'Collapse batches' : 'Expand batches'}
                         >
                           {newIsExpanded ? '▾' : '▸'}
@@ -171,7 +171,7 @@ export function VariantsTable({
                   </TableCell>
 
                   <TableCell>
-                    <span className="text-sm text-site-muted">&mdash;</span>
+                    <span className="text-sm text-site-muted">--</span>
                   </TableCell>
 
                   <TableCell>
@@ -200,7 +200,7 @@ export function VariantsTable({
                         {visibilityBadge[newVisibilities[0] as Visibility].label}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-700">Mixed</span>
+                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-site-bg text-site-text">Mixed</span>
                     )}
                   </TableCell>
 
@@ -208,7 +208,7 @@ export function VariantsTable({
                     <button
                       type="button"
                       onClick={() => setEditingId(keeper.id)}
-                      className="rounded text-xs font-medium px-3 py-1 border border-site-accent-navy text-site-accent-navy hover:bg-site-accent-azure-light transition-colors"
+                      className="rounded text-xs font-medium px-3 py-1 border border-site-accent-navy text-site-accent-navy hover:bg-site-accent-azure-light transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy"
                     >
                       Edit
                     </button>
@@ -227,17 +227,17 @@ export function VariantsTable({
                         <table className="w-full text-xs text-site-muted">
                           <thead>
                             <tr className="border-b border-site-border">
-                              <th className="text-left pb-1.5 font-medium">Date</th>
-                              <th className="text-right pb-1.5 font-medium">On Hand +</th>
-                              <th className="text-right pb-1.5 font-medium">For Sale +</th>
-                              <th className="text-left pb-1.5 font-medium pl-4">Note</th>
+                              <th scope="col" className="text-left pb-1.5 font-medium">Date</th>
+                              <th scope="col" className="text-right pb-1.5 font-medium">On Hand +</th>
+                              <th scope="col" className="text-right pb-1.5 font-medium">For Sale +</th>
+                              <th scope="col" className="text-left pb-1.5 font-medium pl-4">Note</th>
                             </tr>
                           </thead>
                           <tbody>
                             {allBatches.map((b, i) => (
                               // eslint-disable-next-line react/no-array-index-key
                               <tr key={i} className="border-b border-site-border/50 last:border-0">
-                                <td className="py-1.5">{formatDateAdded(b.date)}</td>
+                                <td className="py-1.5">{formatDate(b.date)}</td>
                                 <td className="py-1.5 text-right tabular-nums">{deltaLabel(b.onHandAdded)}</td>
                                 <td className="py-1.5 text-right tabular-nums">{deltaLabel(b.forSaleAdded)}</td>
                                 <td className="py-1.5 pl-4">{b.note}</td>
@@ -269,7 +269,7 @@ export function VariantsTable({
                             <button
                               type="button"
                               onClick={() => toggleExpanded(variant.id)}
-                              className="text-site-muted hover:text-site-text transition-colors leading-none text-xs"
+                              className="text-site-muted hover:text-site-text transition-colors leading-none text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy rounded"
                               aria-label={isExpanded ? 'Collapse history' : 'Expand history'}
                             >
                               {isExpanded ? '▾' : '▸'}
@@ -296,7 +296,7 @@ export function VariantsTable({
                     </TableCell>
 
                     <TableCell>
-                      <span className="text-sm text-site-muted">{formatDateAdded(variant.created_at)}</span>
+                      <span className="text-sm text-site-muted">{formatDate(variant.created_at)}</span>
                     </TableCell>
 
                     <TableCell>
@@ -333,7 +333,7 @@ export function VariantsTable({
                       <button
                         type="button"
                         onClick={() => setEditingId(variant.id)}
-                        className="rounded text-xs font-medium px-3 py-1 border border-site-accent-navy text-site-accent-navy hover:bg-site-accent-azure-light transition-colors"
+                        className="rounded text-xs font-medium px-3 py-1 border border-site-accent-navy text-site-accent-navy hover:bg-site-accent-azure-light transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy"
                       >
                         Edit
                       </button>
@@ -349,16 +349,16 @@ export function VariantsTable({
                         <table className="w-full text-xs text-site-muted">
                           <thead>
                             <tr className="border-b border-site-border">
-                              <th className="text-left pb-1.5 font-medium">Date</th>
-                              <th className="text-right pb-1.5 font-medium">For Sale +</th>
-                              <th className="text-right pb-1.5 font-medium">On Hand +</th>
-                              <th className="text-left pb-1.5 font-medium pl-4">Note</th>
+                              <th scope="col" className="text-left pb-1.5 font-medium">Date</th>
+                              <th scope="col" className="text-right pb-1.5 font-medium">For Sale +</th>
+                              <th scope="col" className="text-right pb-1.5 font-medium">On Hand +</th>
+                              <th scope="col" className="text-left pb-1.5 font-medium pl-4">Note</th>
                             </tr>
                           </thead>
                           <tbody>
                             {variantEvents.map((e) => (
                               <tr key={e.id} className="border-b border-site-border/50 last:border-0">
-                                <td className="py-1.5">{formatDateAdded(e.event_date)}</td>
+                                <td className="py-1.5">{formatDate(e.event_date)}</td>
                                 <td className="py-1.5 text-right tabular-nums">{deltaLabel(e.qty_for_sale_delta)}</td>
                                 <td className="py-1.5 text-right tabular-nums">{deltaLabel(e.qty_on_hand_delta)}</td>
                                 <td className="py-1.5 pl-4">{e.note}</td>

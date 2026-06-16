@@ -16,16 +16,10 @@ const QB_LABELS: Record<string, string> = {
   pushed_to_qb: 'Synced to QB',
 }
 
+import { formatDate } from '@/lib/format'
+
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
 }
 
 export function OrderCard({ order }: { order: OrderWithItems }) {

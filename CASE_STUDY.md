@@ -299,6 +299,18 @@ by inspection and catching them by construction.
 
 ---
 
+### Customer profile and task system
+
+**Situation:** Orders existed but there was no place to see a customer whole: their contact details, their order history, and the follow-ups staff owe them.
+
+**Decision:** Build an internal customer profile modeled on a CRM overview: a contact header, a summary of orders and spend, the orders as expandable cards, and a typed task system (call back, refund, follow up, and so on) so staff can log and track what each customer needs. Tasks carry a type so they can later be surfaced across all customers by category.
+
+**Outcome:** A dense, single-screen view of a customer that staff can act from, with a task model that scales into a cross-customer work queue.
+
+**Why it's worth telling:** This is dense, professional-grade internal tooling, the kind of high-information interface where clarity and hierarchy matter more than decoration. Holding contact, history, and actionable tasks on one screen without clutter is the harder design problem.
+
+---
+
 ## Sections to add as we go
 
 - **Loom demo script** (when you record the walkthrough video)

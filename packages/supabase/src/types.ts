@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      customer_tasks: {
+        Row: {
+          body: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          customer_phone: string
+          id: string
+          status: Database["public"]["Enums"]["task_status"]
+          type: Database["public"]["Enums"]["task_type"]
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_phone: string
+          id?: string
+          status?: Database["public"]["Enums"]["task_status"]
+          type: Database["public"]["Enums"]["task_type"]
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_phone?: string
+          id?: string
+          status?: Database["public"]["Enums"]["task_status"]
+          type?: Database["public"]["Enums"]["task_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_tasks_customer_phone_fkey"
+            columns: ["customer_phone"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["phone"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address_line_1: string | null
@@ -416,6 +460,8 @@ export type Database = {
       product_source: "manual" | "shopify_import" | "sheets_import"
       product_visibility: "public" | "internal" | "ebay_only"
       qb_status: "pending_mom_review" | "approved_for_qb" | "pushed_to_qb"
+      task_status: "open" | "done"
+      task_type: "call_back" | "refund" | "follow_up" | "order_issue" | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -562,6 +608,8 @@ export const Constants = {
       product_source: ["manual", "shopify_import", "sheets_import"],
       product_visibility: ["public", "internal", "ebay_only"],
       qb_status: ["pending_mom_review", "approved_for_qb", "pushed_to_qb"],
+      task_status: ["open", "done"],
+      task_type: ["call_back", "refund", "follow_up", "order_issue", "other"],
     },
   },
 } as const

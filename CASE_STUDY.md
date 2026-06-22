@@ -16,7 +16,7 @@ Add entries as moments happen. Don't wait for a "polish phase" — by then the t
 
 ## Project at a glance
 
-Production e-commerce platform replacing Shopify for a marina parts business specializing in obsolete and hard-to-find marine parts. Built solo by a UX designer with AI-assisted engineering. Serves a real family business; doubles as a portfolio case study demonstrating end-to-end product development without an engineering team.
+Production e-commerce platform replacing Shopify for a marina parts business specializing in obsolete and hard-to-find marine parts. Built solo by a UX designer with AI-assisted engineering. Serves a real small business; doubles as a portfolio case study demonstrating end-to-end product development without an engineering team.
 
 Stack: Next.js 16 · React 19 · Tailwind v4 · TypeScript · Supabase · pnpm workspaces · Anthropic Claude API for vision-driven smart pre-fill.
 
@@ -32,7 +32,7 @@ Stack: Next.js 16 · React 19 · Tailwind v4 · TypeScript · Supabase · pnpm w
 
 **Decision:** Move photo upload to the top of the form, before any text inputs. Auto-fill the fields directly from the photo analysis. Remove the suggestion chips entirely. The photo becomes the entry point, not an enhancement.
 
-**Outcome:** Mental model shifted from "AI second-guesses my typing" to "take a photo, the form fills itself in, review and finish." Cognitive load dropped significantly for the actual users (non-technical family members).
+**Outcome:** Mental model shifted from "AI second-guesses my typing" to "take a photo, the form fills itself in, review and finish." Cognitive load dropped significantly for the actual users (non-technical staff).
 
 **Why it's worth telling:** Identifying the wrong affordance after you've built it requires letting go of work. The fix here was a structural reversal of the form, not a tweak. Shows designer-driven willingness to undo and rebuild when usage observation reveals the original framing was wrong.
 
@@ -57,7 +57,7 @@ Stack: Next.js 16 · React 19 · Tailwind v4 · TypeScript · Supabase · pnpm w
 
 ### Custom code reviewer subagent
 
-**Situation:** After every commit, I was manually running the same six checks: TypeScript clean, no em dashes (project convention), no "AI" terminology in user-facing strings (parents are the actual users, the AI should be invisible), RLS on any new tables, no hardcoded hex colors outside the design tokens, no committed secrets.
+**Situation:** After every commit, I was manually running the same six checks: TypeScript clean, no em dashes (project convention), no "AI" terminology in user-facing strings (the actual users are non-technical, so the technology stays invisible), RLS on any new tables, no hardcoded hex colors outside the design tokens, no committed secrets.
 
 **Decision:** Built a project-specific Claude Code subagent at `.claude/agents/reviewer.md` that runs these checks against each commit and outputs a structured pass/warn/fail report.
 
@@ -331,7 +331,7 @@ by inspection and catching them by construction.
 
 **Outcome:** Staff edit a customer in one place, and every change leaves an audit trail tied to who made it and when.
 
-**Why it's worth telling:** An append-only change log surfaced as plain history signals a system built for accountability, not just data entry, which matters for a family business handling other people's orders and money.
+**Why it's worth telling:** An append-only change log surfaced as plain history signals a system built for accountability, not just data entry, which matters for a small business handling other people's orders and money.
 
 ---
 
@@ -340,4 +340,3 @@ by inspection and catching them by construction.
 - **Loom demo script** (when you record the walkthrough video)
 - **Migration story** (when you import the 3,652 Shopify products)
 - **Scaling moment** (when Galaxy SF reuses the shared `@amyv/ui` and `@amyv/design-system` packages)
-- **Real-user feedback** (when your parents actually use the platform — their reactions are gold)

@@ -107,7 +107,7 @@ Build the admin foundation in `apps/esskay/`:
 - Header: "Welcome back" — no "Dashboard" anywhere
 - Three Card components in a row, each showing a count:
   - Parts in stock: `SELECT count(*) FROM products WHERE qty_on_hand > 0`
-  - Orders pending Mom's review: `SELECT count(*) FROM orders WHERE qb_status = 'pending_mom_review'`
+  - Orders pending owner review: `SELECT count(*) FROM orders WHERE qb_status = 'pending_mom_review'`
   - Watch list items: `SELECT count(*) FROM parts_watch_list WHERE status = 'open'`
 - Each Card has: count (large, navy), label (small, gray), and is clickable to its detail page
 

@@ -11,7 +11,7 @@
 
 ─── PROMPT BEGINS ───
 
-You are Claude Code working in the `amyv-shop-stack` monorepo. This is Phase 1.2 of a multi-phase build for **Ess-Kay Yards Marina** — a family-owned marina in Brewerton, NY selling obsolete marine parts. Phase 1.1 is complete (monorepo bootstrap, 8 shared packages scaffolded, Lightbox + design-system extracted from the Galaxy app).
+You are Claude Code working in the `amyv-shop-stack` monorepo. This is Phase 1.2 of a multi-phase build for **Ess-Kay Yards Marina** — a marina in Brewerton, NY selling obsolete marine parts. Phase 1.1 is complete (monorepo bootstrap, 8 shared packages scaffolded, Lightbox + design-system extracted from the Galaxy app).
 
 ## Your goal in Phase 1.2
 
@@ -19,12 +19,12 @@ Set up the full Supabase database schema, configure Row Level Security on every 
 
 ## Source of truth
 
-`docs/ess-kay-yards-master-reference.docx` is the canonical reference. Read it first if it's in the repo. Particularly Sections 5 (Data Model), 6 (Multi-channel Inventory), 7 (Mom's QB Flow), and 11 (Security). The decisions captured there are non-negotiable:
+`docs/ess-kay-yards-master-reference.docx` is the canonical reference. Read it first if it's in the repo. Particularly Sections 5 (Data Model), 6 (Multi-channel Inventory), 7 (Owner QB review flow), and 11 (Security). The decisions captured there are non-negotiable:
 
 - **Phone is the PRIMARY KEY for customers** (E.164 format), not email. Walk-in customers without email still get a record.
 - **`visibility` enum on products**: `public`, `internal`, `wholesale`, `ebay_only`. Drives what shows on the website vs. internal-only vs. wholesale-only.
 - **`qty_on_hand` and `qty_for_sale` are separate columns.** Physical reality vs. published. Prevents overselling across channels.
-- **`qb_status` enum gates QuickBooks push**: `pending_mom_review` → `approved_for_qb` → `pushed_to_qb`. Mom must approve before any push.
+- **`qb_status` enum gates QuickBooks push**: `pending_mom_review` → `approved_for_qb` → `pushed_to_qb`. The owner must approve before any push.
 - **`product_snapshot` jsonb on order_items**: receipts capture the product state at sale time so they stay accurate forever.
 - **`inventory_movements` audit trail**: every quantity change logged with reason, who, when.
 - **`source` + `source_ref`** on products: for tracing back to Shopify or Google Sheets origins during migration.

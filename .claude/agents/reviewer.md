@@ -62,7 +62,7 @@ Verify the commit ran the protocol from CLAUDE.md:
 
 Run on changed files in this commit:
 - **Em dashes** in strings, comments, JSX content. Grep for the literal em dash character. **Auto-fix:** replace with a comma, parentheses, or `--` as fits the sentence. List each fix.
-- **"AI" terminology in user-facing strings**. Search components for literal "AI" in JSX text content, button labels, headings, placeholder text. Parents and clients should never see "AI" anywhere in the UI. Flag; do not silently reword (the right replacement is a judgment call).
+- **"AI" terminology in user-facing strings**. Search components for literal "AI" in JSX text content, button labels, headings, placeholder text. Customers and staff should never see "AI" anywhere in the UI. Flag; do not silently reword (the right replacement is a judgment call).
 - **"None" placeholders** in form fields. Grep `placeholder="None"` or `>None<` in select defaults. **Auto-fix:** replace with action-oriented text like "Choose..." or "Search...".
 - **Hardcoded hex colors** outside `packages/design-system/`. Grep `#[0-9a-fA-F]{3,6}` in `.tsx` / `.css` files under `apps/esskay/`. **Auto-fix:** replace with the matching design token utility. If no clear match exists, halt and surface.
 

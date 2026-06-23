@@ -88,16 +88,16 @@ export default async function CustomerProfilePage({
       {/* Summary row */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="border border-site-border rounded-xl p-4">
-          <p className="text-xs text-site-muted uppercase tracking-widest mb-1">Orders</p>
-          <p className="text-2xl font-semibold text-site-text">{orders.length}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-site-muted mb-1">Orders</p>
+          <p className="text-2xl font-normal text-site-text">{orders.length}</p>
         </div>
         <div className="border border-site-border rounded-xl p-4">
-          <p className="text-xs text-site-muted uppercase tracking-widest mb-1">Total spent</p>
-          <p className="text-2xl font-semibold text-site-text">{formatCents(totalSpentCents)}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-site-muted mb-1">Total spent</p>
+          <p className="text-2xl font-normal text-site-text">{formatCents(totalSpentCents)}</p>
         </div>
         <div className="border border-site-border rounded-xl p-4">
-          <p className="text-xs text-site-muted uppercase tracking-widest mb-1">Open tasks</p>
-          <p className="text-2xl font-semibold text-site-text">{openTasks.length}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-site-muted mb-1">Open tasks</p>
+          <p className="text-2xl font-normal text-site-text">{openTasks.length}</p>
         </div>
       </div>
 

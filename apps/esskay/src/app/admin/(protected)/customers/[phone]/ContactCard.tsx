@@ -117,29 +117,29 @@ export function ContactCard({ phone, customer }: { phone: string; customer: Cust
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
             {displayName && (
               <div>
-                <dt className="text-site-muted">Name</dt>
-                <dd className="text-site-text font-medium mt-0.5">{displayName}</dd>
+                <dt className="text-xs font-medium uppercase tracking-wide text-site-muted">Name</dt>
+                <dd className="text-site-text font-normal mt-0.5">{displayName}</dd>
               </div>
             )}
             <div>
-              <dt className="text-site-muted">Phone</dt>
+              <dt className="text-xs font-medium uppercase tracking-wide text-site-muted">Phone</dt>
               <dd className="text-site-text font-mono mt-0.5">{formatPhone(phone)}</dd>
             </div>
             {customer.email && (
               <div>
-                <dt className="text-site-muted">Email</dt>
+                <dt className="text-xs font-medium uppercase tracking-wide text-site-muted">Email</dt>
                 <dd className="text-site-text mt-0.5">{customer.email}</dd>
               </div>
             )}
             {customer.boat_note && (
               <div className="sm:col-span-2">
-                <dt className="text-site-muted">Boat</dt>
+                <dt className="text-xs font-medium uppercase tracking-wide text-site-muted">Boat</dt>
                 <dd className="text-site-text mt-0.5">{customer.boat_note}</dd>
               </div>
             )}
             {customer.address_line_1 && (
               <div className="sm:col-span-2">
-                <dt className="text-site-muted">Address</dt>
+                <dt className="text-xs font-medium uppercase tracking-wide text-site-muted">Address</dt>
                 <dd className="text-site-text mt-0.5">
                   {customer.address_line_1}
                   {customer.address_line_2 && <><br />{customer.address_line_2}</>}

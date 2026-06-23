@@ -111,6 +111,8 @@ Enforced by the a11y-reviewer subagent on every commit.
 | Muted `#6B6B6B` on cream `#F8F5F0` | ~4.7:1 | AA |
 | Azure `#0EA5E9` on white `#FFFFFF` | ~2.9:1 | Large text / UI only |
 | **Coral `#F97766` as text** | **fails 4.5:1** | **Do not use as text** |
+| Danger `--site-danger` `#B91C1C` on cream `#F8F5F0` | ~6.0:1 | AA |
+| Danger `--site-danger` `#B91C1C` on white `#FFFFFF` | ~6.5:1 | AA |
 
 Azure and coral **must not** be used as foreground text color on light backgrounds. They are for UI accents (borders, fills, icons) only.
 

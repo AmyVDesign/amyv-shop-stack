@@ -297,7 +297,7 @@ export function ContactCard({ phone, customer }: { phone: string; customer: Cust
         </div>
 
         {formError && (
-          <p role="alert" className="text-sm text-site-accent-coral-dark mt-4">{formError}</p>
+          <p role="alert" className="text-sm text-site-danger mt-4">{formError}</p>
         )}
 
         <div className="flex items-center gap-3 mt-6 pt-4 border-t border-site-border">

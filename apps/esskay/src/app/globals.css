@@ -30,6 +30,9 @@
   --site-accent-coral-dark:      #E5564A;
   --site-accent-coral-light:     #FFE4E0;
 
+  /* Semantic — error / danger text (≥4.5:1 on cream and white) */
+  --site-danger:                 #B91C1C;
+
   /* Backward-compat aliases — existing code references these names */
   --site-accent:                 var(--site-accent-azure);
   --site-accent-dark:            var(--site-accent-navy);
@@ -72,6 +75,7 @@
   --color-site-accent-coral:           var(--site-accent-coral);
   --color-site-accent-coral-dark:      var(--site-accent-coral-dark);
   --color-site-accent-coral-light:     var(--site-accent-coral-light);
+  --color-site-danger:                 var(--site-danger);
 
   /* Backward-compat aliases */
   --color-site-accent:                 var(--site-accent);

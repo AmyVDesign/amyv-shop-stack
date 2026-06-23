@@ -119,7 +119,7 @@ export function TasksSection({ phone, openTasks }: TasksSectionProps) {
                 htmlFor={typeId}
                 className="block text-sm font-medium text-site-text mb-1"
               >
-                Type <span aria-hidden="true" className="text-site-accent-coral-dark">*</span>
+                Type <span aria-hidden="true" className="text-site-danger">*</span>
               </label>
               <select
                 ref={firstFieldRef}
@@ -141,7 +141,7 @@ export function TasksSection({ phone, openTasks }: TasksSectionProps) {
                 htmlFor={bodyId}
                 className="block text-sm font-medium text-site-text mb-1"
               >
-                Notes <span aria-hidden="true" className="text-site-accent-coral-dark">*</span>
+                Notes <span aria-hidden="true" className="text-site-danger">*</span>
               </label>
               <textarea
                 id={bodyId}
@@ -158,7 +158,7 @@ export function TasksSection({ phone, openTasks }: TasksSectionProps) {
             </div>
 
             {formError && (
-              <p role="alert" className="text-sm text-site-accent-coral-dark">
+              <p role="alert" className="text-sm text-site-danger">
                 {formError}
               </p>
             )}

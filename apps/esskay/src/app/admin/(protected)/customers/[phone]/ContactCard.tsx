@@ -38,20 +38,18 @@ export function ContactCard({ phone, customer }: { phone: string; customer: Cust
   })
   const [formError, setFormError] = useState('')
   const [isPending, startTransition] = useTransition()
-  const [shouldFocusEdit, setShouldFocusEdit] = useState(false)
+  const shouldFocusEditRef = useRef(false)
   const editBtnRef    = useRef<HTMLButtonElement>(null)
   const firstInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (editing) firstInputRef.current?.focus()
-  }, [editing])
-
-  useEffect(() => {
-    if (!editing && shouldFocusEdit) {
+    if (editing) {
+      firstInputRef.current?.focus()
+    } else if (shouldFocusEditRef.current) {
       editBtnRef.current?.focus()
-      setShouldFocusEdit(false)
+      shouldFocusEditRef.current = false
     }
-  }, [editing, shouldFocusEdit])
+  }, [editing])
 
   function handleEdit() {
     setDraft({
@@ -71,7 +69,7 @@ export function ContactCard({ phone, customer }: { phone: string; customer: Cust
   }
 
   function handleCancel() {
-    setShouldFocusEdit(true)
+    shouldFocusEditRef.current = true
     setEditing(false)
   }
 
@@ -83,7 +81,7 @@ export function ContactCard({ phone, customer }: { phone: string; customer: Cust
         setFormError(result.error)
         return
       }
-      setShouldFocusEdit(true)
+      shouldFocusEditRef.current = true
       setEditing(false)
     })
   }

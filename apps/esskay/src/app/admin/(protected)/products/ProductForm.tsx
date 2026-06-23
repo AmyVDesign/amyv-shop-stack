@@ -152,6 +152,23 @@ export function ProductForm({
   const showSummary = linkedListingId === null
   const qtyError = qtyForSaleExceedsOnHand(qtyForSale, qtyOnHand)
 
+  // ── Auto-fill category/productType when a canonical match is found ───────────
+  // Called from async callbacks (mount check + scheduleCheck) so setState is
+  // in response to an async result, not synchronously inside an effect.
+  function applyAutoFillFromMatch(match: MatchedPart) {
+    const hasCat = match.category_label !== null || match.google_category_id !== null
+    const hasPt = match.product_type !== null
+    if (!hasCat && !hasPt) return // old canonical — leave editable
+    if (hasCat && match.google_category_id && match.google_category_path) {
+      setCategory({
+        id: match.google_category_id,
+        path: match.google_category_path,
+        label: match.category_label ?? '',
+      })
+    }
+    if (hasPt) setProductType(match.product_type ?? '')
+  }
+
   // ── Mount: run match check in edit mode ──────────────────────
   useEffect(() => {
     if (!initialValues?.part_number || !initialValues.vendor) return
@@ -164,37 +181,31 @@ export function ProductForm({
       if (qId === latestQueryId.current && match) {
         setMatchResult(match)
         setLinkedListingId(match.id)
+        applyAutoFillFromMatch(match)
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ── Auto-fill category/productType from canonical ────────────
-  useEffect(() => {
-    if (!matchResult) return
-    const hasCat = matchResult.category_label !== null || matchResult.google_category_id !== null
-    const hasPt = matchResult.product_type !== null
-    if (!hasCat && !hasPt) return // old canonical — leave editable
-    if (hasCat && matchResult.google_category_id && matchResult.google_category_path) {
-      setCategory({
-        id: matchResult.google_category_id,
-        path: matchResult.google_category_path,
-        label: matchResult.category_label ?? '',
-      })
-    }
-    if (hasPt) setProductType(matchResult.product_type ?? '')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchResult])
-
   // ── Auto-fill title from part#, vendor, product type ─────────
-  useEffect(() => {
-    if (isLinkedNewVariant) return
-    if (titleValue !== '') return
-    const pn = partNumber.trim()
-    const vnd = vendor.trim()
-    const pt = productType.trim()
-    if (pn && vnd && pt) setTitleValue(`${pn} ${vnd} ${pt}`)
-  }, [partNumber, vendor, productType, titleValue, isLinkedNewVariant])
+  // Derived state pattern: setState during render to avoid a setState-in-effect.
+  const [autoTitleSrc, setAutoTitleSrc] = useState({
+    pn: initialValues?.part_number?.trim() ?? '',
+    vnd: initialValues?.vendor?.trim() ?? '',
+    pt: initialValues?.product_type?.trim() ?? '',
+  })
+  const pnTrimmed = partNumber.trim()
+  const vndTrimmed = vendor.trim()
+  const ptTrimmed = productType.trim()
+  if (
+    !isLinkedNewVariant &&
+    titleValue === '' &&
+    pnTrimmed && vndTrimmed && ptTrimmed &&
+    (autoTitleSrc.pn !== pnTrimmed || autoTitleSrc.vnd !== vndTrimmed || autoTitleSrc.pt !== ptTrimmed)
+  ) {
+    setAutoTitleSrc({ pn: pnTrimmed, vnd: vndTrimmed, pt: ptTrimmed })
+    setTitleValue(`${pnTrimmed} ${vndTrimmed} ${ptTrimmed}`)
+  }
 
   // ── Auto-analyze cover photo; directly fill empty fields ─────
   useEffect(() => {
@@ -262,6 +273,7 @@ export function ProductForm({
       if (qId === latestQueryId.current) {
         setMatchResult(match)
         setLinkedListingId(match?.id ?? null)
+        if (match) applyAutoFillFromMatch(match)
       }
     }, 400)
   }

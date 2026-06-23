@@ -27,10 +27,13 @@ export function CategoryCombobox({ id, value, onChange, disabled }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
 
-  // Keep query in sync with external value when dropdown is closed
-  useEffect(() => {
+  // Derived state: keep query in sync when the external value changes while closed.
+  // Uses the setState-during-render pattern instead of a setState-in-effect.
+  const [prevValue, setPrevValue] = useState(value)
+  if (prevValue !== value) {
+    setPrevValue(value)
     if (!open) setQuery(value?.label ?? '')
-  }, [value, open])
+  }
 
   // Show all categories when query is empty; filter by label otherwise
   const filtered =

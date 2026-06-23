@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import {
   Button,
   Badge,
@@ -222,27 +222,34 @@ function A11yCard({
   )
 }
 
+// ── Token reader (module-level so useSyncExternalStore can reference it) ──────
+
+function readDesignTokens(): Record<string, string> {
+  const style = getComputedStyle(document.documentElement)
+  const allTokens = [
+    ...SURFACE_TOKENS.map((t) => t.token),
+    ...ACCENT_GROUPS.flatMap((g) => g.tokens.map((t) => t.token)),
+  ]
+  const resolved: Record<string, string> = {}
+  for (const token of allTokens) {
+    resolved[token] = style.getPropertyValue(token).trim()
+  }
+  return resolved
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DesignSystemPage() {
-  const [tokenValues, setTokenValues] = useState<Record<string, string>>({})
-  const [galaxyTheme, setGalaxyTheme] = useState(false)
-
   // Read resolved token values from the document root.
   // The root always carries Ess-Kay Yards tokens -- the Galaxy preview below
   // is scoped to its own container via data-theme, not the root.
-  useEffect(() => {
-    const style = getComputedStyle(document.documentElement)
-    const allTokens = [
-      ...SURFACE_TOKENS.map((t) => t.token),
-      ...ACCENT_GROUPS.flatMap((g) => g.tokens.map((t) => t.token)),
-    ]
-    const resolved: Record<string, string> = {}
-    for (const token of allTokens) {
-      resolved[token] = style.getPropertyValue(token).trim()
-    }
-    setTokenValues(resolved)
-  }, [])
+  // useSyncExternalStore avoids a setState-in-effect while remaining SSR-safe.
+  const tokenValues = useSyncExternalStore(
+    () => () => {},   // tokens don't change at runtime -- no subscription needed
+    readDesignTokens,
+    (): Record<string, string> => ({}),
+  )
+  const [galaxyTheme, setGalaxyTheme] = useState(false)
 
   return (
     <div className="px-6 py-8 max-w-5xl">

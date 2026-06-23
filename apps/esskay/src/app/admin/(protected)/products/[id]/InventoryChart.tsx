@@ -80,11 +80,11 @@ export function InventoryChart({ productId }: { productId: string }) {
     )
   }
 
-  let running = 0
-  const data: ChartPoint[] = events.map((e) => {
-    running += e.qty_on_hand_delta
-    return { date: formatDate(e.event_date), qty: running }
-  })
+  const data: ChartPoint[] = events.reduce<ChartPoint[]>((acc, e) => {
+    const qty = (acc[acc.length - 1]?.qty ?? 0) + e.qty_on_hand_delta
+    acc.push({ date: formatDate(e.event_date), qty })
+    return acc
+  }, [])
 
   return (
     <div style={{ opacity: visible ? 1 : 0, transition: 'opacity 300ms ease' }}>

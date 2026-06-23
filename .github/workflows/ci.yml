@@ -70,7 +70,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Start server and run public axe scan
-        run: pnpm --filter @amyv/esskay exec playwright test --project=chromium --grep "Public pages"
+        run: pnpm --filter @amyv/esskay exec playwright test e2e/a11y.spec.ts --project=chromium --grep "Public pages"
         env:
           CI: true
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}

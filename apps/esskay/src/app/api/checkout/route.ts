@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -57,12 +58,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'One or more products are unavailable.' }, { status: 400 })
   }
 
-  // 3. Claim each part atomically; release on any failure
+  // 3. Claim each part atomically via service-role client (RPCs are service_role only)
+  const admin = createAdminClient()
   const claimed: string[] = []
   const soldOutIds: string[] = []
 
   for (const id of productIds) {
-    const { data, error } = await supabase.rpc('claim_part', { product_id: id })
+    const { data, error } = await admin.rpc('claim_part', { product_id: id })
     if (error || !data || data.length === 0) {
       soldOutIds.push(id)
     } else {
@@ -72,7 +74,7 @@ export async function POST(request: Request) {
 
   if (soldOutIds.length > 0) {
     for (const id of claimed) {
-      await supabase.rpc('release_part', { product_id: id })
+      await admin.rpc('release_part', { product_id: id })
     }
     return NextResponse.json({ soldOutIds }, { status: 409 })
   }
@@ -117,7 +119,7 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error('[checkout] Stripe error:', err)
     for (const id of claimed) {
-      await supabase.rpc('release_part', { product_id: id })
+      await admin.rpc('release_part', { product_id: id })
     }
     return NextResponse.json({ error: 'Payment service error.' }, { status: 502 })
   }

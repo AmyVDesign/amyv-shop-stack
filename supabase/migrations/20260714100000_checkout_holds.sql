@@ -19,7 +19,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION claim_part(uuid) IS
-  'Atomically claims one unit for checkout. Returns id on success, empty on out-of-stock. Safe for anon: conditional decrement only, cannot go negative.';
+  'Atomically claims one unit for checkout. Returns id on success, empty on out-of-stock. Service-role only; called exclusively by the server checkout route.';
 
 -- Releases a hold created by claim_part.
 -- Called on Stripe error, 409 conflict, or (Phase 2) session expiry.
@@ -38,7 +38,9 @@ END;
 $$;
 
 COMMENT ON FUNCTION release_part(uuid) IS
-  'Releases a claim created by claim_part. Called on error or timeout. Phase 2 webhooks will handle session expiry.';
+  'Releases a claim created by claim_part. Called on error or timeout. Service-role only; called exclusively by the server checkout route. Phase 2 webhooks will handle session expiry.';
 
-GRANT EXECUTE ON FUNCTION claim_part(uuid) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION release_part(uuid) TO anon, authenticated;
+REVOKE EXECUTE ON FUNCTION claim_part(uuid) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION release_part(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION claim_part(uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION release_part(uuid) TO service_role;

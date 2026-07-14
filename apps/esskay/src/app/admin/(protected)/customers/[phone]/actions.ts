@@ -55,8 +55,13 @@ export async function updateContact(
     country:       fields.country.trim().slice(0, 100),
   }
 
+  if (t.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t.email)) {
+    return { error: 'Enter a valid email address.' }
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'Session expired. Please sign in again.' }
 
   const { data: current, error: fetchError } = await supabase
     .from('customers')
@@ -123,12 +128,13 @@ export async function createTask(
   type: TaskType,
   body: string,
 ): Promise<{ error?: string }> {
-  const trimmed = body.trim()
-  if (!trimmed) return { error: 'Notes are required.' }
-  if (trimmed.length > 500) return { error: 'Notes must be 500 characters or fewer.' }
-
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'Session expired. Please sign in again.' }
+
+  const trimmed = body.trim()
+  if (!trimmed) return { error: 'A task description is required.' }
+  if (trimmed.length > 500) return { error: 'Task description must be 500 characters or fewer.' }
 
   const { error } = await supabase.from('customer_tasks').insert({
     customer_phone,
@@ -155,6 +161,7 @@ export async function completeTask(taskId: string, customer_phone: string): Prom
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'Session expired. Please sign in again.' }
 
   const { error } = await supabase
     .from('customer_tasks')

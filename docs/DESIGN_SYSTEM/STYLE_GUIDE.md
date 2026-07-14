@@ -77,6 +77,19 @@ These are the same classes used by `<TableCell header>` (from `@amyv/ui`) and it
 
 ---
 
+## Formatting
+
+All display formatting is centralised in `apps/esskay/src/lib/format.ts`. Never reimplement these in a component.
+
+| Function | Input | Output example | Notes |
+|----------|-------|----------------|-------|
+| `formatCurrency(cents)` | integer cents | `$1,234.56` | en-US locale, USD |
+| `formatPhone(e164)` | E.164 string | `(315) 555-1234` | US numbers reformatted; others passed through raw |
+| `formatDate(value)` | ISO string \| Date \| null | `05/07/26` | `--` for null |
+| `formatDateTime(value)` | ISO string \| Date \| null | `05/07/26 3:42 PM` | `--` for null |
+
+---
+
 ## Component selection guide
 
 | Component | Use for | Not for |

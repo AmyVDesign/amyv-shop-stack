@@ -16,11 +16,7 @@ const QB_LABELS: Record<string, string> = {
   pushed_to_qb: 'Synced to QB',
 }
 
-import { formatDate } from '@/lib/format'
-
-function formatCents(cents: number): string {
-  return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
+import { formatDate, formatCurrency } from '@/lib/format'
 
 export function OrderCard({ order }: { order: OrderWithItems }) {
   const [expanded, setExpanded] = useState(false)
@@ -34,7 +30,7 @@ export function OrderCard({ order }: { order: OrderWithItems }) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="font-mono text-xs text-site-muted mb-1">#{shortId}</p>
-          <p className="font-semibold text-site-text">{formatCents(order.total_cents)}</p>
+          <p className="font-semibold text-site-text">{formatCurrency(order.total_cents)}</p>
           <p className="text-sm text-site-muted mt-0.5">{formatDate(order.created_at)}</p>
         </div>
         <div className="flex items-center gap-3 flex-none">
@@ -66,7 +62,7 @@ export function OrderCard({ order }: { order: OrderWithItems }) {
                   <span className="text-site-muted ml-2">x{item.quantity}</span>
                 </span>
                 <span className="text-site-muted font-mono text-xs flex-none">
-                  {formatCents(item.unit_price_cents)} ea
+                  {formatCurrency(item.unit_price_cents)} ea
                 </span>
               </li>
             )

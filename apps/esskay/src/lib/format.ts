@@ -1,6 +1,23 @@
 const LOCALE = 'en-US'
 
 /**
+ * Canonical currency display: $1,234.56.
+ * Accepts a value in cents.
+ */
+export function formatCurrency(cents: number): string {
+  return (cents / 100).toLocaleString(LOCALE, { style: 'currency', currency: 'USD' })
+}
+
+/**
+ * Canonical phone display: (315) 555-1234 for US numbers, raw E.164 otherwise.
+ */
+export function formatPhone(phone: string): string {
+  const us = phone.match(/^\+1(\d{3})(\d{3})(\d{4})$/)
+  if (us) return `(${us[1]}) ${us[2]}-${us[3]}`
+  return phone
+}
+
+/**
  * Canonical date display: MM/DD/YY (e.g. 05/07/26).
  * Returns '--' for null/undefined.
  */

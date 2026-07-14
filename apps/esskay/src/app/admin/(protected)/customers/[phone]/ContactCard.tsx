@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import type { Database } from '@amyv/supabase/types'
+import { formatPhone } from '@/lib/format'
 import { updateContact } from './actions'
 
 type Customer = Database['public']['Tables']['customers']['Row']
@@ -11,12 +12,6 @@ const INPUT_CLS =
 
 const ACTION_BTN =
   'rounded-xl text-sm font-medium px-4 py-2 bg-site-bg border border-site-accent-dark text-site-accent-dark hover:bg-site-accent-light transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy disabled:opacity-50'
-
-function formatPhone(phone: string): string {
-  const us = phone.match(/^\+1(\d{3})(\d{3})(\d{4})$/)
-  if (us) return `(${us[1]}) ${us[2]}-${us[3]}`
-  return phone
-}
 
 function toField(v: string | null | undefined): string {
   return v ?? ''

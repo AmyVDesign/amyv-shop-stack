@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@amyv/supabase/types'
+import { formatCurrency, formatPhone } from '@/lib/format'
 import { OrderCard } from './OrderCard'
 import type { OrderWithItems } from './OrderCard'
 import { TasksSection } from './TasksSection'
@@ -10,16 +11,6 @@ import { ContactCard } from './ContactCard'
 
 type CustomerTask   = Database['public']['Tables']['customer_tasks']['Row']
 type CustomerChange = Database['public']['Tables']['customer_changes']['Row']
-
-function formatCents(cents: number): string {
-  return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
-
-function formatPhone(phone: string): string {
-  const us = phone.match(/^\+1(\d{3})(\d{3})(\d{4})$/)
-  if (us) return `(${us[1]}) ${us[2]}-${us[3]}`
-  return phone
-}
 
 export default async function CustomerProfilePage({
   params,
@@ -93,7 +84,7 @@ export default async function CustomerProfilePage({
         </div>
         <div className="border border-site-border rounded-xl p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-site-muted mb-1">Total spent</p>
-          <p className="text-2xl font-normal text-site-text">{formatCents(totalSpentCents)}</p>
+          <p className="text-2xl font-normal text-site-text">{formatCurrency(totalSpentCents)}</p>
         </div>
         <div className="border border-site-border rounded-xl p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-site-muted mb-1">Open tasks</p>

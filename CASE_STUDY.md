@@ -335,6 +335,18 @@ by inspection and catching them by construction.
 
 ---
 
+### Cross-customer task queue
+
+**Situation:** Tasks lived only on individual customer profiles, so answering "what needs doing today" meant opening customers one by one.
+
+**Decision:** Surface every open task in one filterable queue, typed so staff can pull just refunds or just call-backs, with each row linking back to the customer it belongs to. The table, toolbar, and formatting all come from the shared primitives and documented standards.
+
+**Outcome:** One screen answers "what is outstanding," and completing a task updates both the queue and the customer's profile.
+
+**Why it's worth telling:** The task type was designed for this page before it existed; the composite index and enum were laid down with the profile build, so the queue cost one screen, not a migration. That is the payoff of designing the data model one step ahead of the UI.
+
+---
+
 ## Sections to add as we go
 
 - **Loom demo script** (when you record the walkthrough video)

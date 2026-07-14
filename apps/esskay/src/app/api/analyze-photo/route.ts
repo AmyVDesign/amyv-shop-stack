@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { MARINE_CATEGORIES } from '@/data/marine-categories'
 import { VisionResultSchema } from '@/lib/vision-schema'
 import type { VisionResult } from '@/lib/vision-schema'
@@ -15,6 +16,9 @@ function checkAndIncrementRate(max: number): boolean {
   const key = todayKey()
   const count = dailyCounts.get(key) ?? 0
   if (count >= max) return false
+  for (const k of dailyCounts.keys()) {
+    if (k !== key) dailyCounts.delete(k)
+  }
   dailyCounts.set(key, count + 1)
   return true
 }
@@ -78,6 +82,10 @@ If a field is not determinable from the image, set it to null and confidence to 
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
+
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })

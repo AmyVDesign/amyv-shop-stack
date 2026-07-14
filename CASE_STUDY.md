@@ -335,6 +335,18 @@ by inspection and catching them by construction.
 
 ---
 
+### Checkout holds for one-of-a-kind inventory
+
+**Situation:** Every part exists once. Two buyers reaching payment for the same part would mean refunding a real person, so the naive decrement-on-payment design was not acceptable.
+
+**Decision:** Claim inventory atomically the moment checkout starts (a conditional single-row decrement that cannot go negative), back it with a 30-minute Stripe session expiry, and compute all prices server-side from the database rather than trusting the cart.
+
+**Outcome:** Two people can never pay for the same part; an abandoned cart releases its hold within 30 minutes; and the client can influence nothing about what it pays.
+
+**Why it's worth telling:** The interesting design work in e-commerce is not the cart UI, it is the race conditions and trust boundaries underneath it. This is a small store, but the checkout is built like inventory integrity matters, because for one-of-a-kind parts it does.
+
+---
+
 ### Cross-customer task queue
 
 **Situation:** Tasks lived only on individual customer profiles, so answering "what needs doing today" meant opening customers one by one.

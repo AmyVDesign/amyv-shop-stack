@@ -484,7 +484,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_part: {
+        Args: { product_id: string }
+        Returns: { id: string }[]
+      }
+      release_part: {
+        Args: { product_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       inventory_movement_reason:

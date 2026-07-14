@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/server'
 import { Wordmark } from '@amyv/ui'
 import { conditionLabel } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
+import { CartIndicator } from '@/components/CartIndicator'
+import { AddToCartButton } from './AddToCartButton'
 
 const SELECT =
   'id, title, slug, part_number, vendor, condition, price_cents, qty_for_sale, description, condition_notes, photo_urls, linked_listing_id, standalone_listing, visibility'
@@ -170,29 +172,40 @@ export default async function ProductPage({
 function PublicHeader() {
   return (
     <header className="border-b border-site-border bg-site-bg">
-      <div className="max-w-5xl mx-auto px-6 py-4">
+      <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
         <Wordmark size="sm" />
+        <CartIndicator />
       </div>
     </header>
   )
 }
 
 function NewGroupCard({ variants }: { variants: Row[] }) {
-  const totalQty = variants.reduce((sum, v) => sum + v.qty_for_sale, 0)
-  const prices = variants.map((v) => v.price_cents)
-  const minPrice = Math.min(...prices)
-  const allSamePrice = prices.every((p) => p === minPrice)
-  const priceLabel = allSamePrice ? formatPrice(minPrice) : `from ${formatPrice(minPrice)}`
-
   return (
-    <div className="rounded-lg border border-site-border bg-white px-6 py-5 flex items-center justify-between gap-4">
-      <div>
-        <p className="font-display text-lg font-semibold text-site-text mb-1">New</p>
-        <p className={`text-sm ${totalQty > 0 ? 'text-green-700' : 'text-site-muted'}`}>
-          {totalQty > 0 ? `${totalQty} in stock` : 'Out of stock'}
-        </p>
-      </div>
-      <p className="text-xl font-semibold text-site-text tabular-nums">{priceLabel}</p>
+    <div className="rounded-lg border border-site-border bg-site-bg-alt divide-y divide-site-border">
+      {variants.map((v) => {
+        const outOfStock = v.qty_for_sale === 0
+        return (
+          <div key={v.id} className={`px-6 py-5 flex items-center justify-between gap-4 ${outOfStock ? 'opacity-50' : ''}`}>
+            <div>
+              <p className="font-display text-lg font-semibold text-site-text mb-1">New</p>
+              <p className={`text-sm ${outOfStock ? 'text-site-muted' : 'text-green-700'}`}>
+                {outOfStock ? 'Out of stock' : `${v.qty_for_sale} in stock`}
+              </p>
+            </div>
+            <div className="flex items-center gap-6">
+              <p className="text-xl font-semibold text-site-text tabular-nums">{formatPrice(v.price_cents)}</p>
+              <AddToCartButton
+                productId={v.id}
+                title={v.title}
+                priceCents={v.price_cents}
+                slug={v.slug}
+                inStock={!outOfStock}
+              />
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -234,10 +247,19 @@ function OtherVariantCard({ variant: v }: { variant: Row }) {
         </p>
       </div>
 
-      {/* Price */}
-      <p className="flex-none text-xl font-semibold text-site-text tabular-nums">
-        {formatPrice(v.price_cents)}
-      </p>
+      {/* Price + Add to cart */}
+      <div className="flex-none flex flex-col items-end gap-3">
+        <p className="text-xl font-semibold text-site-text tabular-nums">
+          {formatPrice(v.price_cents)}
+        </p>
+        <AddToCartButton
+          productId={v.id}
+          title={v.title}
+          priceCents={v.price_cents}
+          slug={v.slug}
+          inStock={!outOfStock}
+        />
+      </div>
     </div>
   )
 }
@@ -293,6 +315,15 @@ function StandaloneLayout({ product }: { product: Row }) {
               <p className={`text-sm font-medium ${product.qty_for_sale > 0 ? 'text-green-700' : 'text-site-muted'}`}>
                 {product.qty_for_sale > 0 ? `${product.qty_for_sale} in stock` : 'Out of stock'}
               </p>
+              <div className="mt-4">
+                <AddToCartButton
+                  productId={product.id}
+                  title={product.title}
+                  priceCents={product.price_cents}
+                  slug={product.slug}
+                  inStock={product.qty_for_sale > 0}
+                />
+              </div>
             </div>
           </div>
         </div>

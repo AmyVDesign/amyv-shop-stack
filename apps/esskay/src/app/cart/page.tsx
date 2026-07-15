@@ -23,12 +23,23 @@ export default function CartPage() {
   const { items, remove, updateQuantity } = useCart()
   const [checkingOut, setCheckingOut] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [failedIds, setFailedIds] = useState<Set<string>>(new Set())
 
   const estimatedTotal = items.reduce((sum, i) => sum + i.priceCents * i.quantity, 0)
+
+  function clearFailed(productId: string) {
+    setFailedIds((prev) => {
+      if (!prev.has(productId)) return prev
+      const next = new Set(prev)
+      next.delete(productId)
+      return next
+    })
+  }
 
   async function handleCheckout() {
     setCheckingOut(true)
     setError(null)
+    setFailedIds(new Set())
     try {
       const res = await fetch('/api/checkout', {
         method: 'POST',
@@ -40,8 +51,8 @@ export default function CartPage() {
       const data = await res.json() as { url?: string; failedIds?: string[]; error?: string }
       if (!res.ok) {
         if (res.status === 409 && Array.isArray(data.failedIds)) {
-          for (const id of data.failedIds) remove(id)
-          setError('One or more items are no longer available in the requested quantity. They have been removed from your cart.')
+          setFailedIds(new Set(data.failedIds))
+          setError('Some items are no longer available at the requested quantity. Adjust or remove them to continue.')
         } else {
           setError(data.error ?? 'Unable to start checkout. Please try again.')
         }
@@ -81,10 +92,11 @@ export default function CartPage() {
         <ul className="space-y-3 mb-8" aria-label="Cart items">
           {items.map((item) => {
             const lineTotal = item.priceCents * item.quantity
+            const isFailed = failedIds.has(item.productId)
             return (
               <li
                 key={item.productId}
-                className="flex items-start justify-between gap-4 rounded-lg border border-site-border bg-site-bg-alt px-4 py-3"
+                className={`flex items-start justify-between gap-4 rounded-lg border px-4 py-3 ${isFailed ? 'border-site-danger bg-site-bg-alt' : 'border-site-border bg-site-bg-alt'}`}
               >
                 <div className="min-w-0 flex-1">
                   <Link
@@ -99,18 +111,29 @@ export default function CartPage() {
                       <span className="text-xs ml-1">({formatCurrency(item.priceCents)} each)</span>
                     )}
                   </p>
+                  {isFailed && (
+                    <p role="alert" className="text-xs text-site-danger mt-1">
+                      Not available at this quantity -- reduce or remove to continue.
+                    </p>
+                  )}
                 </div>
                 <div className="flex-none flex flex-col items-end gap-2">
                   <QuantityStepper
                     value={item.quantity}
                     max={item.maxQty}
                     label={item.title}
-                    onChange={(qty) => updateQuantity(item.productId, qty)}
+                    onChange={(qty) => {
+                      updateQuantity(item.productId, qty)
+                      clearFailed(item.productId)
+                    }}
                   />
                   <button
                     type="button"
                     aria-label={`Remove ${item.title} from cart`}
-                    onClick={() => remove(item.productId)}
+                    onClick={() => {
+                      remove(item.productId)
+                      clearFailed(item.productId)
+                    }}
                     className="text-xs text-site-muted hover:text-site-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy rounded transition-colors"
                   >
                     Remove
@@ -140,7 +163,7 @@ export default function CartPage() {
         <button
           type="button"
           onClick={handleCheckout}
-          disabled={checkingOut}
+          disabled={checkingOut || failedIds.size > 0}
           className="w-full py-3 text-sm font-medium bg-site-accent-dark text-site-bg rounded-lg hover:bg-site-accent-navy-dark transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy disabled:opacity-50"
         >
           {checkingOut ? 'Starting checkout...' : 'Check out'}

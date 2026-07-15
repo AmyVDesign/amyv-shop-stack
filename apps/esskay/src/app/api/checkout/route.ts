@@ -27,8 +27,8 @@ export async function POST(request: Request) {
   let items: CheckoutItem[]
   try {
     const body = await request.json() as { items?: unknown }
-    if (!Array.isArray(body.items) || body.items.length === 0) {
-      return NextResponse.json({ error: 'items required' }, { status: 400 })
+    if (!Array.isArray(body.items) || body.items.length === 0 || body.items.length > 20) {
+      return NextResponse.json({ error: 'items required (1-20 line items)' }, { status: 400 })
     }
     const parsed = (body.items as unknown[]).map((entry) => {
       if (typeof entry !== 'object' || entry === null) return null
@@ -45,11 +45,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  // 2. Fetch products server-side; reject any that are not visibility=public or lack a price
+  // 2. Fetch products server-side; reject non-public or priceless products
   const supabase = await createClient()
   const { data: products, error: fetchError } = await supabase
     .from('products')
-    .select('id, title, slug, price_cents, visibility')
+    .select('id, title, price_cents, visibility, qty_for_sale')
     .in('id', items.map((i) => i.productId))
 
   if (fetchError || !products) {
@@ -57,12 +57,27 @@ export async function POST(request: Request) {
   }
 
   const productMap = new Map(products.map((p) => [p.id, p]))
-  const invalid = items.filter((item) => {
+
+  const unavailable = items.filter((item) => {
     const p = productMap.get(item.productId)
     return !p || p.visibility !== 'public' || !p.price_cents
   })
-  if (invalid.length > 0) {
+  if (unavailable.length > 0) {
     return NextResponse.json({ error: 'One or more products are unavailable.' }, { status: 400 })
+  }
+
+  // Pre-check: reject quantities that already exceed current stock. The
+  // claim_parts RPC is still the atomic source of truth; this surfaces the
+  // most common case (buyer held stale qty) before touching the database.
+  const overstock = items.filter((item) => {
+    const p = productMap.get(item.productId)!
+    return item.quantity > p.qty_for_sale
+  })
+  if (overstock.length > 0) {
+    return NextResponse.json(
+      { failedIds: overstock.map((i) => i.productId) },
+      { status: 409 },
+    )
   }
 
   // 3. Claim each product atomically via service-role client (RPCs are service_role only)
@@ -122,8 +137,8 @@ export async function POST(request: Request) {
       shipping_address_collection: { allowed_countries: ['US', 'CA'] },
       success_url: `${origin}/checkout/success`,
       cancel_url: `${origin}/cart`,
-      // Phase 2 webhook will parse product_ids as JSON [{productId, quantity}]
-      metadata: { product_ids: JSON.stringify(items.map((i) => ({ productId: i.productId, quantity: i.quantity }))) },
+      // Phase 2 webhook parses metadata.items as JSON [{productId, quantity}]
+      metadata: { items: JSON.stringify(items.map((i) => ({ productId: i.productId, quantity: i.quantity }))) },
     })
 
     return NextResponse.json({ url: session.url })

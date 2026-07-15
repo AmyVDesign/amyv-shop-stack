@@ -121,7 +121,7 @@ export default async function ProductPage({
                 className="w-full md:w-[480px] aspect-square object-cover rounded-lg border border-site-border"
               />
             ) : (
-              <div className="w-full md:w-[480px] aspect-square rounded-lg bg-white border border-site-border" />
+              <div className="w-full md:w-[480px] aspect-square rounded-lg bg-site-bg-alt border border-site-border" />
             )}
           </div>
 
@@ -180,27 +180,62 @@ function PublicHeader() {
   )
 }
 
+type VariantGroup = {
+  key: string
+  label: string
+  priceCents: number
+  totalQty: number
+  buyTarget: Row | null
+}
+
+function groupNewVariants(variants: Row[]): VariantGroup[] {
+  const map = new Map<string, Row[]>()
+  for (const v of variants) {
+    const key = `${v.condition}:${v.price_cents}`
+    const bucket = map.get(key)
+    if (bucket) bucket.push(v)
+    else map.set(key, [v])
+  }
+  return Array.from(map.entries()).map(([key, group]) => ({
+    key,
+    label: conditionLabel[group[0].condition as ProductCondition] ?? group[0].condition ?? 'New',
+    priceCents: group[0].price_cents,
+    totalQty: group.reduce((sum, v) => sum + v.qty_for_sale, 0),
+    buyTarget: group.find((v) => v.qty_for_sale > 0) ?? null,
+  }))
+}
+
 function NewGroupCard({ variants }: { variants: Row[] }) {
+  const groups = groupNewVariants(variants)
   return (
     <div className="rounded-lg border border-site-border bg-site-bg-alt divide-y divide-site-border">
-      {variants.map((v) => {
-        const outOfStock = v.qty_for_sale === 0
+      {groups.map((group) => {
+        const outOfStock = group.totalQty === 0
+        const target = group.buyTarget
         return (
-          <div key={v.id} className={`px-6 py-5 flex items-center justify-between gap-4 ${outOfStock ? 'opacity-50' : ''}`}>
+          <div
+            key={group.key}
+            className={`px-6 py-5 flex items-center justify-between gap-4 ${outOfStock ? 'opacity-50' : ''}`}
+          >
             <div>
-              <p className="font-display text-lg font-semibold text-site-text mb-1">New</p>
+              <p className="font-display text-lg font-semibold text-site-text mb-1">{group.label}</p>
               <p className={`text-sm ${outOfStock ? 'text-site-muted' : 'text-green-700'}`}>
-                {outOfStock ? 'Out of stock' : `${v.qty_for_sale} in stock`}
+                {outOfStock ? 'Out of stock' : `${group.totalQty} in stock`}
               </p>
             </div>
             <div className="flex items-center gap-6">
-              <p className="text-xl font-semibold text-site-text tabular-nums">{formatPrice(v.price_cents)}</p>
+              <p className="text-xl font-semibold text-site-text tabular-nums">
+                {formatPrice(group.priceCents)}
+              </p>
+              {/* v1 limit: cart holds one unit per product id; a grouped row
+                  sells one unit even when the group has more. Revisit if
+                  multi-quantity carts land. */}
               <AddToCartButton
-                productId={v.id}
-                title={v.title}
-                priceCents={v.price_cents}
-                slug={v.slug}
-                inStock={!outOfStock}
+                productId={target?.id ?? ''}
+                title={target?.title ?? ''}
+                priceCents={group.priceCents}
+                slug={target?.slug ?? ''}
+                inStock={!outOfStock && target !== null}
               />
             </div>
           </div>
@@ -218,7 +253,7 @@ function OtherVariantCard({ variant: v }: { variant: Row }) {
 
   return (
     <div
-      className={`rounded-lg border border-site-border bg-white flex items-center gap-5 px-5 py-4 ${outOfStock ? 'opacity-50' : ''}`}
+      className={`rounded-lg border border-site-border flex items-center gap-5 px-5 py-4 ${outOfStock ? 'opacity-50' : ''}`}
     >
       {/* Photo */}
       <div className="flex-none">
@@ -282,7 +317,7 @@ function StandaloneLayout({ product }: { product: Row }) {
                 className="w-full md:w-[480px] aspect-square object-cover rounded-lg border border-site-border"
               />
             ) : (
-              <div className="w-full md:w-[480px] aspect-square rounded-lg bg-white border border-site-border" />
+              <div className="w-full md:w-[480px] aspect-square rounded-lg bg-site-bg-alt border border-site-border" />
             )}
           </div>
 
@@ -303,7 +338,7 @@ function StandaloneLayout({ product }: { product: Row }) {
               <p className="text-base text-site-text leading-relaxed mb-6">{product.description}</p>
             )}
 
-            <div className="rounded-lg border border-site-border bg-white px-6 py-5 inline-flex flex-col gap-1.5">
+            <div className="rounded-lg border border-site-border px-6 py-5 inline-flex flex-col gap-1.5">
               {product.condition && (
                 <p className="text-sm text-site-muted">
                   {conditionLabel[product.condition as ProductCondition]}

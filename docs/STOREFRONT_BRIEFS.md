@@ -70,6 +70,23 @@ Implementation notes:
 
 ## Checkout Shipping Step
 
+### Layout decision
+
+The custom checkout is a step-based flow: cart, then address, then shipping
+method, then payment. Each step gets its own screen. A compact order summary
+(line items, running total) is visible at every step.
+
+The implementation uses Stripe Elements embedded in our own Next.js pages, not
+the hosted Stripe Checkout page. This gives full control over layout, copy, and
+the steps before payment.
+
+Mobile-first. The single-column step pattern is chosen partly because most parts
+buyers will be on phones, browsing in the yard or at the dock. The hosted Stripe
+two-column layout assumes a wide screen; a step-per-screen flow reads better at
+phone widths and keeps the active form short enough to complete without scrolling.
+
+### Reference and improvements
+
 Reference: Shopify's single-page checkout with the order summary rail on the
 right. That layout works well; the main improvements are the pickup option,
 shipping method reveal timing, a pre-checkout zip estimate, and owner-editable

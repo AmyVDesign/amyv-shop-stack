@@ -9,7 +9,12 @@ export interface CartItem {
 
 type Listener = () => void
 const listeners = new Set<Listener>()
+// _items is only ever replaced (never mutated), so getSnapshot() returning
+// _items is referentially stable between changes.
 let _items: CartItem[] = []
+// Stable empty-array reference for SSR: useSyncExternalStore requires
+// getServerSnapshot to return the same reference when the value hasn't changed.
+const EMPTY_CART: CartItem[] = []
 
 function notify() {
   for (const l of listeners) l()
@@ -27,7 +32,7 @@ export const cartStore = {
 
   getSnapshot(): CartItem[] { return _items },
 
-  getServerSnapshot(): CartItem[] { return [] },
+  getServerSnapshot(): CartItem[] { return EMPTY_CART },
 
   init() {
     try {

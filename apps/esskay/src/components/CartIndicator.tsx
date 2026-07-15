@@ -5,7 +5,7 @@ import { useCart } from '@/contexts/CartContext'
 
 export function CartIndicator() {
   const { items } = useCart()
-  const count = items.length
+  const count = items.reduce((sum, i) => sum + i.quantity, 0)
   const label = count === 0
     ? 'Cart, empty'
     : `Cart, ${count} ${count === 1 ? 'item' : 'items'}`

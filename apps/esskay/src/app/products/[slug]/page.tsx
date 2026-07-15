@@ -227,15 +227,16 @@ function NewGroupCard({ variants }: { variants: Row[] }) {
               <p className="text-xl font-semibold text-site-text tabular-nums">
                 {formatPrice(group.priceCents)}
               </p>
-              {/* v1 limit: cart holds one unit per product id; a grouped row
-                  sells one unit even when the group has more. Revisit if
-                  multi-quantity carts land. */}
+              {/* Stepper max is buyTarget's stock, not totalQty. A grouped row
+                  claims from one product id; if stock is split across variants
+                  the max shown may be less than "N in stock" above. */}
               <AddToCartButton
                 productId={target?.id ?? ''}
                 title={target?.title ?? ''}
                 priceCents={group.priceCents}
                 slug={target?.slug ?? ''}
                 inStock={!outOfStock && target !== null}
+                maxQty={target?.qty_for_sale ?? 0}
               />
             </div>
           </div>
@@ -293,6 +294,7 @@ function OtherVariantCard({ variant: v }: { variant: Row }) {
           priceCents={v.price_cents}
           slug={v.slug}
           inStock={!outOfStock}
+          maxQty={v.qty_for_sale}
         />
       </div>
     </div>
@@ -357,6 +359,7 @@ function StandaloneLayout({ product }: { product: Row }) {
                   priceCents={product.price_cents}
                   slug={product.slug}
                   inStock={product.qty_for_sale > 0}
+                  maxQty={product.qty_for_sale}
                 />
               </div>
             </div>

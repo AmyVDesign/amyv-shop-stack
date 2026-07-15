@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Wordmark } from '@amyv/ui'
 import { useCart } from '@/contexts/CartContext'
 import { CartIndicator } from '@/components/CartIndicator'
+import { QuantityStepper } from '@/components/QuantityStepper'
 import { formatCurrency } from '@/lib/format'
 
 function CartHeader() {
@@ -19,11 +20,11 @@ function CartHeader() {
 }
 
 export default function CartPage() {
-  const { items, remove } = useCart()
+  const { items, remove, updateQuantity } = useCart()
   const [checkingOut, setCheckingOut] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const estimatedTotal = items.reduce((sum, i) => sum + i.priceCents, 0)
+  const estimatedTotal = items.reduce((sum, i) => sum + i.priceCents * i.quantity, 0)
 
   async function handleCheckout() {
     setCheckingOut(true)
@@ -32,13 +33,15 @@ export default function CartPage() {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productIds: items.map((i) => i.productId) }),
+        body: JSON.stringify({
+          items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+        }),
       })
-      const data = await res.json() as { url?: string; soldOutIds?: string[]; error?: string }
+      const data = await res.json() as { url?: string; failedIds?: string[]; error?: string }
       if (!res.ok) {
-        if (res.status === 409 && Array.isArray(data.soldOutIds)) {
-          for (const id of data.soldOutIds) remove(id)
-          setError('One or more items were just sold. They have been removed from your cart.')
+        if (res.status === 409 && Array.isArray(data.failedIds)) {
+          for (const id of data.failedIds) remove(id)
+          setError('One or more items are no longer available in the requested quantity. They have been removed from your cart.')
         } else {
           setError(data.error ?? 'Unable to start checkout. Please try again.')
         }
@@ -76,30 +79,46 @@ export default function CartPage() {
         <h1 className="font-display text-3xl font-semibold text-site-text mb-8">Your cart</h1>
 
         <ul className="space-y-3 mb-8" aria-label="Cart items">
-          {items.map((item) => (
-            <li
-              key={item.productId}
-              className="flex items-center justify-between gap-4 rounded-lg border border-site-border bg-site-bg-alt px-4 py-3"
-            >
-              <div className="min-w-0">
-                <Link
-                  href={`/products/${item.slug}`}
-                  className="font-medium text-site-text hover:text-site-accent-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy rounded truncate block"
-                >
-                  {item.title}
-                </Link>
-                <p className="text-sm text-site-muted mt-0.5">{formatCurrency(item.priceCents)}</p>
-              </div>
-              <button
-                type="button"
-                aria-label={`Remove ${item.title} from cart`}
-                onClick={() => remove(item.productId)}
-                className="flex-none text-sm text-site-muted hover:text-site-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy rounded transition-colors"
+          {items.map((item) => {
+            const lineTotal = item.priceCents * item.quantity
+            return (
+              <li
+                key={item.productId}
+                className="flex items-start justify-between gap-4 rounded-lg border border-site-border bg-site-bg-alt px-4 py-3"
               >
-                Remove
-              </button>
-            </li>
-          ))}
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/products/${item.slug}`}
+                    className="font-medium text-site-text hover:text-site-accent-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy rounded truncate block"
+                  >
+                    {item.title}
+                  </Link>
+                  <p className="text-sm text-site-muted mt-0.5">
+                    {formatCurrency(lineTotal)}
+                    {item.quantity > 1 && (
+                      <span className="text-xs ml-1">({formatCurrency(item.priceCents)} each)</span>
+                    )}
+                  </p>
+                </div>
+                <div className="flex-none flex flex-col items-end gap-2">
+                  <QuantityStepper
+                    value={item.quantity}
+                    max={item.maxQty}
+                    label={item.title}
+                    onChange={(qty) => updateQuantity(item.productId, qty)}
+                  />
+                  <button
+                    type="button"
+                    aria-label={`Remove ${item.title} from cart`}
+                    onClick={() => remove(item.productId)}
+                    className="text-xs text-site-muted hover:text-site-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy rounded transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </li>
+            )
+          })}
         </ul>
 
         <div className="border-t border-site-border pt-5 mb-6">

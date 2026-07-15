@@ -9,6 +9,7 @@ export type { CartItem }
 interface CartContextValue {
   items: CartItem[]
   add: (item: CartItem) => 'added' | 'already_in_cart'
+  updateQuantity: (productId: string, quantity: number) => void
   remove: (productId: string) => void
   clear: () => void
 }
@@ -31,6 +32,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       value={{
         items,
         add: cartStore.add,
+        updateQuantity: cartStore.updateQuantity,
         remove: cartStore.remove,
         clear: cartStore.clear,
       }}

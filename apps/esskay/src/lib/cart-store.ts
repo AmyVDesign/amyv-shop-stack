@@ -5,6 +5,10 @@ export interface CartItem {
   title: string
   priceCents: number
   slug: string
+  quantity: number
+  // Advisory: stock at add time. Cart stepper uses this as its max. Checkout
+  // validates server-side, so stale values here are safe.
+  maxQty: number
 }
 
 type Listener = () => void
@@ -50,6 +54,16 @@ export const cartStore = {
     persist(_items)
     notify()
     return 'added'
+  },
+
+  updateQuantity(productId: string, quantity: number) {
+    if (quantity < 1) {
+      _items = _items.filter((i) => i.productId !== productId)
+    } else {
+      _items = _items.map((i) => i.productId === productId ? { ...i, quantity } : i)
+    }
+    persist(_items)
+    notify()
   },
 
   remove(productId: string) {

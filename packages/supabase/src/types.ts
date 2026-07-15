@@ -484,12 +484,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      claim_part: {
-        Args: { product_id: string }
-        Returns: { id: string }[]
+      claim_parts: {
+        Args: { product_id: string; qty: number }
+        Returns: number
       }
-      release_part: {
-        Args: { product_id: string }
+      release_parts: {
+        Args: { product_id: string; qty: number }
         Returns: undefined
       }
     }

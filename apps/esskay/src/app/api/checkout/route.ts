@@ -1,8 +1,3 @@
-// PHASE 1 HONESTY NOTE:
-// Until the Phase 2 Stripe webhooks ship, a completed payment does NOT yet
-// create an order row, and an expired session does NOT release holds.
-// Phase 2 closes both. Do not deploy checkout to real customers between phases.
-
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
@@ -49,7 +44,7 @@ export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: products, error: fetchError } = await supabase
     .from('products')
-    .select('id, title, price_cents, visibility, qty_for_sale')
+    .select('id, title, price_cents, visibility, qty_for_sale, photo_urls')
     .in('id', items.map((i) => i.productId))
 
   if (fetchError || !products) {
@@ -111,12 +106,12 @@ export async function POST(request: Request) {
   try {
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item) => {
       const p = productMap.get(item.productId)!
+      const productData: Stripe.Checkout.SessionCreateParams.LineItem.PriceData.ProductData = {
+        name: p.title,
+      }
+      if (p.photo_urls[0]) productData.images = [p.photo_urls[0]]
       return {
-        price_data: {
-          currency: 'usd',
-          product_data: { name: p.title },
-          unit_amount: p.price_cents,
-        },
+        price_data: { currency: 'usd', product_data: productData, unit_amount: p.price_cents },
         quantity: item.quantity,
       }
     })
@@ -135,10 +130,13 @@ export async function POST(request: Request) {
       expires_at: expiresAt,
       line_items: lineItems,
       shipping_address_collection: { allowed_countries: ['US', 'CA'] },
+      phone_number_collection: { enabled: true },
       success_url: `${origin}/checkout/success`,
       cancel_url: `${origin}/cart`,
-      // Phase 2 webhook parses metadata.items as JSON [{productId, quantity}]
-      metadata: { items: JSON.stringify(items.map((i) => ({ productId: i.productId, quantity: i.quantity }))) },
+      metadata: {
+        items: JSON.stringify(items.map((i) => ({ productId: i.productId, quantity: i.quantity }))),
+        shipping_cents: String(SHIPPING_FLAT_CENTS),
+      },
     })
 
     return NextResponse.json({ url: session.url })

@@ -290,6 +290,7 @@ export type Database = {
           qb_status: Database["public"]["Enums"]["qb_status"]
           shipping_cents: number
           stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
           subtotal_cents: number
           tax_cents: number
           total_cents: number
@@ -306,6 +307,7 @@ export type Database = {
           qb_status?: Database["public"]["Enums"]["qb_status"]
           shipping_cents?: number
           stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
           subtotal_cents?: number
           tax_cents?: number
           total_cents?: number
@@ -322,6 +324,7 @@ export type Database = {
           qb_status?: Database["public"]["Enums"]["qb_status"]
           shipping_cents?: number
           stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
           subtotal_cents?: number
           tax_cents?: number
           total_cents?: number

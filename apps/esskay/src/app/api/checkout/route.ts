@@ -131,7 +131,7 @@ export async function POST(request: Request) {
       line_items: lineItems,
       shipping_address_collection: { allowed_countries: ['US', 'CA'] },
       phone_number_collection: { enabled: true },
-      success_url: `${origin}/checkout/success`,
+      success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/cart`,
       metadata: {
         items: JSON.stringify(items.map((i) => ({ productId: i.productId, quantity: i.quantity }))),

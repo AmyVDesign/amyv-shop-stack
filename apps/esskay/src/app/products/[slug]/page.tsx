@@ -145,7 +145,7 @@ export default async function ProductPage({
         </div>
 
         {/* Available section */}
-        <section>
+        <section className="max-w-3xl">
           <p className="text-xs font-medium uppercase tracking-wide text-site-muted mb-4">
             Available
           </p>

@@ -1,8 +1,22 @@
+import Link from 'next/link'
+import { PublicHeader } from '@/components/PublicHeader'
+
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <h1 className="text-4xl font-bold text-site-text">Ess-Kay Yards</h1>
-      <p className="mt-4 text-site-muted">Marine parts &amp; service &mdash; coming soon.</p>
-    </main>
-  );
+    <div className="min-h-screen bg-site-bg flex flex-col">
+      <PublicHeader />
+
+      <main className="flex-1 max-w-5xl mx-auto px-6 py-24 flex flex-col items-start justify-center">
+        <p className="text-site-muted mb-8">
+          Marine parts, including the ones nobody else has.
+        </p>
+        <Link
+          href="/products"
+          className="text-sm font-medium text-site-accent-dark hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy rounded"
+        >
+          Browse parts
+        </Link>
+      </main>
+    </div>
+  )
 }

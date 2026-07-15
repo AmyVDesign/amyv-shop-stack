@@ -3,10 +3,9 @@ export const dynamic = 'force-dynamic'
 import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
-import { Wordmark } from '@amyv/ui'
 import { conditionLabel } from '@/lib/product-labels'
 import type { ProductCondition } from '@/lib/product-labels'
-import { CartIndicator } from '@/components/CartIndicator'
+import { PublicHeader } from '@/components/PublicHeader'
 import { AddToCartButton } from './AddToCartButton'
 
 const SELECT =
@@ -168,17 +167,6 @@ export default async function ProductPage({
 }
 
 // ── Sub-components ────────────────────────────────────────────
-
-function PublicHeader() {
-  return (
-    <header className="border-b border-site-border bg-site-bg">
-      <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-        <Wordmark size="sm" />
-        <CartIndicator />
-      </div>
-    </header>
-  )
-}
 
 type VariantGroup = {
   key: string

@@ -359,6 +359,18 @@ by inspection and catching them by construction.
 
 ---
 
+### The store gets a front door
+
+**Situation:** Checkout worked end to end, but products were reachable only by direct URL. There was no way to browse.
+
+**Decision:** A public listing that rolls variant listings up under one card per part, shows honest stock badges driven by live inventory, and keeps sold-out parts visible as future watch-list leads instead of hiding them.
+
+**Outcome:** Browse to buy now works without knowing a URL, and the storefront finally demos as a store.
+
+**Why it's worth telling:** The rollup mirrors the domain: one part, many acquisitions. The listing shows the part, not the bookkeeping.
+
+---
+
 ## Sections to add as we go
 
 - **Loom demo script** (when you record the walkthrough video)

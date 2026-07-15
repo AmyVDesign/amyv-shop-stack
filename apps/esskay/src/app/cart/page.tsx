@@ -2,22 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Wordmark } from '@amyv/ui'
 import { useCart } from '@/contexts/CartContext'
-import { CartIndicator } from '@/components/CartIndicator'
+import { PublicHeader } from '@/components/PublicHeader'
 import { QuantityStepper } from '@/components/QuantityStepper'
 import { formatCurrency } from '@/lib/format'
-
-function CartHeader() {
-  return (
-    <header className="border-b border-site-border bg-site-bg">
-      <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-        <Wordmark size="sm" />
-        <CartIndicator />
-      </div>
-    </header>
-  )
-}
 
 export default function CartPage() {
   const { items, remove, updateQuantity } = useCart()
@@ -69,11 +57,11 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-site-bg">
-        <CartHeader />
+        <PublicHeader />
         <main className="max-w-2xl mx-auto px-6 py-16 text-center">
           <p className="text-site-muted mb-6">Your cart is empty.</p>
           <Link
-            href="/"
+            href="/products"
             className="text-sm font-medium text-site-accent-dark hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent-navy rounded"
           >
             Browse parts
@@ -85,7 +73,7 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-site-bg">
-      <CartHeader />
+      <PublicHeader />
       <main className="max-w-2xl mx-auto px-6 py-10">
         <h1 className="font-display text-3xl font-semibold text-site-text mb-8">Your cart</h1>
 

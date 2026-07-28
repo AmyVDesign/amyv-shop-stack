@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galaxy SF — LED Whip v50</title>
+<style>
+  :root{--ink:#EDEAE4;--dim:#8B8781;--line:rgba(237,234,228,.12);--panel:rgba(16,14,20,.72)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#0A0910;
+    font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--ink)}
+  #stage{position:fixed;inset:0;cursor:grab}
+  #stage.dragging{cursor:grabbing}
+  .hud{position:fixed;left:24px;top:24px;pointer-events:none}
+  .hud h1{font-size:13px;font-weight:500;letter-spacing:.22em;text-transform:uppercase}
+  .hud p{font-size:11px;color:var(--dim);margin-top:6px;letter-spacing:.06em}
+  .patterns{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);
+    display:flex;gap:8px;padding:8px;border:1px solid var(--line);
+    background:var(--panel);backdrop-filter:blur(14px);border-radius:999px}
+  .patterns button{appearance:none;border:0;background:transparent;color:var(--dim);
+    font:inherit;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    padding:9px 16px;border-radius:999px;cursor:pointer;transition:.2s}
+  .patterns button:hover{color:var(--ink)}
+  .patterns button:focus-visible{outline:1px solid var(--ink);outline-offset:2px}
+  .patterns button.on{color:#0A0910;background:var(--ink)}
+  .hint{position:fixed;right:24px;bottom:32px;font-size:10px;color:var(--dim);
+    letter-spacing:.14em;text-transform:uppercase}
+  @media (max-width:640px){
+    .hud{left:16px;top:16px}.hint{display:none}
+    .patterns{bottom:16px;max-width:calc(100vw - 24px);overflow-x:auto}
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div class="hud">
+  <h1>Galaxy&nbsp;SF&nbsp;— LED&nbsp;Whip</h1>
+  <p>v10 · drag to orbit</p>
+</div>
+<div class="patterns" role="group" aria-label="LED pattern">
+  <button data-p="rainbow" class="on">Rainbow</button>
+  <button data-p="comet">Comet</button>
+  <button data-p="pulse">Pulse</button>
+  <button data-p="galaxy">Galaxy</button>
+  <button data-p="off">Off</button>
+  <button data-fold id="foldBtn">Fold</button>
+</div>
+<div class="hint">Scroll to zoom</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const stage = document.getElementById("stage");
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0A0910);
+  scene.fog = new THREE.Fog(0x0A0910, 8, 24);
+
+  const camera = new THREE.PerspectiveCamera(38, innerWidth/innerHeight, .1, 100);
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+  stage.appendChild(renderer.domElement);
+
+  /* ── Studio environment: two softboxes + a rim strip on a dark field.
+     This is what makes the shrink wrap visible — long soft highlights
+     stretching across the glossy film ── */
+  {
+    const ec = document.createElement("canvas");
+    ec.width = 512; ec.height = 256;
+    const e = ec.getContext("2d");
+    e.fillStyle = "#050508"; e.fillRect(0,0,512,256);
+    function softbox(x,y,w,h,bright){
+      const gr = e.createRadialGradient(x+w/2,y+h/2,2,x+w/2,y+h/2,Math.max(w,h)/2);
+      gr.addColorStop(0,`rgba(255,255,255,${bright})`);
+      gr.addColorStop(.6,`rgba(255,255,255,${bright*.4})`);
+      gr.addColorStop(1,"rgba(255,255,255,0)");
+      e.fillStyle = gr; e.fillRect(x,y,w,h);
+    }
+    softbox(70,30,110,170,.95);    // key, high left
+    softbox(330,60,90,130,.55);    // fill, right
+    softbox(200,10,180,36,.4);     // overhead strip
+    const envTex = new THREE.CanvasTexture(ec);
+    envTex.mapping = THREE.EquirectangularReflectionMapping;
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromEquirectangular(envTex).texture;
+    envTex.dispose(); pmrem.dispose();
+  }
+
+  /* ── Dimensions ──
+     Non-integer chips-per-turn so the LED columns drift into the
+     diagonal spiral you see in the photos (real strip: 16mm chip
+     pitch on a ~69mm helix turn ≈ 4.3/turn; we use a visual match). */
+  const WHIP_H = 4.2;
+  const BASE_Y = -WHIP_H/2, TOP_Y = WHIP_H/2;
+  const R_POLE = .050;
+  const STRIP_W = .052;
+  const PITCH = STRIP_W*1.08;
+  const ledStartY = BASE_Y + .34, ledEndY = TOP_Y - .06;
+  /* cable coil under the film at the strip base */
+  const coilTopY = ledStartY - .075;
+  const coilPitch = .058, coilTurns = 2.0, coilR = R_POLE + .028;
+  const coilBotY = coilTopY - coilTurns*coilPitch;
+  const SPAN = ledEndY - ledStartY;
+  const TURNS = SPAN / PITCH;
+  const PER_TURN = 5.4;
+  const COUNT = Math.floor(TURNS * PER_TURN);
+  const R_WRAP = R_POLE + .012;
+
+  const whip = new THREE.Group();
+  scene.add(whip);
+
+  /* pole */
+  const pole = new THREE.Mesh(
+    new THREE.CylinderGeometry(R_POLE, R_POLE, WHIP_H, 24),
+    new THREE.MeshStandardMaterial({color:0x0d0d10, roughness:.5, metalness:.2})
+  );
+  whip.add(pole);
+
+  /* top cap — bulbous rounded knob, and the shrink wrap is sealed OVER
+     it (photo shows the gloss continuing across the black tip), so it
+     gets the same glossy clearcoat as the membrane */
+  const capMat = new THREE.MeshPhysicalMaterial({
+    color:0x0c0c0f, roughness:.22, metalness:.05,
+    clearcoat:1, clearcoatRoughness:.08, envMapIntensity:1.4
+  });
+  {
+    const pts = [];
+    const r0 = R_POLE+.015;        // meets the membrane radius
+    const capR = R_POLE*1.15;      // barely wider than the tube
+    const capH = capR*1.05;        // small squashed hemisphere
+    pts.push(new THREE.Vector2(r0, 0));
+    pts.push(new THREE.Vector2(capR, capH*.18));
+    pts.push(new THREE.Vector2(capR*.96, capH*.48));
+    pts.push(new THREE.Vector2(capR*.80, capH*.74));
+    pts.push(new THREE.Vector2(capR*.48, capH*.93));
+    pts.push(new THREE.Vector2(0.001, capH));
+    const capGeo = new THREE.LatheGeometry(pts, 26);
+    const cap = new THREE.Mesh(capGeo, capMat);
+    cap.position.y = TOP_Y - .04;
+    whip.add(cap);
+  }
+
+  /* ── Lower assembly: tent-pole construction ──
+     Three shock-corded segments; only the top one carries LEDs.
+     Each joint is a metal ferrule sleeve where the upper pole seats
+     into the lower one. */
+  const POLE_LEN = WHIP_H;         // lower segments match the LED pole length
+  const FERRULE_H = .48;           // long rubber sleeve
+  const tubeMat = new THREE.MeshStandardMaterial({color:0x101013, roughness:.45, metalness:.35});
+  const ferruleMat = new THREE.MeshStandardMaterial({color:0x121215, roughness:.78, metalness:0});
+
+  function addFerrule(yTop){
+    /* long matte rubber connector sleeve; the thinner pole seats into
+       it, so it's noticeably fatter than the tube with a soft taper
+       at its lower mouth */
+    const f = new THREE.Mesh(
+      new THREE.CylinderGeometry(R_POLE*1.24, R_POLE*1.28, FERRULE_H, 20), ferruleMat);
+    f.position.y = yTop - FERRULE_H/2;
+    whip.add(f);
+    const mouth = new THREE.Mesh(
+      new THREE.CylinderGeometry(R_POLE*1.28, R_POLE*1.08, .05, 20), ferruleMat);
+    mouth.position.y = yTop - FERRULE_H - .025;
+    whip.add(mouth);
+    return yTop - FERRULE_H - .05;
+  }
+  function addPole(yTop, len){
+    const p = new THREE.Mesh(
+      new THREE.CylinderGeometry(R_POLE, R_POLE, len, 20), tubeMat);
+    p.position.y = yTop - len/2;
+    whip.add(p);
+    return yTop - len;
+  }
+  let yCursor = BASE_Y;
+  /* top joint: no rubber here — the white power cable wraps the pole
+     just below the LED section (built into the cable curve below) */
+  const cordMat = new THREE.MeshStandardMaterial({color:0xEDEDEA, roughness:.6, metalness:0});
+
+  /* ── Jointed hierarchy for the fold animation ──
+     seg2 pivots at the top joint (BASE_Y); seg3 (sleeve + bottom pole
+     + tip) is a child of seg2 pivoting at the lower joint. */
+  const JOINT2_DROP = FERRULE_H + .05;                 // sleeve + mouth height
+  const seg2 = new THREE.Group();
+  seg2.position.y = BASE_Y;
+  whip.add(seg2);
+  const pole2 = new THREE.Mesh(
+    new THREE.CylinderGeometry(R_POLE, R_POLE, POLE_LEN, 20), tubeMat);
+  pole2.position.y = -POLE_LEN/2;
+  seg2.add(pole2);
+
+  /* open tube mouths at the joint ends — wall ring with a recessed
+     dark interior, so the shock cord visibly comes out of the tube */
+  const mouthWallMat = new THREE.MeshStandardMaterial({color:0x18181c, roughness:.5, metalness:.2});
+  const mouthInMat = new THREE.MeshStandardMaterial({color:0x030304, roughness:.9});
+  function addMouth(parent, y, flip){
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(R_POLE*.86, R_POLE*.16, 8, 22), mouthWallMat);
+    ring.rotation.x = Math.PI/2;
+    ring.position.y = y;
+    parent.add(ring);
+    const inner = new THREE.Mesh(new THREE.CircleGeometry(R_POLE*.74, 20), mouthInMat);
+    inner.rotation.x = flip ? -Math.PI/2 : Math.PI/2;
+    inner.position.y = y + (flip ? .03 : -.03);
+    parent.add(inner);
+  }
+  addMouth(whip, BASE_Y+.002, true);        // LED pole bottom
+  addMouth(seg2, .002, false);              // middle pole top
+  addMouth(seg2, -POLE_LEN-.002, true);     // middle pole bottom
+
+  const seg3 = new THREE.Group();
+  seg3.position.y = -POLE_LEN;
+  seg2.add(seg3);
+  /* rubber sleeve fixed to the top of the bottom pole */
+  const sleeve3 = new THREE.Mesh(
+    new THREE.CylinderGeometry(R_POLE*1.24, R_POLE*1.28, FERRULE_H, 20), ferruleMat);
+  sleeve3.position.y = -FERRULE_H/2;
+  seg3.add(sleeve3);
+  const mouth3 = new THREE.Mesh(
+    new THREE.CylinderGeometry(R_POLE*1.28, R_POLE*1.08, .05, 20), ferruleMat);
+  mouth3.position.y = -FERRULE_H - .025;
+  seg3.add(mouth3);
+  const pole3 = new THREE.Mesh(
+    new THREE.CylinderGeometry(R_POLE, R_POLE, POLE_LEN, 20), tubeMat);
+  pole3.position.y = -JOINT2_DROP - POLE_LEN/2;
+  seg3.add(pole3);
+  const tip3 = new THREE.Mesh(
+    new THREE.SphereGeometry(R_POLE*1.15, 18, 12), capMatRef());
+  tip3.scale.y = 1.2;
+  tip3.position.y = -JOINT2_DROP - POLE_LEN - .02;
+  seg3.add(tip3);
+  yCursor = BASE_Y - POLE_LEN - JOINT2_DROP - POLE_LEN;
+
+  /* visible shock cord across the joints while folding — thin WHITE
+     BRAIDED rope (diagonal weave texture), rebuilt each frame as a
+     sagging curve anchored at the socket centers */
+  const bc = document.createElement("canvas"); bc.width = 64; bc.height = 32;
+  const bg = bc.getContext("2d");
+  bg.fillStyle = "#F2EFE7"; bg.fillRect(0,0,64,32);
+  bg.lineCap = "round";
+  bg.strokeStyle = "#BFB9A8"; bg.lineWidth = 7;
+  for(let x=-32;x<=96;x+=16){
+    bg.beginPath(); bg.moveTo(x,-2); bg.lineTo(x+32,34); bg.stroke();
+  }
+  bg.strokeStyle = "#DAD5C6"; bg.lineWidth = 5;
+  for(let x=-32;x<=96;x+=16){
+    bg.beginPath(); bg.moveTo(x+32,-2); bg.lineTo(x,34); bg.stroke();
+  }
+  const braidTex = new THREE.CanvasTexture(bc);
+  braidTex.wrapS = braidTex.wrapT = THREE.RepeatWrapping;
+  const ropeMat = new THREE.MeshStandardMaterial({
+    map:braidTex, bumpMap:braidTex, bumpScale:.004,
+    roughness:.85, metalness:0
+  });
+  const foldCordA = new THREE.Mesh(new THREE.BufferGeometry(), ropeMat);
+  const foldCordB = new THREE.Mesh(new THREE.BufferGeometry(), ropeMat);
+  foldCordA.visible = foldCordB.visible = false;
+  scene.add(foldCordA); scene.add(foldCordB);
+
+  /* white power cable drooping from the LED section down to the
+     inline remote (M / power / music), then continuing down */
+  {
+    /* the cable does its two wraps UNDER the shrink film (visible
+       through it), then exits below the film edge and hangs */
+    const cablePts = [];
+    const wrapSteps = 26;
+    for(let i=0;i<=wrapSteps;i++){
+      const ang = i/wrapSteps * coilTurns * Math.PI*2;
+      const y = coilTopY - (i/wrapSteps)*(coilTurns*coilPitch);
+      cablePts.push(new THREE.Vector3(Math.cos(ang)*coilR, y, Math.sin(ang)*coilR));
+    }
+    /* coil ends pointing +x; exit on that side below the film edge */
+    cablePts.push(
+      new THREE.Vector3(.11, coilBotY-.14, .05),
+      new THREE.Vector3(.17, coilBotY-.45, .09),
+      new THREE.Vector3(.20, BASE_Y-1.15, .09),
+      new THREE.Vector3(.18, BASE_Y-1.9, .05),
+      new THREE.Vector3(.14, yCursor+.55, .03),
+      new THREE.Vector3(.05, yCursor+.18, .01),
+      new THREE.Vector3(0, yCursor+.03, 0)      // plugs into the bottom pole end
+    );
+    const cableCurve = new THREE.CatmullRomCurve3(cablePts);
+    const cable = new THREE.Mesh(
+      new THREE.TubeGeometry(cableCurve, 90, .016, 8, false), cordMat);
+    whip.add(cable);
+
+    /* inline remote, matched to the photo: rounded-corner white body,
+       printed face where each icon sits inside a bend of the wavy line */
+    const remote = new THREE.Group();
+    const pillMat = new THREE.MeshStandardMaterial({color:0xF3F3EE, roughness:.5});
+
+    /* printed face — drawn on a TRANSPARENT canvas and applied as a
+       decal plane over the body, so extrude UVs can't clip it */
+    const fc = document.createElement("canvas");
+    fc.width = 256; fc.height = 640;
+    const f = fc.getContext("2d");
+    f.clearRect(0,0,256,640);
+    /* icons first — light warm gray, generously sized like the photo */
+    f.fillStyle = "#b0b6ab"; f.strokeStyle = "#b0b6ab";
+    f.textAlign = "center"; f.textBaseline = "middle";
+    f.font = "500 100px Helvetica, Arial, sans-serif";
+    f.fillText("M", 152, 152);
+    f.lineWidth = 12;
+    f.beginPath(); f.arc(120, 322, 46, -Math.PI*.32, Math.PI*1.32); f.stroke();
+    f.beginPath(); f.moveTo(120, 260); f.lineTo(120, 316); f.stroke();
+    f.font = "500 120px Helvetica, Arial, sans-serif";
+    f.fillText("\u266A", 158, 496);
+    /* wavy line over them — bends reach near the edges but stay on the
+       face; both ends finish as diagonal tails toward the corners */
+    f.strokeStyle = "#4d5f56"; f.lineWidth = 5.5; f.lineCap = "round";
+    f.beginPath();
+    f.moveTo(250,6);                             // tail runs from the top corner
+    f.bezierCurveTo(56,118, 26,222, 204,260);    // deep left bend cradling M
+    f.bezierCurveTo(288,296, 288,362, 198,402);  // right bulge, peak near the edge
+    f.bezierCurveTo(22,456, 26,558, 188,588);    // left sweep under the note
+    f.quadraticCurveTo(232,606, 252,634);        // tail exits the bottom corner
+    f.stroke();
+    const faceTex = new THREE.CanvasTexture(fc);
+
+    /* chunkier body with a flatter face: wider, smaller bevel */
+    const bW = .175, bH = .44, bD = .055, rad = .045;
+    const shape = new THREE.Shape();
+    const hw = bW/2, hh = bH/2;
+    shape.moveTo(-hw+rad, -hh);
+    shape.lineTo(hw-rad, -hh);
+    shape.quadraticCurveTo(hw, -hh, hw, -hh+rad);
+    shape.lineTo(hw, hh-rad);
+    shape.quadraticCurveTo(hw, hh, hw-rad, hh);
+    shape.lineTo(-hw+rad, hh);
+    shape.quadraticCurveTo(-hw, hh, -hw, hh-rad);
+    shape.lineTo(-hw, -hh+rad);
+    shape.quadraticCurveTo(-hw, -hh, -hw+rad, -hh);
+    const bodyGeo = new THREE.ExtrudeGeometry(shape, {
+      depth:bD, bevelEnabled:true, bevelThickness:.009, bevelSize:.009, bevelSegments:2
+    });
+    bodyGeo.translate(0,0,-bD/2);
+    const body = new THREE.Mesh(bodyGeo, pillMat);
+    remote.add(body);
+
+    /* decal plane carrying the printed graphics, floating just above
+       the face with clean 0..1 UVs — nothing can clip it */
+    const decal = new THREE.Mesh(
+      new THREE.PlaneGeometry(bW*.96, bH*.96),
+      new THREE.MeshStandardMaterial({map:faceTex, transparent:true, roughness:.5})
+    );
+    decal.position.z = bD/2 + .011;
+    remote.add(decal);
+
+    /* connectors, identical top and bottom: wavy skirt flange against
+       the body, then a SHORT cone the cable enters, with a circular
+       dimple on its face */
+    const CONN_H = .105;   // total connector height beyond the body
+    [-1,1].forEach(s=>{
+      const skirt1 = new THREE.Mesh(new THREE.CylinderGeometry(.040,.037,.016,14), pillMat);
+      skirt1.position.y = s*(bH/2+.008);
+      remote.add(skirt1);
+      const skirt2 = new THREE.Mesh(new THREE.CylinderGeometry(.033,.037,.014,14), pillMat);
+      skirt2.position.y = s*(bH/2+.022);
+      remote.add(skirt2);
+      const cone = new THREE.Mesh(new THREE.CylinderGeometry(.020,.034,.055,12), pillMat);
+      if(s<0) cone.rotation.x = Math.PI;
+      cone.position.y = s*(bH/2+.058);
+      remote.add(cone);
+    });
+
+    /* seat on the cable right-side up, face outward */
+    const tPos = .50;
+    const rp = cableCurve.getPointAt(tPos);
+    const rt = cableCurve.getTangentAt(tPos).normalize();
+    if(rt.y < 0) rt.negate();      // keep the printed face upright
+    remote.position.copy(rp);
+    remote.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), rt);
+    remote.rotateY(Math.PI*.15);
+    whip.add(remote);
+
+    /* the cable runs through the connector centers: replace the single
+       tube with two tubes that stop exactly at the connector tips */
+    whip.remove(cable);
+    function subCurve(t0,t1){
+      const pts = [];
+      for(let i=0;i<=48;i++) pts.push(cableCurve.getPointAt(t0+(t1-t0)*i/48));
+      return new THREE.CatmullRomCurve3(pts);
+    }
+    const gapHalf = (bH/2 + .015) / cableCurve.getLength();  // tubes tuck inside the cones
+    const cableA = new THREE.Mesh(
+      new THREE.TubeGeometry(subCurve(0, tPos-gapHalf), 220, .016, 8, false), cordMat);
+    const cableB = new THREE.Mesh(
+      new THREE.TubeGeometry(subCurve(tPos+gapHalf, 1), 140, .016, 8, false), cordMat);
+    whip.add(cableA); whip.add(cableB);
+  }
+  const ASSEMBLY_BOTTOM = yCursor - R_POLE*1.5;
+  /* recenter the full 3-pole assembly vertically */
+  const WHIP_OFFSET = -((TOP_Y + .10) + ASSEMBLY_BOTTOM)/2;
+  whip.position.y = WHIP_OFFSET;
+
+  function capMatRef(){
+    return new THREE.MeshPhysicalMaterial({
+      color:0x0c0c0f, roughness:.32, metalness:.05,
+      clearcoat:1, clearcoatRoughness:.15
+    });
+  }
+
+  /* ── Helix helpers ── */
+  const helixLenPerTurn = Math.sqrt(Math.pow(Math.PI*2*R_WRAP,2)+PITCH*PITCH);
+  const CHIP_ARC = helixLenPerTurn / PER_TURN;
+  function helixBasis(t){
+    const a = t*TURNS*Math.PI*2;
+    const y = ledStartY + t*SPAN;
+    const outward = new THREE.Vector3(Math.cos(a),0,Math.sin(a));
+    const tangent = new THREE.Vector3(-Math.sin(a)*R_WRAP, PITCH/(Math.PI*2), Math.cos(a)*R_WRAP).normalize();
+    const side = new THREE.Vector3().crossVectors(tangent,outward).normalize();
+    return {a,y,outward,tangent,side};
+  }
+
+  /* ── LEDs: white package + small bright die + tight halo ──
+     The package stays visible even when lit, so each pixel reads as a
+     discrete LED instead of merging into a glowing tube */
+  const shellGeo = new THREE.BoxGeometry(STRIP_W*.52,.010,STRIP_W*.52);
+  const shellMat = new THREE.MeshStandardMaterial({color:0xE6E2D8, roughness:.55});
+  const shells = new THREE.InstancedMesh(shellGeo,shellMat,COUNT);
+  whip.add(shells);
+
+  const dieGeo = new THREE.CylinderGeometry(STRIP_W*.21, STRIP_W*.21, .008, 18);
+  const dieMat = new THREE.MeshBasicMaterial({});
+  const dies = new THREE.InstancedMesh(dieGeo,dieMat,COUNT);
+  dies.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(COUNT*3),3);
+  whip.add(dies);
+
+  const gc = document.createElement("canvas"); gc.width=gc.height=64;
+  const g = gc.getContext("2d");
+  const gr = g.createRadialGradient(32,32,0,32,32,32);
+  gr.addColorStop(0,"rgba(255,255,255,1)");
+  gr.addColorStop(.35,"rgba(255,255,255,.45)");
+  gr.addColorStop(1,"rgba(255,255,255,0)");
+  g.fillStyle=gr; g.fillRect(0,0,64,64);
+  const glowTex = new THREE.CanvasTexture(gc);
+  const glowGeo = new THREE.PlaneGeometry(.11,.11);
+  const glowMat = new THREE.MeshBasicMaterial({map:glowTex,transparent:true,
+    blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+  const glows = new THREE.InstancedMesh(glowGeo,glowMat,COUNT);
+  glows.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(COUNT*3),3);
+  whip.add(glows);
+
+  /* soft wide halo layer: dim, large, merges along the surface so the
+     whip keeps its glowing body without erasing the pixels */
+  const glow2Geo = new THREE.PlaneGeometry(.30,.30);
+  const glow2Mat = new THREE.MeshBasicMaterial({map:glowTex,transparent:true,
+    blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,opacity:.32});
+  const glows2 = new THREE.InstancedMesh(glow2Geo,glow2Mat,COUNT);
+  glows2.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(COUNT*3),3);
+  whip.add(glows2);
+
+  const m = new THREE.Matrix4(), pos = new THREE.Vector3();
+  const ledT = new Float32Array(COUNT);
+  for(let i=0;i<COUNT;i++){
+    const t = i/(COUNT-1);
+    ledT[i] = t;
+    const b = helixBasis(t);
+    pos.copy(b.outward).multiplyScalar(R_POLE+.013); pos.y=b.y;
+    m.makeBasis(b.tangent,b.outward,b.side); m.setPosition(pos);
+    shells.setMatrixAt(i,m);
+    pos.copy(b.outward).multiplyScalar(R_POLE+.020); pos.y=b.y;
+    m.makeBasis(b.tangent,b.outward,b.side); m.setPosition(pos);
+    dies.setMatrixAt(i,m);
+    pos.copy(b.outward).multiplyScalar(R_POLE+.036); pos.y=b.y;
+    m.makeBasis(b.tangent,b.side,b.outward); m.setPosition(pos);
+    glows.setMatrixAt(i,m);
+    glows2.setMatrixAt(i,m);
+  }
+  shells.instanceMatrix.needsUpdate = true;
+  dies.instanceMatrix.needsUpdate = true;
+  glows2.instanceMatrix.needsUpdate = true;
+  glows.instanceMatrix.needsUpdate = true;
+
+  /* ── Strip circuitry between chips: copper pads + tiny components ──
+     The macro photos show oval copper pads flanking a small silver
+     component in every gap between LED packages */
+  const padMat = new THREE.MeshStandardMaterial({color:0xC98850, roughness:.35, metalness:.85});
+  const padGeo = new THREE.CylinderGeometry(STRIP_W*.10, STRIP_W*.10, .003, 10);
+  padGeo.scale(1,1,1.5);
+  const pads = new THREE.InstancedMesh(padGeo, padMat, COUNT*2);
+  whip.add(pads);
+  const compMat = new THREE.MeshStandardMaterial({color:0xBFC3C7, roughness:.3, metalness:.8});
+  const compGeo = new THREE.BoxGeometry(CHIP_ARC*.14, .006, STRIP_W*.16);
+  const comps = new THREE.InstancedMesh(compGeo, compMat, COUNT);
+  whip.add(comps);
+  {
+    const pv = new THREE.Vector3();
+    for(let i=0;i<COUNT;i++){
+      const t = (i+.5)/(COUNT-1);
+      const b = helixBasis(Math.min(t,1));
+      /* two copper pads at the strip edges */
+      [-1,1].forEach((s,j)=>{
+        pv.copy(b.outward).multiplyScalar(R_POLE+.011)
+          .addScaledVector(b.side, s*STRIP_W*.26);
+        pv.y += b.y;
+        m.makeBasis(b.tangent, b.outward, b.side);
+        m.setPosition(pv);
+        pads.setMatrixAt(i*2+j, m);
+      });
+      /* one silver component centered in the gap */
+      pv.copy(b.outward).multiplyScalar(R_POLE+.012); pv.y = b.y;
+      m.makeBasis(b.tangent, b.outward, b.side); m.setPosition(pv);
+      comps.setMatrixAt(i, m);
+    }
+    pads.instanceMatrix.needsUpdate = true;
+    comps.instanceMatrix.needsUpdate = true;
+  }
+
+  /* ── One continuous strip ribbon ──
+     A single parametric surface sweeping the whole helix, so the strip
+     reads as one unbroken spiral of tape from base to tip. Slightly
+     raised at the centerline so its edges cast a natural seam shadow. */
+  {
+    const SEGS = 1600, W_SEGS = 4;
+    const verts = new Float32Array((SEGS+1)*(W_SEGS+1)*3);
+    const idx = [];
+    const vv = new THREE.Vector3();
+    for(let i=0;i<=SEGS;i++){
+      const t = i/SEGS;
+      const b = helixBasis(t);
+      for(let j=0;j<=W_SEGS;j++){
+        const s = j/W_SEGS*2-1;                    // -1..1 across the strip
+        const lift = .010 - .004*s*s;              // crowned: edges sit lower
+        vv.copy(b.outward).multiplyScalar(R_POLE+lift)
+          .addScaledVector(b.side, s*STRIP_W*.48);
+        vv.y += b.y;
+        const k = (i*(W_SEGS+1)+j)*3;
+        verts[k]=vv.x; verts[k+1]=vv.y; verts[k+2]=vv.z;
+      }
+    }
+    for(let i=0;i<SEGS;i++){
+      for(let j=0;j<W_SEGS;j++){
+        const a = i*(W_SEGS+1)+j, bq = a+W_SEGS+1;
+        idx.push(a,bq,a+1, bq,bq+1,a+1);
+      }
+    }
+    const ribbonGeo = new THREE.BufferGeometry();
+    ribbonGeo.setAttribute("position", new THREE.BufferAttribute(verts,3));
+    ribbonGeo.setIndex(idx);
+    ribbonGeo.computeVertexNormals();
+    const ribbon = new THREE.Mesh(ribbonGeo,
+      new THREE.MeshStandardMaterial({color:0x0b0b0d, roughness:.42, metalness:.15, side:THREE.DoubleSide}));
+    whip.add(ribbon);
+
+    /* one continuous edge line where each turn meets the next —
+       a single unbroken dark spiral, not dashes */
+    const edgeCurve = new THREE.Curve();
+    edgeCurve.getPoint = function(t){
+      const b = helixBasis(t);
+      const p = new THREE.Vector3().copy(b.outward).multiplyScalar(R_POLE+.015)
+        .addScaledVector(b.side, STRIP_W*.5);
+      p.y += b.y;
+      return p;
+    };
+    const seam = new THREE.Mesh(
+      new THREE.TubeGeometry(edgeCurve, 1600, .0035, 5, false),
+      new THREE.MeshBasicMaterial({color:0x1a1a1e, transparent:true, opacity:.30})
+    );
+    whip.add(seam);
+  }
+
+  /* ── Shrink-wrap membrane, ONE continuous surface ──
+     Covers the LED section (chip bumps, ridge, wrinkles, top gather),
+     runs over the connector, bulges over the cable coil, and shrinks
+     tight onto the pole at its bottom cut edge. No seams. */
+  const FILM_TOP = ledEndY + .02;
+  const FILM_BOT = coilBotY - .05;
+  const FILM_H = FILM_TOP - FILM_BOT;
+  const FILM_MID = (FILM_TOP + FILM_BOT)/2;
+  const RAD_SEG = 72, H_SEG = 640;
+  const skinGeo = new THREE.CylinderGeometry(1,1,FILM_H,RAD_SEG,H_SEG,true);
+  {
+    const p = skinGeo.attributes.position;
+    const v = new THREE.Vector3();
+    const R_LED = R_POLE + .020;     // rest radius over the strip
+    const R_CONN = R_POLE + .017;    // rest radius over the connector
+    const A_CHIP = .009, A_RIDGE = .004;
+    const sm = t => { t = Math.max(0,Math.min(1,t)); return t*t*(3-2*t); };
+    for(let i=0;i<p.count;i++){
+      v.fromBufferAttribute(p,i);
+      const wy = v.y + FILM_MID;              // world y
+      const theta = Math.atan2(v.z,v.x);
+      const th = theta < 0 ? theta+Math.PI*2 : theta;
+
+      /* base radius blends from strip zone to connector zone */
+      const zoneT = sm((wy - (ledStartY - .10))/.06);
+      let r = R_CONN + (R_LED - R_CONN)*zoneT;
+
+      /* strip-zone detail, faded out below ledStartY */
+      const envLED = sm((wy - (ledStartY - .05))/.04);
+      if(envLED > 0){
+        const yRel = wy - ledStartY;
+        const n = yRel/PITCH;
+        const k = Math.round(n - th/(Math.PI*2));
+        const centerN = k + th/(Math.PI*2);
+        const dAcross = (n - centerN)*PITCH;
+        const chipC = centerN*PER_TURN;
+        const fcp = chipC - Math.round(chipC);
+        const dAlong = fcp*CHIP_ARC;
+        const bumpChip = A_CHIP *
+          Math.exp(-Math.pow(dAcross/(STRIP_W*.50),2)) *
+          Math.exp(-Math.pow(dAlong/(CHIP_ARC*.50),2));
+        const bumpRidge = A_RIDGE *
+          Math.exp(-Math.pow(dAcross/(STRIP_W*.60),2));
+        const dipness = 1 - Math.exp(-Math.pow(dAcross/(STRIP_W*.5),2));
+        const endT = yRel/SPAN;
+        const gather = 1 + 3.2*Math.exp(-Math.pow((1-endT)/.035,2));
+        const wrinkle = .0022 * gather * dipness * (
+          Math.sin(wy*140 + th*9) * Math.sin(th*31 + wy*57) +
+          .5*Math.sin(wy*260 + th*17)
+        );
+        r += envLED*(bumpRidge + bumpChip + wrinkle);
+      }
+
+      /* coil bulges below the connector top */
+      const nC = (coilTopY - wy)/coilPitch;
+      if(nC > -.5 && nC < coilTurns+.5){
+        let frac = (nC - th/(Math.PI*2)) % 1;
+        if(frac < 0) frac += 1;
+        const d = Math.min(frac, 1-frac)*coilPitch;
+        const env = sm((nC+.25)/.5) * sm((coilTurns+.25-nC)/.5);
+        r += .031 * env * Math.exp(-Math.pow(d/.030,2));
+      }
+
+      /* shrunk-tight bottom cut edge */
+      const botT = sm((wy - FILM_BOT)/.055);
+      r = (R_POLE + .0035) + (r - (R_POLE + .0035))*botT;
+
+      p.setXYZ(i, Math.cos(theta)*r, v.y, Math.sin(theta)*r);
+    }
+    p.needsUpdate = true;
+    skinGeo.computeVertexNormals();
+  }
+  const skin = new THREE.Mesh(skinGeo, new THREE.MeshPhysicalMaterial({
+    color:0xffffff, transparent:true, opacity:.10,
+    roughness:.04, metalness:0,
+    clearcoat:1, clearcoatRoughness:.06,
+    envMapIntensity:2.0,
+    depthWrite:false
+  }));
+  skin.position.y = FILM_MID;
+  skin.renderOrder = 2;
+  whip.add(skin);
+
+  /* ── Base-of-strip construction, simplified clean version ──
+     LED strip ends → solid black connector sleeve (the cable does its
+     two wraps around this) → bare pole down to the joint. Everything
+     lives on the LED pole so it all folds together. */
+  const connector = new THREE.Mesh(
+    new THREE.CylinderGeometry(R_POLE+.011, R_POLE+.009, .215, 26),
+    new THREE.MeshStandardMaterial({color:0x0b0b0d, roughness:.3, metalness:.15})
+  );
+  connector.position.y = ledStartY - .105;
+  whip.add(connector);
+
+
+  /* dark under-layer so gaps between LEDs read as the black strip,
+     not the bare pole — sits just inside the membrane */
+  const under = new THREE.Mesh(
+    new THREE.CylinderGeometry(R_POLE+.014,R_POLE+.014,SPAN,36,1,true),
+    new THREE.MeshStandardMaterial({color:0x0b0b0d,roughness:.45,metalness:.1})
+  );
+  under.position.y = (ledStartY+ledEndY)/2;
+  whip.add(under);
+
+  /* lighting + floor pool */
+  const amb = new THREE.AmbientLight(0x8888aa,.25); scene.add(amb);
+  const rim = new THREE.DirectionalLight(0x6677ff,.5); rim.position.set(-3,2,-2); scene.add(rim);
+  const key = new THREE.PointLight(0xffffff,.55,12); key.position.set(2,1,3); scene.add(key);
+  const pool = new THREE.Mesh(new THREE.CircleGeometry(2.2,40),
+    new THREE.MeshBasicMaterial({map:glowTex,transparent:true,opacity:.10,
+      blending:THREE.AdditiveBlending,depthWrite:false}));
+  pool.rotation.x = -Math.PI/2; pool.position.y = ASSEMBLY_BOTTOM + WHIP_OFFSET - .05; scene.add(pool);
+  const poolColor = pool.material.color;
+
+  /* ── Patterns ── */
+  let pattern = "rainbow";
+  const col = new THREE.Color(), avg = new THREE.Color();
+  const OFF = new THREE.Color(0x24210f);
+  const BLACK = new THREE.Color(0x000000);
+  function paint(time){
+    avg.setRGB(0,0,0);
+    for(let i=0;i<COUNT;i++){
+      const t = ledT[i];
+      let lit = true;
+      if(pattern==="rainbow"){
+        col.setHSL((t*2.2 - time*.18)%1,1,.55);
+      } else if(pattern==="comet"){
+        const head = (time*.22)%1.25;
+        let d = head-t; if(d<0) d+=1.25;
+        const v = Math.max(0,1-d*6);
+        if(v<.02) lit=false; else col.setHSL(.55,1,.05+v*.55);
+      } else if(pattern==="pulse"){
+        const v = .5+.5*Math.sin(time*2.4 - t*5);
+        col.setHSL(.9,.9,.06+v*.5);
+      } else if(pattern==="galaxy"){
+        const v = .5+.5*Math.sin(t*14 + time*.9);
+        col.setHSL(.72-v*.22,.95,.16+v*.42);
+      } else lit = false;
+      if(!lit) col.copy(OFF);
+      dies.setColorAt(i,col);
+      glows.setColorAt(i, lit?col:BLACK);
+      glows2.setColorAt(i, lit?col:BLACK);
+      if(lit){ avg.r+=col.r; avg.g+=col.g; avg.b+=col.b; }
+    }
+    dies.instanceColor.needsUpdate = true;
+    glows.instanceColor.needsUpdate = true;
+    glows2.instanceColor.needsUpdate = true;
+    poolColor.setRGB(avg.r/COUNT,avg.g/COUNT,avg.b/COUNT);
+  }
+
+  document.querySelectorAll(".patterns button").forEach(b=>{
+    if(b.dataset.fold !== undefined) return;
+    b.addEventListener("click",()=>{
+      document.querySelector(".patterns .on")?.classList.remove("on");
+      b.classList.add("on");
+      pattern = b.dataset.p;
+      /* off = unlit product shot: film reads as murky frosted white,
+         studio lights come up so the product is still visible */
+      const sm = skin.material;
+      if(pattern==="off"){
+        sm.opacity = .52;
+        sm.roughness = .22;
+        sm.clearcoatRoughness = .25;
+        sm.color.setHex(0xEFF1F4);
+        amb.intensity = .8;
+        key.intensity = 1.3;
+        rim.intensity = .9;
+      } else {
+        sm.opacity = .10;
+        sm.roughness = .04;
+        sm.clearcoatRoughness = .06;
+        sm.color.setHex(0xffffff);
+        amb.intensity = .25;
+        key.intensity = .55;
+        rim.intensity = .5;
+      }
+      if(reduced || pattern==="off") paint(performance.now()/1000);
+    });
+  });
+
+  /* ── Orbit ── */
+  let theta=.6, phi=1.35, dist=15, vTheta=0, dragging=false, px=0, py=0;
+  function setCam(){
+    phi = Math.min(2.6,Math.max(.5,phi));
+    dist = Math.min(32,Math.max(1.8,dist));
+    camera.position.set(
+      dist*Math.sin(phi)*Math.cos(theta),
+      dist*Math.cos(phi)*.7+.3,
+      dist*Math.sin(phi)*Math.sin(theta));
+    camera.lookAt(0,0,0);
+  }
+  const down=(x,y)=>{dragging=true;px=x;py=y;stage.classList.add("dragging")};
+  const move=(x,y)=>{if(!dragging)return;vTheta=(x-px)*.006;theta+=vTheta;phi-=(y-py)*.004;px=x;py=y};
+  const up=()=>{dragging=false;stage.classList.remove("dragging")};
+  stage.addEventListener("mousedown",e=>down(e.clientX,e.clientY));
+  addEventListener("mousemove",e=>move(e.clientX,e.clientY));
+  addEventListener("mouseup",up);
+  stage.addEventListener("touchstart",e=>down(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+  stage.addEventListener("touchmove",e=>move(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+  stage.addEventListener("touchend",up);
+  stage.addEventListener("wheel",e=>{dist+=e.deltaY*.004;setCam()},{passive:true});
+  addEventListener("resize",()=>{
+    camera.aspect=innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);
+  });
+
+  /* ── Loop ── */
+  /* ── Fold animation ──
+     Phase 1: bottom segment pulls out of its sleeve and swings up
+     alongside the middle pole. Phase 2: the folded pair pulls out of
+     the top joint and swings up alongside the LED pole. The white
+     shock cord stays visible across each open joint. */
+  const GAP = .5, UPV = new THREE.Vector3(0,1,0);
+  let foldTarget = 0, foldU = 0;
+  const foldBtn = document.getElementById("foldBtn");
+  foldBtn.addEventListener("click", ()=>{
+    foldTarget = foldTarget ? 0 : 1;
+    foldBtn.textContent = foldTarget ? "Unfold" : "Fold";
+  });
+  const easeIO = t => t<.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+  function applyFold(e){
+    const p1 = Math.min(e/.5, 1);            // seg3 phase
+    const p2 = Math.max((e-.5)/.5, 0);       // seg2 phase
+    const drop1 = Math.min(p1*2,1), swing1 = Math.max(p1*2-1,0);
+    const drop2 = Math.min(p2*2,1), swing2 = Math.max(p2*2-1,0);
+    seg3.position.y = -POLE_LEN - drop1*GAP;
+    seg3.position.x = swing1*R_POLE*2.6;
+    seg3.rotation.z = swing1*Math.PI;
+    seg2.position.y = BASE_Y - drop2*GAP;
+    seg2.position.x = -swing2*R_POLE*2.6;
+    seg2.rotation.z = -swing2*Math.PI;
+  }
+  const _a = new THREE.Vector3(), _b = new THREE.Vector3();
+  const _oa = new THREE.Vector3(), _ob = new THREE.Vector3(), _mid = new THREE.Vector3();
+  function stretchCord(mesh, mouthA, outA, mouthB, outB){
+    const len = mouthA.distanceTo(mouthB);
+    mesh.visible = len > .07;
+    if(!mesh.visible) return;
+    /* smooth string loop: straight lead-outs joined by ONE cubic arc
+       whose handles extend along each tube's axis — continuous
+       curvature, no corners anywhere */
+    const lead = Math.min(.10, len*.22);
+    const dirA = _oa.copy(outA).sub(mouthA).normalize().clone();
+    const dirB = _ob.copy(outB).sub(mouthB).normalize().clone();
+    const pA = dirA.clone().multiplyScalar(lead).add(mouthA);
+    const pB = dirB.clone().multiplyScalar(lead).add(mouthB);
+    const h = Math.min(.48, Math.max(.20, pA.distanceTo(pB)*.85));
+    const cA = pA.clone().addScaledVector(dirA, h);
+    const cB = pB.clone().addScaledVector(dirB, h);
+    cA.y -= h*.15; cB.y -= h*.15;             // slight gravity droop
+    const path = new THREE.CurvePath();
+    path.add(new THREE.LineCurve3(mouthA.clone(), pA));
+    path.add(new THREE.CubicBezierCurve3(pA.clone(), cA, cB, pB.clone()));
+    path.add(new THREE.LineCurve3(pB.clone(), mouthB.clone()));
+    const g = new THREE.TubeGeometry(path, 48, .0065, 7, false);
+    mesh.geometry.dispose();
+    mesh.geometry = g;
+    braidTex.repeat.set(Math.max(6, Math.round(len*44)), 1);
+  }
+  function updateFold(){
+    if(Math.abs(foldTarget-foldU) > .0005){
+      foldU += (foldTarget-foldU)*.045;
+      applyFold(easeIO(foldU));
+    }
+    if(foldU > .002){
+      const mA = whip.localToWorld(new THREE.Vector3(0, BASE_Y, 0));
+      const oA = whip.localToWorld(new THREE.Vector3(0, BASE_Y-.2, 0));
+      const mB = seg2.localToWorld(new THREE.Vector3(0, 0, 0));
+      const oB = seg2.localToWorld(new THREE.Vector3(0, .2, 0));
+      stretchCord(foldCordA, mA, oA, mB, oB);
+      const mC = seg2.localToWorld(new THREE.Vector3(0, -POLE_LEN, 0));
+      const oC = seg2.localToWorld(new THREE.Vector3(0, -POLE_LEN-.2, 0));
+      const mD = seg3.localToWorld(new THREE.Vector3(0, 0, 0));
+      const oD = seg3.localToWorld(new THREE.Vector3(0, .2, 0));
+      stretchCord(foldCordB, mC, oC, mD, oD);
+    } else {
+      foldCordA.visible = foldCordB.visible = false;
+    }
+  }
+
+  function frame(){
+    const now = performance.now()/1000;
+    if(!dragging){ theta += reduced?0:(.0016+vTheta*.5); vTheta*=.95; }
+    whip.rotation.z = reduced?0:Math.sin(now*.7)*.012;
+    updateFold();
+    setCam();
+    if(!reduced && pattern!=="off") paint(now);
+    renderer.render(scene,camera);
+    requestAnimationFrame(frame);
+  }
+  paint(0);
+  setCam();
+  frame();
+})();
+</script>
+</body>
+</html>

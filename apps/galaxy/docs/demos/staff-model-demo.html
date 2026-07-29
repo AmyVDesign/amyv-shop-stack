@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galaxy SF — LED Staff v21</title>
+<style>
+  :root{--ink:#EDEAE4;--dim:#8B8781;--line:rgba(237,234,228,.12);--panel:rgba(16,14,20,.72)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#0A0910;
+    font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--ink)}
+  #stage{position:fixed;inset:0;cursor:grab}
+  #stage.dragging{cursor:grabbing}
+  .hud{position:fixed;left:24px;top:24px;pointer-events:none}
+  .hud h1{font-size:13px;font-weight:500;letter-spacing:.22em;text-transform:uppercase}
+  .hud p{font-size:11px;color:var(--dim);margin-top:6px;letter-spacing:.06em}
+  .patterns{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);
+    display:flex;gap:8px;padding:8px;border:1px solid var(--line);
+    background:var(--panel);backdrop-filter:blur(14px);border-radius:999px}
+  .patterns button{appearance:none;border:0;background:transparent;color:var(--dim);
+    font:inherit;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    padding:9px 16px;border-radius:999px;cursor:pointer;transition:.2s}
+  .patterns button:hover{color:var(--ink)}
+  .patterns button:focus-visible{outline:1px solid var(--ink);outline-offset:2px}
+  .patterns button.on{color:#0A0910;background:var(--ink)}
+  .hint{position:fixed;right:24px;bottom:32px;font-size:10px;color:var(--dim);
+    letter-spacing:.14em;text-transform:uppercase}
+  @media (max-width:640px){
+    .hud{left:16px;top:16px}.hint{display:none}
+    .patterns{bottom:16px;max-width:calc(100vw - 24px);overflow-x:auto}
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div class="hud">
+  <h1>Galaxy&nbsp;SF&nbsp;— LED&nbsp;Staff</h1>
+  <p>v21 · 5 ft · drag to orbit</p>
+</div>
+<div class="patterns" role="group" aria-label="LED pattern">
+  <button data-p="rainbow" class="on">Rainbow</button>
+  <button data-p="comet">Comet</button>
+  <button data-p="pulse">Pulse</button>
+  <button data-p="galaxy">Galaxy</button>
+  <button data-p="mirror">Mirror</button>
+  <button data-p="off">Off</button>
+</div>
+<div class="hint">Scroll to zoom</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const stage = document.getElementById("stage");
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0A0910);
+  scene.fog = new THREE.Fog(0x0A0910, 10, 30);
+
+  const camera = new THREE.PerspectiveCamera(38, innerWidth/innerHeight, .1, 100);
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+  stage.appendChild(renderer.domElement);
+
+  /* studio env (same softboxes as the whip) */
+  {
+    const ec = document.createElement("canvas");
+    ec.width = 512; ec.height = 256;
+    const e = ec.getContext("2d");
+    e.fillStyle = "#050508"; e.fillRect(0,0,512,256);
+    function softbox(x,y,w,h,bright){
+      const gr = e.createRadialGradient(x+w/2,y+h/2,2,x+w/2,y+h/2,Math.max(w,h)/2);
+      gr.addColorStop(0,`rgba(255,255,255,${bright})`);
+      gr.addColorStop(.6,`rgba(255,255,255,${bright*.4})`);
+      gr.addColorStop(1,"rgba(255,255,255,0)");
+      e.fillStyle = gr; e.fillRect(x,y,w,h);
+    }
+    softbox(70,30,110,170,.95);
+    softbox(330,60,90,130,.55);
+    softbox(200,10,180,36,.4);
+    const envTex = new THREE.CanvasTexture(ec);
+    envTex.mapping = THREE.EquirectangularReflectionMapping;
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromEquirectangular(envTex).texture;
+    envTex.dispose(); pmrem.dispose();
+  }
+
+  /* ── Staff dimensions ──
+     A staff is thicker and longer than the whip: one solid pole,
+     LED sections mirrored down both halves, grip in the middle,
+     domed ends. */
+  const STAFF_H = 7.0;
+  const TOP_Y = STAFF_H/2, BOT_Y = -STAFF_H/2;
+  /* S slims the whole LED cross-section. The battery measures 24 mm on the
+     macro and the strip reads just under that beside it, so the finished
+     section is ~24.5 mm rather than the 42 mm it was. Every radial constant
+     below carries S; axial ones do not. */
+  const S = .58;
+  const R_POLE = .073*S;                     // ~25 mm tube
+  const STRIP_W = .075*S;
+  const PITCH = STRIP_W*1.08;
+  const PER_TURN = 5.4;
+  const R_WRAP = R_POLE + .014*S;
+
+  /* handle stack, derived top down. Proportions taken off the macro: the
+     power bank stands proud by ~3.9 of its own diameters, and the holder
+     is roughly 0.8 of that. The LED section starts immediately under the
+     cable mouth, which is what lets the splice leads run horizontally. */
+  const BAT_R = .0551;                       // 24 mm power bank, a bought
+                                             // part, so not scaled by S
+  const HOLD_R = BAT_R*1.32, BR_R = HOLD_R*.94;   // off the macro
+  const BAT_PROUD = BAT_R*2*3.87;            // proud length, in its own diameters
+  const HOLD_TOP = TOP_Y - BAT_PROUD;
+  const HOLD_H = .34;
+  /* POD_H is the one dial for the remote. The pill's other faces, the
+     bracket zone it clamps to and the sticker between the pods are all
+     ratios of it, so resizing the remote keeps that whole band in step. */
+  const POD_H = .39;                         // was .44
+  const POD_W = POD_H*.398, POD_D = POD_H*.114, POD_RAD = POD_H*.102;
+  const BR_H = POD_H*1.25, BR_TOP = HOLD_TOP - HOLD_H;
+  const COIL_TOP = BR_TOP - BR_H - .05;
+  /* COIL_DIR sets the winding handedness. It is negative so the cable is
+     already travelling the way the leads need to go when it reaches the
+     mouth, which lets them run straight out of the jacket. The fractional
+     turn count parks the mouth 75 degrees off the strip's top end, and is
+     re-solved whenever the bracket height or the coil pitch changes. */
+  /* moulded strain relief where the cable leaves the pod, same treatment
+     as the whip's inline remote */
+  const BOSS_LEN = .042, BOSS_LAP = .007;
+  const COIL_DIR = -1;
+  const COIL_PITCH = .034*S, COIL_TURNS = 9.681;
+  const COIL_BOT = COIL_TOP - COIL_TURNS*COIL_PITCH;
+
+  /* ONE continuous LED section: from below the splice to the foot */
+  const SEC_BOT = BOT_Y + .40, SEC_TOP = COIL_BOT - .026;
+  const sections = [
+    { y0: SEC_BOT, y1: SEC_TOP }
+  ];
+
+  const staff = new THREE.Group();
+  scene.add(staff);
+
+  /* pole */
+  const pole = new THREE.Mesh(
+    new THREE.CylinderGeometry(R_POLE, R_POLE, STAFF_H, 28),
+    new THREE.MeshStandardMaterial({color:0xEDEBE5, roughness:.5, metalness:.05})
+  );
+  staff.add(pole);
+
+  /* ── Top handle assembly, matched to the macros ──
+     battery tube → bracket with moon/star decals held by translucent
+     side rails, TWO controller pods (one per LED channel) → tight
+     cable coil (the power cable itself, ~10 turns) → wire splice
+     onto the strip */
+  const whiteMat = new THREE.MeshStandardMaterial({color:0xF2F1EC, roughness:.45});
+  const handleTop = TOP_Y;
+  /* ── Removable battery pack protruding from the holder ──
+     Narrow branded power bank with hex power button and 4 charge
+     dots, seated in a wider holder sleeve. */
+  const BAT_H = 1.05;
+  const batTube = new THREE.Mesh(
+    new THREE.CylinderGeometry(BAT_R, BAT_R, BAT_H, 24), whiteMat);
+  batTube.position.y = handleTop - BAT_H/2;
+  staff.add(batTube);
+  const batCap = new THREE.Mesh(
+    new THREE.SphereGeometry(BAT_R, 20, 14, 0, Math.PI*2, 0, Math.PI/2), whiteMat);
+  batCap.scale.y = .78;                       // fuller dome than v11
+  batCap.position.y = handleTop;
+  staff.add(batCap);
+  /* face decal spanning the whole proud length: wordmark near the top,
+     flat-top hex power button low, 4 charge dashes just above the rim.
+     Set BRAND to "" to drop the wordmark for storefront renders. */
+  {
+    const BRAND = "SIXTHGU";
+    const DW = .072, DH = BAT_PROUD;          // decal plane size
+    const PXU = 1778;                          // canvas px per world unit
+    const cw = Math.round(DW*PXU), ch = Math.round(DH*PXU);
+    const bd = BAT_R*2*PXU;                    // battery diameter in canvas px
+    const bcv = document.createElement("canvas"); bcv.width=cw; bcv.height=ch;
+    const b = bcv.getContext("2d");
+    b.clearRect(0,0,cw,ch);
+    if(BRAND){
+      b.save();
+      b.translate(cw*.5, ch*.263); b.rotate(Math.PI/2);
+      b.fillStyle = "#C4C1B9";
+      b.font = `600 ${(bd*.095).toFixed(0)}px Helvetica, Arial, sans-serif`;
+      b.textAlign = "left"; b.textBaseline = "middle";
+      const tr = bd*.030;                      // manual letter spacing
+      let tw = 0;
+      for(const chx of BRAND) tw += b.measureText(chx).width + tr;
+      let tx = -tw/2;
+      for(const chx of BRAND){
+        b.fillText(chx, tx, 0);
+        tx += b.measureText(chx).width + tr;
+      }
+      b.restore();
+    }
+    /* flat-top hexagon outline (vertices left and right, as on the unit) */
+    b.strokeStyle = "#B7B4AC"; b.lineWidth = bd*.017; b.lineJoin = "round";
+    b.beginPath();
+    for(let i=0;i<6;i++){
+      const a = i*Math.PI/3;
+      b[i? "lineTo":"moveTo"](cw*.5 + Math.cos(a)*bd*.167, ch*.776 + Math.sin(a)*bd*.167);
+    }
+    b.closePath(); b.stroke();
+    /* 4 charge dashes stacked just above the holder rim */
+    b.fillStyle = "#4A4845";
+    const dw = bd*.10, dh = bd*.045, gap = bd*.119;
+    for(let i=0;i<4;i++){
+      const yy = ch*.872 + i*gap;
+      b.beginPath();
+      if(b.roundRect) b.roundRect(cw*.5 - dw/2, yy, dw, dh, dh*.4);
+      else b.rect(cw*.5 - dw/2, yy, dw, dh);
+      b.fill();
+    }
+    const batTex = new THREE.CanvasTexture(bcv);
+    const batDecal = new THREE.Mesh(
+      new THREE.PlaneGeometry(DW, DH),
+      new THREE.MeshStandardMaterial({map:batTex, transparent:true, roughness:.45}));
+    batDecal.position.set(0, handleTop - BAT_PROUD/2, BAT_R + .004);
+    staff.add(batDecal);
+  }
+  /* holder sleeve the battery seats into */
+  const holdTop = HOLD_TOP;
+  const holder = new THREE.Mesh(
+    new THREE.CylinderGeometry(HOLD_R, HOLD_R, HOLD_H, 24), whiteMat);
+  holder.position.y = holdTop - HOLD_H/2;
+  staff.add(holder);
+
+  /* bracket section: inner tube carrying the yellow Galaxy SF sticker,
+     clamped by translucent side rails */
+  const brTop = BR_TOP, brH = BR_H;
+  const brTube = new THREE.Mesh(
+    new THREE.CylinderGeometry(BR_R, BR_R, brH, 24), whiteMat);
+  brTube.position.y = brTop - brH/2;
+  staff.add(brTube);
+  {
+    /* yellow The_Galaxy_SF sticker, reading down the pole */
+    const dc = document.createElement("canvas"); dc.width=96; dc.height=352;
+    const d = dc.getContext("2d");
+    d.fillStyle = "#EDE94A"; d.fillRect(0,0,96,352);
+    d.save();
+    d.translate(48,176); d.rotate(Math.PI/2);
+    d.fillStyle = "#232320";
+    d.textAlign="left"; d.textBaseline="middle";
+    d.font = "600 34px Helvetica, Arial, sans-serif";
+    d.fillText("The_Galaxy_SF", -128, 2);
+    d.restore();
+    /* camera glyph above the text */
+    d.strokeStyle = "#232320"; d.lineWidth = 6;
+    d.strokeRect(26, 18, 44, 44);
+    d.beginPath(); d.arc(48, 40, 13, 0, Math.PI*2); d.stroke();
+    d.fillStyle = "#232320";
+    d.beginPath(); d.arc(63, 26, 3.4, 0, Math.PI*2); d.fill();
+    const decalTex = new THREE.CanvasTexture(dc);
+    /* wrapped onto the tube as an arc, not a flat card. The arc angle is
+       derived from the sticker's printed width so the artwork keeps its
+       proportions whatever the pole radius is. */
+      const stickR = BR_R + .003;
+    const STICK_W = POD_H*.295, STICK_H = POD_H*1.091;
+    const stickArc = STICK_W/stickR;
+    const decal = new THREE.Mesh(
+      new THREE.CylinderGeometry(stickR, stickR, STICK_H, 32, 1, true,
+        -stickArc/2, stickArc),
+      new THREE.MeshStandardMaterial({map:decalTex, roughness:.55,
+        side:THREE.DoubleSide}));
+    decal.position.y = brTop - brH/2;
+    staff.add(decal);
+  }
+
+  /* the TWO remotes — SAME unit as the whip's inline remote — clamp
+     the pole on opposite sides at this level */
+  {
+    const fc = document.createElement("canvas");
+    fc.width = 256; fc.height = 640;
+    const f = fc.getContext("2d");
+    f.clearRect(0,0,256,640);
+    f.fillStyle = "#b0b6ab"; f.strokeStyle = "#b0b6ab";
+    f.textAlign = "center"; f.textBaseline = "middle";
+    f.font = "500 100px Helvetica, Arial, sans-serif";
+    f.fillText("M", 152, 152);
+    f.lineWidth = 12;
+    f.beginPath(); f.arc(120, 322, 46, -Math.PI*.32, Math.PI*1.32); f.stroke();
+    f.beginPath(); f.moveTo(120, 260); f.lineTo(120, 316); f.stroke();
+    f.font = "500 120px Helvetica, Arial, sans-serif";
+    f.fillText("\u266A", 158, 496);
+    f.strokeStyle = "#4d5f56"; f.lineWidth = 5.5; f.lineCap = "round";
+    f.beginPath();
+    f.moveTo(250,6);
+    f.bezierCurveTo(56,118, 26,222, 204,260);
+    f.bezierCurveTo(288,296, 288,362, 198,402);
+    f.bezierCurveTo(22,456, 26,558, 188,588);
+    f.quadraticCurveTo(232,606, 252,634);
+    f.stroke();
+    const faceTex = new THREE.CanvasTexture(fc);
+
+    const pillMat = new THREE.MeshStandardMaterial({color:0xF3F3EE, roughness:.5});
+    const bW = POD_W, bH = POD_H, bD = POD_D, rad = POD_RAD;
+    const shape = new THREE.Shape();
+    const hw = bW/2, hh = bH/2;
+    shape.moveTo(-hw+rad, -hh);
+    shape.lineTo(hw-rad, -hh);
+    shape.quadraticCurveTo(hw, -hh, hw, -hh+rad);
+    shape.lineTo(hw, hh-rad);
+    shape.quadraticCurveTo(hw, hh, hw-rad, hh);
+    shape.lineTo(-hw+rad, hh);
+    shape.quadraticCurveTo(-hw, hh, -hw, hh-rad);
+    shape.lineTo(-hw, -hh+rad);
+    shape.quadraticCurveTo(-hw, -hh, -hw+rad, -hh);
+    const bodyGeo = new THREE.ExtrudeGeometry(shape, {
+      depth:bD, bevelEnabled:true, bevelThickness:.009, bevelSize:.009, bevelSegments:2
+    });
+    bodyGeo.translate(0,0,-bD/2);
+
+    [-1,1].forEach(side=>{
+      const pod = new THREE.Group();
+      pod.add(new THREE.Mesh(bodyGeo, pillMat));
+      const face = new THREE.Mesh(
+        new THREE.PlaneGeometry(bW*.96, bH*.96),
+        new THREE.MeshStandardMaterial({map:faceTex, transparent:true, roughness:.5}));
+      face.position.z = bD/2 + .011;
+      pod.add(face);
+      /* strain relief boss on the bottom end, wider where it meets the
+         pill and tapering to the cable's own diameter */
+      const boss = new THREE.Mesh(                     // wide end against the
+        new THREE.CylinderGeometry(.017*S*2.4, .017*S*1.15, BOSS_LEN, 16),  // pill
+        pillMat);
+      boss.position.y = -bH/2 - BOSS_LEN/2 + BOSS_LAP;
+      pod.add(boss);
+      pod.position.set(side*(BR_R + .007), brTop - brH/2, 0);
+      pod.rotation.y = side>0 ? Math.PI/2 : -Math.PI/2;
+      staff.add(pod);
+    });
+  }
+
+
+  /* tight cable coil: the white power cable wrapped ~10 turns, ending in
+     an open cut mouth. The leads start INSIDE that mouth and travel
+     forward in the cable's own direction, so they read as the conductors
+     of the white cord rather than three loose wires beside it. */
+  const coilTop = COIL_TOP;
+  {
+    const cTurns = COIL_TURNS, cPitch = COIL_PITCH, cR = R_POLE + .012*S;
+    const R_JACKET = .017*S;
+    const coilCurve = new THREE.Curve();
+    coilCurve.getPoint = function(t){
+      const a = COIL_DIR*t*cTurns*Math.PI*2;
+      return new THREE.Vector3(
+        Math.cos(a)*cR,
+        coilTop - t*cTurns*cPitch,
+        Math.sin(a)*cR);
+    };
+    /* DoubleSide so the open end reads as a hollow cut, not a flat edge */
+    const coil = new THREE.Mesh(
+      new THREE.TubeGeometry(coilCurve, 360, R_JACKET, 10, false),
+      new THREE.MeshStandardMaterial({color:0xF2F1EC, roughness:.45, side:THREE.DoubleSide}));
+    staff.add(coil);
+
+    /* BOTH remotes carry a cable. Each leaves its strain relief, drops, and
+       meets the coil at the point where the coil has come round to that
+       remote's own side of the pole. The landing tangent is taken from the
+       coil itself, so each join reads as one continuous cord rather than
+       two tubes touching. */
+    {
+      const tipY = BR_TOP - BR_H/2 - POD_H/2 - BOSS_LEN + BOSS_LAP;
+      const dropMat = new THREE.MeshStandardMaterial({color:0xF2F1EC, roughness:.45});
+      const dropCable = (side, tCoil)=>{
+        const podX = side*(BR_R + .007);
+        const land = coilCurve.getPoint(tCoil);
+        const a = COIL_DIR*tCoil*cTurns*Math.PI*2;
+        const ct = new THREE.Vector3(                    // dP/dt, scaled down
+          -Math.sin(a)*cR*COIL_DIR,
+          -cPitch/(Math.PI*2),
+          Math.cos(a)*cR*COIL_DIR).normalize();
+        const drop = new THREE.CubicBezierCurve3(
+          new THREE.Vector3(podX, tipY + .014, 0),       // inside the boss
+          new THREE.Vector3(podX, tipY - .026, 0),       // leaves straight down
+          land.clone().addScaledVector(ct, -.038),       // eases onto the coil
+          land
+        );
+        staff.add(new THREE.Mesh(
+          new THREE.TubeGeometry(drop, 48, R_JACKET, 10, false), dropMat));
+      };
+      dropCable( 1, 0);                                  // coil starts at +x
+      dropCable(-1, 1/(2*cTurns));                       // half a turn to -x
+    }
+
+    const A_MOUTH = COIL_DIR*cTurns*Math.PI*2;
+    const Y_MOUTH = coilTop - cTurns*cPitch;
+    /* dark ring at the cut so the mouth reads as an opening */
+    {
+      const tan = new THREE.Vector3(-Math.sin(A_MOUTH), 0, Math.cos(A_MOUTH))
+        .multiplyScalar(COIL_DIR*cR*Math.PI*2).setY(-cPitch).normalize();
+      const ring = new THREE.Mesh(
+        new THREE.CircleGeometry(R_JACKET*.72, 14),
+        new THREE.MeshStandardMaterial({color:0x2b2a28, roughness:.8, side:THREE.DoubleSide}));
+      ring.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), tan);
+      ring.position.set(
+        Math.cos(A_MOUTH)*cR - tan.x*.004,
+        Y_MOUTH - tan.y*.004,
+        Math.sin(A_MOUTH)*cR - tan.z*.004);
+      staff.add(ring);
+    }
+
+    /* red / blue / black leads: bunched inside the jacket, then fanning
+       out across the strip pads. Radii stay inside the membrane. */
+    const wireCols = [0xC94040, 0x3A55C9, 0x141416];
+    const blobMat = new THREE.MeshStandardMaterial({color:0xC8CCD0, roughness:.25, metalness:.9});
+    const W_END_R = R_POLE + .009*S;
+    const A_STRIP = ((SEC_TOP - SEC_BOT)/PITCH)*Math.PI*2;
+    /* the leads continue the way the cable was already travelling, so the
+       sweep takes the sign of COIL_DIR rather than doubling back */
+    let dA = (A_STRIP - A_MOUTH) % (Math.PI*2);
+    if(COIL_DIR > 0 && dA < 0) dA += Math.PI*2;
+    if(COIL_DIR < 0 && dA > 0) dA -= Math.PI*2;
+    const A_IN = A_MOUTH - COIL_DIR*.34;         // start buried in the jacket
+    wireCols.forEach((c,i)=>{
+      const yIn  = Y_MOUTH + .34*cPitch/(Math.PI*2) + (1-i)*.009*S;  // in sheath
+      const yEnd = SEC_TOP + .014*S - i*.017*S;                      // across pads
+      const wCurve = new THREE.Curve();
+      wCurve.getPoint = function(t){
+        const a = A_IN + (A_MOUTH + dA - A_IN)*t;
+        const u = Math.max(0, (a - A_MOUTH)/dA);   // 0 while still inside the sheath
+        const e = u*u*(3-2*u);
+        const r = cR + (W_END_R - cR)*e;
+        const y = yIn + (yEnd - yIn)*e - .005*S*Math.sin(Math.PI*u);
+        return new THREE.Vector3(Math.cos(a)*r, y, Math.sin(a)*r);
+      };
+      const w = new THREE.Mesh(
+        new THREE.TubeGeometry(wCurve, 64, .0055*S, 7, false),
+        new THREE.MeshStandardMaterial({color:c, roughness:.5}));
+      staff.add(w);
+      const end = wCurve.getPoint(1);
+      const blob = new THREE.Mesh(new THREE.SphereGeometry(.011*S, 10, 8), blobMat);
+      blob.scale.y = .7;
+      blob.position.copy(end);
+      staff.add(blob);
+    });
+  }
+
+  /* black rubber foot: collar into a wide grooved bell, like the macro */
+  const footMat = new THREE.MeshStandardMaterial({color:0x0c0c0e, roughness:.85, metalness:0});
+  /* the collar runs up past the membrane's bottom cut (SEC_BOT - .04) so the
+     film tucks into the rubber instead of leaving bare pole showing */
+  const BELL_TOP = BOT_Y + .26;
+  const COLLAR_TOP = SEC_BOT - .03;
+  const COLLAR_H = (COLLAR_TOP - BELL_TOP) + .02;      // .02 overlap into the bell
+  const footCollar = new THREE.Mesh(
+    new THREE.CylinderGeometry(R_POLE*1.45, R_POLE*1.55, COLLAR_H, 26), footMat);
+  footCollar.position.y = COLLAR_TOP - COLLAR_H/2;
+  staff.add(footCollar);
+  const footBell = new THREE.Mesh(
+    new THREE.CylinderGeometry(R_POLE*1.55, R_POLE*2.15, .26, 26), footMat);
+  footBell.position.y = BOT_Y + .13;
+  staff.add(footBell);
+  const footBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(R_POLE*2.15, R_POLE*2.05, .03, 26), footMat);
+  footBase.position.y = BOT_Y + .012;
+  staff.add(footBase);
+  /* molded vertical grooves around the bell */
+  {
+    const grooveMat = new THREE.MeshStandardMaterial({color:0x060607, roughness:.9});
+    const grooveGeo = new THREE.BoxGeometry(.012*S,.12,.006*S);
+    const grooves = new THREE.InstancedMesh(grooveGeo, grooveMat, 10);
+    const gm = new THREE.Matrix4(), gp = new THREE.Vector3();
+    for(let i=0;i<10;i++){
+      const a = i/10*Math.PI*2;
+      const rr = R_POLE*1.86;
+      gp.set(Math.cos(a)*rr, BOT_Y+.15, Math.sin(a)*rr);
+      gm.makeRotationY(-a+Math.PI/2);
+      gm.setPosition(gp);
+      grooves.setMatrixAt(i,gm);
+    }
+    grooves.instanceMatrix.needsUpdate = true;
+    staff.add(grooves);
+  }
+
+  /* ── Shared textures ── */
+  const gc = document.createElement("canvas"); gc.width=gc.height=64;
+  const g2 = gc.getContext("2d");
+  const gr = g2.createRadialGradient(32,32,0,32,32,32);
+  gr.addColorStop(0,"rgba(255,255,255,1)");
+  gr.addColorStop(.35,"rgba(255,255,255,.45)");
+  gr.addColorStop(1,"rgba(255,255,255,0)");
+  g2.fillStyle=gr; g2.fillRect(0,0,64,64);
+  const glowTex = new THREE.CanvasTexture(gc);
+
+  /* ── LED section builder (the whip's machinery, parametrized) ──
+     Builds strip ribbon, seam, chips, dies, circuitry, glows, and the
+     displaced membrane for one [y0,y1] span. Returns the instanced
+     sets plus per-LED global coordinates for pattern painting. */
+  const allDies=[], allGlows=[], allGlows2=[], ledGlobalT=[];
+  const skinMats = [];
+
+  function buildLedSection(y0, y1, ext){
+    const SPAN = y1 - y0;
+    const TURNS = SPAN / PITCH;
+    const COUNT = Math.floor(TURNS * PER_TURN);
+    const helixLenPerTurn = Math.sqrt(Math.pow(Math.PI*2*R_WRAP,2)+PITCH*PITCH);
+    const CHIP_ARC = helixLenPerTurn / PER_TURN;
+
+    function helixBasis(t){
+      const a = t*TURNS*Math.PI*2;
+      const y = y0 + t*SPAN;
+      const outward = new THREE.Vector3(Math.cos(a),0,Math.sin(a));
+      const tangent = new THREE.Vector3(-Math.sin(a)*R_WRAP, PITCH/(Math.PI*2), Math.cos(a)*R_WRAP).normalize();
+      const side = new THREE.Vector3().crossVectors(tangent,outward).normalize();
+      return {a,y,outward,tangent,side};
+    }
+
+    /* continuous strip ribbon */
+    {
+      const SEGS = Math.round(SPAN*380), W_SEGS = 4;
+      const verts = new Float32Array((SEGS+1)*(W_SEGS+1)*3);
+      const idx = [];
+      const vv = new THREE.Vector3();
+      for(let i=0;i<=SEGS;i++){
+        const t = i/SEGS;
+        const b = helixBasis(t);
+        for(let j=0;j<=W_SEGS;j++){
+          const s = j/W_SEGS*2-1;
+          const lift = (.012 - .005*s*s)*S;
+          vv.copy(b.outward).multiplyScalar(R_POLE+lift)
+            .addScaledVector(b.side, s*STRIP_W*.48);
+          vv.y += b.y;
+          const k = (i*(W_SEGS+1)+j)*3;
+          verts[k]=vv.x; verts[k+1]=vv.y; verts[k+2]=vv.z;
+        }
+      }
+      for(let i=0;i<SEGS;i++) for(let j=0;j<W_SEGS;j++){
+        const a=i*(W_SEGS+1)+j, b=a+W_SEGS+1;
+        idx.push(a,b,a+1, b,b+1,a+1);
+      }
+      const rg = new THREE.BufferGeometry();
+      rg.setAttribute("position", new THREE.BufferAttribute(verts,3));
+      rg.setIndex(idx);
+      rg.computeVertexNormals();
+      staff.add(new THREE.Mesh(rg,
+        new THREE.MeshStandardMaterial({color:0x0b0b0d, roughness:.42, metalness:.15, side:THREE.DoubleSide})));
+
+      const edge = new THREE.Curve();
+      edge.getPoint = function(t){
+        const b = helixBasis(t);
+        const p = new THREE.Vector3().copy(b.outward).multiplyScalar(R_POLE+.013*S)
+          .addScaledVector(b.side, STRIP_W*.5);
+        p.y += b.y;
+        return p;
+      };
+      staff.add(new THREE.Mesh(
+        new THREE.TubeGeometry(edge, Math.round(SPAN*300), .0045*S, 5, false),
+        new THREE.MeshBasicMaterial({color:0x1a1a1e, transparent:true, opacity:.30})));
+    }
+
+    /* chips, dies, circuitry, glows */
+    const shellGeo = new THREE.BoxGeometry(STRIP_W*.52,.013*S,STRIP_W*.52);
+    const shellMat = new THREE.MeshStandardMaterial({color:0xE6E2D8, roughness:.55});
+    const shells = new THREE.InstancedMesh(shellGeo,shellMat,COUNT);
+    staff.add(shells);
+    const dieGeo = new THREE.CylinderGeometry(STRIP_W*.21, STRIP_W*.21, .010*S, 18);
+    const dies = new THREE.InstancedMesh(dieGeo,new THREE.MeshBasicMaterial({}),COUNT);
+    dies.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(COUNT*3),3);
+    staff.add(dies);
+    const glowGeo = new THREE.PlaneGeometry(.15*S,.15*S);
+    const glowMat = new THREE.MeshBasicMaterial({map:glowTex,transparent:true,
+      blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+    const glows = new THREE.InstancedMesh(glowGeo,glowMat,COUNT);
+    glows.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(COUNT*3),3);
+    staff.add(glows);
+    const glow2Geo = new THREE.PlaneGeometry(.40*S,.40*S);
+    const glow2Mat = new THREE.MeshBasicMaterial({map:glowTex,transparent:true,
+      blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,opacity:.32});
+    const glows2 = new THREE.InstancedMesh(glow2Geo,glow2Mat,COUNT);
+    glows2.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(COUNT*3),3);
+    staff.add(glows2);
+
+    const padMat = new THREE.MeshStandardMaterial({color:0xC98850, roughness:.35, metalness:.85});
+    const padGeo = new THREE.CylinderGeometry(STRIP_W*.10, STRIP_W*.10, .004*S, 10);
+    padGeo.scale(1,1,1.5);
+    const pads = new THREE.InstancedMesh(padGeo, padMat, COUNT*2);
+    staff.add(pads);
+    const compMat = new THREE.MeshStandardMaterial({color:0xBFC3C7, roughness:.3, metalness:.8});
+    const compGeo = new THREE.BoxGeometry(CHIP_ARC*.14, .008*S, STRIP_W*.16);
+    const comps = new THREE.InstancedMesh(compGeo, compMat, COUNT);
+    staff.add(comps);
+
+    const m = new THREE.Matrix4(), pos = new THREE.Vector3(), pv = new THREE.Vector3();
+    for(let i=0;i<COUNT;i++){
+      const t = i/(COUNT-1);
+      const b = helixBasis(t);
+      pos.copy(b.outward).multiplyScalar(R_POLE+.014*S); pos.y=b.y;
+      m.makeBasis(b.tangent,b.outward,b.side); m.setPosition(pos);
+      shells.setMatrixAt(i,m);
+      pos.copy(b.outward).multiplyScalar(R_POLE+.022*S); pos.y=b.y;
+      m.makeBasis(b.tangent,b.outward,b.side); m.setPosition(pos);
+      dies.setMatrixAt(i,m);
+      pos.copy(b.outward).multiplyScalar(R_POLE+.042*S); pos.y=b.y;
+      m.makeBasis(b.tangent,b.side,b.outward); m.setPosition(pos);
+      glows.setMatrixAt(i,m);
+      glows2.setMatrixAt(i,m);
+      const tm = (i+.5)/(COUNT-1);
+      const bm = helixBasis(Math.min(tm,1));
+      [-1,1].forEach((s,j)=>{
+        pv.copy(bm.outward).multiplyScalar(R_POLE+.012*S)
+          .addScaledVector(bm.side, s*STRIP_W*.26);
+        pv.y += bm.y;
+        m.makeBasis(bm.tangent, bm.outward, bm.side); m.setPosition(pv);
+        pads.setMatrixAt(i*2+j, m);
+      });
+      pv.copy(bm.outward).multiplyScalar(R_POLE+.013*S); pv.y = bm.y;
+      m.makeBasis(bm.tangent, bm.outward, bm.side); m.setPosition(pv);
+      comps.setMatrixAt(i, m);
+    }
+    [shells,dies,glows,glows2,pads,comps].forEach(o=>o.instanceMatrix.needsUpdate=true);
+
+    /* membrane over this section, tapering tight at both ends */
+    {
+      const F_TOP = ext ? ext.topEndY : y1 + .04, F_BOT = y0 - .04;
+      const FH = F_TOP - F_BOT, FMID = (F_TOP+F_BOT)/2;
+      /* sample fine enough to actually resolve the displacement. The old
+         fixed FH*90 was an absolute density, so slimming the staff quietly
+         halved the samples per feature and the bumps stopped forming. Drive
+         it off the tightest pitch present instead. */
+      const finest = ext ? Math.min(PITCH, ext.coilPitch) : PITCH;
+      const VSEG = Math.min(1800, Math.round(FH/(finest/6)));
+      const sg = new THREE.CylinderGeometry(1,1,FH,72,VSEG,true);
+      const p = sg.attributes.position;
+      const v = new THREE.Vector3();
+      /* the film must clear the tallest thing under it, or the dies poke
+         through wherever a bump fails to form. Derive it from the die rather
+         than hardcoding a radius that can drift out of step. */
+      const R_CHIP_TOP = R_POLE + .027*S;          // outer face of the dies
+      const R_BASE = R_CHIP_TOP + .003*S;
+      const A_CHIP = .011*S, A_RIDGE = .005*S;
+      const sm = t => { t=Math.max(0,Math.min(1,t)); return t*t*(3-2*t); };
+      for(let i=0;i<p.count;i++){
+        v.fromBufferAttribute(p,i);
+        const wy = v.y + FMID;
+        const theta = Math.atan2(v.z,v.x);
+        const th = theta<0 ? theta+Math.PI*2 : theta;
+        let r = R_BASE;
+        const yRel = wy - y0;
+        const n = yRel/PITCH;
+        const k = Math.round(n - th/(Math.PI*2));
+        const centerN = k + th/(Math.PI*2);
+        const dAcross = (n - centerN)*PITCH;
+        const chipC = centerN*PER_TURN;
+        const fcp = chipC - Math.round(chipC);
+        const dAlong = fcp*CHIP_ARC;
+        const inZone = sm(yRel/.05) * sm((SPAN-yRel)/.05);
+        const bumpChip = A_CHIP *
+          Math.exp(-Math.pow(dAcross/(STRIP_W*.50),2)) *
+          Math.exp(-Math.pow(dAlong/(CHIP_ARC*.50),2));
+        const bumpRidge = A_RIDGE *
+          Math.exp(-Math.pow(dAcross/(STRIP_W*.60),2));
+        const dipness = 1 - Math.exp(-Math.pow(dAcross/(STRIP_W*.5),2));
+        const wrinkle = .0026*S * dipness * (
+          Math.sin(wy*120 + th*9) * Math.sin(th*31 + wy*49) +
+          .5*Math.sin(wy*230 + th*17)
+        );
+        r += inZone*(bumpChip + bumpRidge + wrinkle);
+        /* extended region: film seals over the cable coil and splice,
+           bulging over each coil turn like the macro photos */
+        if(ext){
+          const nC = (ext.coilTopY - wy)/ext.coilPitch;
+          if(nC > -.5 && nC < ext.coilTurns+.5){
+            let cf = (ext.coilDir*nC - th/(Math.PI*2)) % 1;
+            if(cf < 0) cf += 1;
+            const dC = Math.min(cf, 1-cf)*ext.coilPitch;
+            const envC = sm((nC+.25)/.5) * sm((ext.coilTurns+.25-nC)/.5);
+            r += .026*S * envC * Math.exp(-Math.pow(dC/.020,2));
+          }
+        }
+        /* shrink tight at both cut edges */
+        const eT = sm((wy - F_BOT)/.06) * sm((F_TOP - wy)/.06);
+        r = (R_POLE + .004*S) + (r - (R_POLE + .004*S))*eT;
+        p.setXYZ(i, Math.cos(theta)*r, v.y, Math.sin(theta)*r);
+      }
+      p.needsUpdate = true;
+      sg.computeVertexNormals();
+      const skinMat = new THREE.MeshPhysicalMaterial({
+        color:0xffffff, transparent:true, opacity:.10,
+        roughness:.04, metalness:0,
+        clearcoat:1, clearcoatRoughness:.06,
+        envMapIntensity:2.0, depthWrite:false
+      });
+      const skin = new THREE.Mesh(sg, skinMat);
+      skin.position.y = FMID;
+      skin.renderOrder = 2;
+      staff.add(skin);
+      skinMats.push(skinMat);
+    }
+
+    allDies.push(dies); allGlows.push(glows); allGlows2.push(glows2);
+    return COUNT;
+  }
+
+  /* build both sections; ledGlobalT spans the WHOLE staff 0..1 so
+     patterns flow continuously bottom to top across the grip */
+  const counts = [];
+  sections.sort((a,b)=>a.y0-b.y0);           // bottom section first
+  sections.forEach((sec,si)=>{
+    const isTop = si === sections.length-1;
+    counts.push(buildLedSection(sec.y0, sec.y1,
+      isTop ? {topEndY: coilTop + .06, coilTopY: coilTop, coilPitch: COIL_PITCH,
+               coilTurns: COIL_TURNS, coilDir: COIL_DIR} : null));
+  });
+  {
+    let total = 0; counts.forEach(c=>total+=c);
+    let acc = 0;
+    sections.forEach((sec,si)=>{
+      const arr = new Float32Array(counts[si]);
+      for(let i=0;i<counts[si];i++){
+        const yv = sec.y0 + (i/(counts[si]-1))*(sec.y1-sec.y0);
+        arr[i] = (yv - BOT_Y)/STAFF_H;       // global 0..1 by height
+      }
+      ledGlobalT.push(arr);
+      acc += counts[si];
+    });
+  }
+
+  /* lighting + floor pool */
+  const amb = new THREE.AmbientLight(0x8888aa,.25); scene.add(amb);
+  const rim = new THREE.DirectionalLight(0x6677ff,.5); rim.position.set(-4,3,-3); scene.add(rim);
+  const key = new THREE.PointLight(0xffffff,.55,18); key.position.set(3,2,4); scene.add(key);
+  const pool = new THREE.Mesh(new THREE.CircleGeometry(3.0,40),
+    new THREE.MeshBasicMaterial({map:glowTex,transparent:true,opacity:.10,
+      blending:THREE.AdditiveBlending,depthWrite:false}));
+  pool.rotation.x = -Math.PI/2; pool.position.y = BOT_Y - .5; scene.add(pool);
+  const poolColor = pool.material.color;
+
+  /* ── Patterns (painted across both sections by global t) ── */
+  let pattern = "rainbow";
+  const col = new THREE.Color(), avg = new THREE.Color();
+  const OFF = new THREE.Color(0x24210f), BLACK = new THREE.Color(0x000000);
+  function paint(time){
+    avg.setRGB(0,0,0);
+    let totalLit = 1;
+    for(let si=0; si<allDies.length; si++){
+      const dies = allDies[si], glows = allGlows[si], glows2 = allGlows2[si];
+      const tArr = ledGlobalT[si];
+      const n = tArr.length;
+      for(let i=0;i<n;i++){
+        const t = tArr[i];
+        let lit = true;
+        if(pattern==="rainbow"){
+          col.setHSL((t*1.8 - time*.18)%1,1,.55);
+        } else if(pattern==="comet"){
+          const head = (time*.20)%1.25;
+          let d = head-t; if(d<0) d+=1.25;
+          const v = Math.max(0,1-d*6);
+          if(v<.02) lit=false; else col.setHSL(.55,1,.05+v*.55);
+        } else if(pattern==="pulse"){
+          const v = .5+.5*Math.sin(time*2.4 - t*6);
+          col.setHSL(.9,.9,.06+v*.5);
+        } else if(pattern==="galaxy"){
+          const v = .5+.5*Math.sin(t*16 + time*.9);
+          col.setHSL(.72-v*.22,.95,.16+v*.42);
+        } else if(pattern==="mirror"){
+          /* staff signature: symmetric from the grip outward */
+          const d = Math.abs(t-.5)*2;
+          col.setHSL((d*1.4 - time*.22)%1, 1, .55);
+        } else lit = false;
+        if(!lit) col.copy(OFF);
+        dies.setColorAt(i,col);
+        glows.setColorAt(i, lit?col:BLACK);
+        glows2.setColorAt(i, lit?col:BLACK);
+        if(lit){ avg.r+=col.r; avg.g+=col.g; avg.b+=col.b; totalLit++; }
+      }
+      dies.instanceColor.needsUpdate = true;
+      glows.instanceColor.needsUpdate = true;
+      glows2.instanceColor.needsUpdate = true;
+    }
+    poolColor.setRGB(avg.r/totalLit, avg.g/totalLit, avg.b/totalLit);
+  }
+
+  document.querySelectorAll(".patterns button").forEach(b=>{
+    b.addEventListener("click",()=>{
+      document.querySelector(".patterns .on")?.classList.remove("on");
+      b.classList.add("on");
+      pattern = b.dataset.p;
+      skinMats.forEach(smx=>{
+        if(pattern==="off"){
+          smx.opacity=.52; smx.roughness=.22; smx.clearcoatRoughness=.25;
+          smx.color.setHex(0xEFF1F4);
+        } else {
+          smx.opacity=.10; smx.roughness=.04; smx.clearcoatRoughness=.06;
+          smx.color.setHex(0xffffff);
+        }
+      });
+      if(pattern==="off"){ amb.intensity=.8; key.intensity=1.3; rim.intensity=.9; }
+      else { amb.intensity=.25; key.intensity=.55; rim.intensity=.5; }
+      if(reduced || pattern==="off") paint(performance.now()/1000);
+    });
+  });
+
+  /* ── Orbit ── */
+  let theta=.6, phi=1.35, dist=12, vTheta=0, dragging=false, px=0, py=0;
+  function setCam(){
+    phi = Math.min(2.6,Math.max(.5,phi));
+    dist = Math.min(26,Math.max(2.0,dist));
+    camera.position.set(
+      dist*Math.sin(phi)*Math.cos(theta),
+      dist*Math.cos(phi)*.7+.3,
+      dist*Math.sin(phi)*Math.sin(theta));
+    camera.lookAt(0,0,0);
+  }
+  const down=(x,y)=>{dragging=true;px=x;py=y;stage.classList.add("dragging")};
+  const move=(x,y)=>{if(!dragging)return;vTheta=(x-px)*.006;theta+=vTheta;phi-=(y-py)*.004;px=x;py=y};
+  const up=()=>{dragging=false;stage.classList.remove("dragging")};
+  stage.addEventListener("mousedown",e=>down(e.clientX,e.clientY));
+  addEventListener("mousemove",e=>move(e.clientX,e.clientY));
+  addEventListener("mouseup",up);
+  stage.addEventListener("touchstart",e=>down(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+  stage.addEventListener("touchmove",e=>move(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+  stage.addEventListener("touchend",up);
+  stage.addEventListener("wheel",e=>{dist+=e.deltaY*.004;setCam()},{passive:true});
+  addEventListener("resize",()=>{
+    camera.aspect=innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);
+  });
+
+  /* ── Loop ── */
+  function frame(){
+    const now = performance.now()/1000;
+    if(!dragging){ theta += reduced?0:(.0016+vTheta*.5); vTheta*=.95; }
+    staff.rotation.z = reduced?0:Math.sin(now*.6)*.010;
+    setCam();
+    if(!reduced && pattern!=="off") paint(now);
+    renderer.render(scene,camera);
+    requestAnimationFrame(frame);
+  }
+  paint(0);
+  setCam();
+  frame();
+})();
+</script>
+</body>
+</html>

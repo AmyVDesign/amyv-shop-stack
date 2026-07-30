@@ -47,6 +47,15 @@ export const WIRE_BLUE = 0x3a55c9;
 export const WIRE_BLACK = 0x141416;
 export const WIRE_BLOB_SILVER = 0xc8ccd0;
 
+// Battery socket (holder bore)
+export const BORE_DARK = 0x1c1d20;
+export const SOCKET_FLOOR_DARK = 0x141518;
+
+// Port face highlight and captive USB-A lead
+export const PORT_HIGHLIGHT_AMBER = 0xe8d45a;
+export const PLUG_TONGUE_METAL = 0xb9bcc2;
+export const PLUG_DIMPLE = 0x5a5e64;
+
 // Studio lighting
 export const LIGHT_AMBIENT = 0x8888aa;
 export const LIGHT_RIM = 0x6677ff;
@@ -62,4 +71,11 @@ export const CanvasPalette = {
   batteryChargeDash: "#4A4845",
   stickerBackground: "#EDE94A",
   stickerInk: "#232320",
+  portFaceBg: "#F4F3EF",
+  portGrooveOuter: "rgba(0,0,0,.13)",
+  portGrooveInner: "rgba(0,0,0,.07)",
+  portSlotBlack: "#141414",
+  portSlotBlue: "#2E5AA8",
+  portIndicatorFill: "#D5D8A4",
+  portIndicatorStroke: "rgba(0,0,0,.30)",
 } as const;

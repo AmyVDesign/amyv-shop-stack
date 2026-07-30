@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 /**
  * Own copy of the whip's helix-basis approach, ported fresh from the staff
- * prototype (`led-staff-v21.html`). Every constant below is copied from the
+ * prototype (`led-staff-v27.html`). Every constant below is copied from the
  * prototype's own derivation, not re-derived, where the prototype computes
  * a number from another number, this file keeps that relationship rather
  * than folding it into a literal.
@@ -50,12 +50,72 @@ export const R_WRAP = R_POLE + 0.014 * S;
 // starts immediately under the cable mouth, which is what lets the splice
 // leads run horizontally.
 export const BAT_R = 0.0551; // 24mm power bank, a bought part, not scaled by S
-export const BAT_H = 1.05;
+/**
+ * 4.3 of its own diameters, off the loose-battery photo. It is an ordinary
+ * 5000 mAh stick, so nearly all of it stands proud and (with BAT_PROUD
+ * unchanged) the socket is only about 10mm deep, not a rounding problem.
+ */
+export const BAT_H = BAT_R * 2 * 4.3;
 export const HOLD_R = BAT_R * 1.32;
 export const BR_R = HOLD_R * 0.94;
 export const BAT_PROUD = BAT_R * 2 * 3.87; // proud length, in its own diameters
 export const HOLD_TOP = TOP_Y - BAT_PROUD;
 export const HOLD_H = 0.34;
+
+/**
+ * The port face, seated. The battery lives in its own group pivoted on
+ * this face (local y = 0 there), so the eject animation lifts and tips it
+ * about the end you actually plug into.
+ */
+export const BAT_BOT = TOP_Y - BAT_H;
+
+/**
+ * Pole. It stops short of the battery socket: the tube is hollow up there
+ * and the battery drops into it, so running the pole the full height left
+ * a white post standing in the hole once the battery came out. From
+ * POLE_TOP up to the holder the bracket sleeve is the visible outer
+ * surface, so nothing gapes.
+ */
+export const POLE_TOP = HOLD_TOP - HOLD_H - 0.13;
+export const POLE_H = POLE_TOP - BOT_Y;
+
+// ── Captive USB-A lead ──
+// A metal tongue whose top sits exactly at the seated port face, a white
+// overmould below it, and a short curved cable running down into the pole.
+// It lives in the staff, not on the battery: the battery pushes down onto
+// it when seated, and ejecting lifts the battery off it.
+export const T_LEN = 0.055; // 12mm tongue
+export const OM_LEN = 0.064; // 14mm overmould
+/** Where the cable leaves the overmould. */
+export const PLUG_PIVOT_Y = BAT_BOT - T_LEN - OM_LEN;
+
+/** Socket floor, the cable's fixed anchor point. */
+export const CABLE_ANCHOR = new THREE.Vector3(0, POLE_TOP + 0.01, 0);
+
+// ── Eject animation ──
+// Lift clear of the holder, then carry it out to the side and turn it over
+// so it stands upright beside the pole with the ports facing up, then drop
+// to settle. PLUG_RISE/PLUG_TILT drive the captive lead: it rises and
+// leans on the lift curve alone, so it withdraws before any rotation
+// starts.
+export const PLUG_RISE = 0.2; // clears the rim
+export const PLUG_TILT = 0.52; // then leans out
+/**
+ * Height it rises to first. It has to swing over ABOVE the plug tip, not
+ * through it: 3.70 leaves the dome end .034 inside the plug on the way
+ * round; 3.90 clears by .111 and is the point past which extra height buys
+ * nothing.
+ */
+export const EJ_CLEAR = 3.9;
+/** How far out to the side. */
+export const EJ_SIDE = 0.26;
+/**
+ * Settle with its top level with the top of the staff. Once the plug is
+ * up, the plug tip is the highest point, not the rim, so this is derived
+ * from the plug rather than typed, so the two tops stay level if the plug
+ * moves.
+ */
+export const EJ_REST = PLUG_PIVOT_Y + PLUG_RISE + Math.cos(PLUG_TILT) * (OM_LEN + T_LEN);
 
 export const POD_W = POD_H * 0.398;
 export const POD_D = POD_H * 0.114;

@@ -46,6 +46,7 @@ function initialCameraPosition(): [number, number, number] {
 export default function StaffViewer({
   className,
   pattern,
+  ejected,
   autoRotate = true,
 }: StaffViewerProps) {
   const cameraPosition = useMemo(() => initialCameraPosition(), []);
@@ -84,7 +85,7 @@ export default function StaffViewer({
           toneMappingExposure: 1.1,
         }}
       >
-        <StaffModel pattern={pattern} autoRotate={autoRotate} />
+        <StaffModel pattern={pattern} ejected={ejected} autoRotate={autoRotate} />
         <OrbitControls
           makeDefault
           enablePan={false}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Galaxy SF — LED Staff v21</title>
+<title>Galaxy SF — LED Staff v27</title>
 <style>
   :root{--ink:#EDEAE4;--dim:#8B8781;--line:rgba(237,234,228,.12);--panel:rgba(16,14,20,.72)}
   *{margin:0;padding:0;box-sizing:border-box}
@@ -23,11 +23,14 @@
   .patterns button:hover{color:var(--ink)}
   .patterns button:focus-visible{outline:1px solid var(--ink);outline-offset:2px}
   .patterns button.on{color:#0A0910;background:var(--ink)}
+  .patterns.aux{bottom:76px}
+  .patterns.aux button.on{color:#0A0910;background:#E8D45A}
   .hint{position:fixed;right:24px;bottom:32px;font-size:10px;color:var(--dim);
     letter-spacing:.14em;text-transform:uppercase}
   @media (max-width:640px){
     .hud{left:16px;top:16px}.hint{display:none}
     .patterns{bottom:16px;max-width:calc(100vw - 24px);overflow-x:auto}
+    .patterns.aux{bottom:64px}
   }
 </style>
 </head>
@@ -35,7 +38,7 @@
 <div id="stage"></div>
 <div class="hud">
   <h1>Galaxy&nbsp;SF&nbsp;— LED&nbsp;Staff</h1>
-  <p>v21 · 5 ft · drag to orbit</p>
+  <p>v22 · 5 ft · drag to orbit</p>
 </div>
 <div class="patterns" role="group" aria-label="LED pattern">
   <button data-p="rainbow" class="on">Rainbow</button>
@@ -44,6 +47,9 @@
   <button data-p="galaxy">Galaxy</button>
   <button data-p="mirror">Mirror</button>
   <button data-p="off">Off</button>
+</div>
+<div class="patterns aux" role="group" aria-label="Battery">
+  <button id="eject" aria-pressed="false">Eject battery to charge</button>
 </div>
 <div class="hint">Scroll to zoom</div>
 
@@ -142,11 +148,17 @@
   const staff = new THREE.Group();
   scene.add(staff);
 
-  /* pole */
+  /* Pole. It stops short of the battery socket: the tube is hollow up there
+     and the battery drops into it, so running the pole the full height left a
+     white post standing in the hole once the battery came out. From POLE_TOP
+     up to the holder the bracket sleeve is the visible outer surface. */
+  const POLE_TOP = HOLD_TOP - HOLD_H - .13;
+  const POLE_H = POLE_TOP - BOT_Y;
   const pole = new THREE.Mesh(
-    new THREE.CylinderGeometry(R_POLE, R_POLE, STAFF_H, 28),
+    new THREE.CylinderGeometry(R_POLE, R_POLE, POLE_H, 28),
     new THREE.MeshStandardMaterial({color:0xEDEBE5, roughness:.5, metalness:.05})
   );
+  pole.position.y = BOT_Y + POLE_H/2;
   staff.add(pole);
 
   /* ── Top handle assembly, matched to the macros ──
@@ -159,16 +171,126 @@
   /* ── Removable battery pack protruding from the holder ──
      Narrow branded power bank with hex power button and 4 charge
      dots, seated in a wider holder sleeve. */
-  const BAT_H = 1.05;
+  /* 4.3 of its own diameters, off the loose-battery photo. It is an ordinary
+     5000 mAh stick, so nearly all of it stands proud and the socket is only
+     about 10 mm deep. */
+  const BAT_H = BAT_R*2*4.3;
+  const BAT_BOT = handleTop - BAT_H;          // the port face, seated
+  /* The battery lives in its own group pivoted on the port face, so the
+     eject animation lifts and tips it about the end you actually plug into.
+     Children are positioned in local coordinates from that face. */
+  const batGroup = new THREE.Group();
+  batGroup.position.set(0, BAT_BOT, 0);
+  staff.add(batGroup);
   const batTube = new THREE.Mesh(
     new THREE.CylinderGeometry(BAT_R, BAT_R, BAT_H, 24), whiteMat);
-  batTube.position.y = handleTop - BAT_H/2;
-  staff.add(batTube);
+  batTube.position.y = BAT_H/2;
+  batGroup.add(batTube);
   const batCap = new THREE.Mesh(
     new THREE.SphereGeometry(BAT_R, 20, 14, 0, Math.PI*2, 0, Math.PI/2), whiteMat);
-  batCap.scale.y = .78;                       // fuller dome than v11
-  batCap.position.y = handleTop;
-  staff.add(batCap);
+  batCap.scale.y = .78;
+  batCap.position.y = BAT_H;
+  batGroup.add(batCap);
+  /* ── Port end (faces down into the tube when seated) ──
+     USB-A output, USB-C input and the round indicator, drawn to a canvas
+     rather than cut as geometry: at 24 mm across the slots are far below
+     the size where real recesses would read. */
+  const chargeRing = (()=>{
+    const PX = 256, MM = PX/24;                 // canvas px per mm
+    const pcv = document.createElement("canvas"); pcv.width=PX; pcv.height=PX;
+    const g = pcv.getContext("2d");
+    const rr=(x,y,w,h,r)=>{ g.beginPath();
+      if(g.roundRect) g.roundRect(x-w/2,y-h/2,w,h,r); else g.rect(x-w/2,y-h/2,w,h);
+      g.closePath(); };
+    /* white cap with a shallow groove ring, not the dark face the black
+       unit has. Indicator upper left, USB-C upper right, USB-A below. */
+    g.beginPath(); g.arc(PX/2,PX/2,PX/2,0,Math.PI*2);
+    g.fillStyle="#F4F3EF"; g.fill();
+    g.strokeStyle="rgba(0,0,0,.13)"; g.lineWidth=4;
+    g.beginPath(); g.arc(PX/2,PX/2,PX/2-9,0,Math.PI*2); g.stroke();
+    g.strokeStyle="rgba(0,0,0,.07)"; g.lineWidth=3;
+    g.beginPath(); g.arc(PX/2,PX/2,PX/2-22,0,Math.PI*2); g.stroke();
+    const UA={x:128, y:150, w:12*MM,  h:4.5*MM};
+    const UC={x:168, y:92,  w:8.3*MM, h:2.6*MM};
+    rr(UA.x,UA.y,UA.w,UA.h,3);          g.fillStyle="#141414"; g.fill();
+    rr(UA.x,UA.y+4,UA.w-12,UA.h-16,2);  g.fillStyle="#2E5AA8"; g.fill();
+    rr(UC.x,UC.y,UC.w,UC.h,UC.h/2);         g.fillStyle="#141414"; g.fill();
+    rr(UC.x,UC.y,UC.w-10,UC.h-10,(UC.h-10)/2); g.fillStyle="#2E5AA8"; g.fill();
+    g.beginPath(); g.arc(92,88,22,0,Math.PI*2); g.fillStyle="#D5D8A4"; g.fill();
+    g.strokeStyle="rgba(0,0,0,.30)"; g.lineWidth=3; g.stroke();
+
+    const R_FACE = BAT_R*1.005;
+    /* open-ended so its bottom disc cannot fight with the white tube's */
+    const capWall = new THREE.Mesh(
+      new THREE.CylinderGeometry(R_FACE, R_FACE, .05, 24, 1, true),
+      new THREE.MeshStandardMaterial({color:0xF2F1EC, roughness:.5,
+        side:THREE.DoubleSide}));
+    capWall.position.y = .025;
+    batGroup.add(capWall);
+    const face = new THREE.Mesh(
+      new THREE.CircleGeometry(R_FACE, 48),
+      new THREE.MeshStandardMaterial({map:new THREE.CanvasTexture(pcv),
+        roughness:.5, metalness:.05}));
+    face.rotation.x = Math.PI/2;                // normal points -Y
+    face.position.y = -.0008;
+    batGroup.add(face);
+    /* highlight over the USB-C once the battery is tipped up. Parented to the
+       face so it inherits the orientation instead of being placed by hand. */
+    const uc = {x:(UC.x-PX/2)/PX*(R_FACE*2), y:-(UC.y-PX/2)/PX*(R_FACE*2)};
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(.013, .0018, 8, 28),
+      new THREE.MeshBasicMaterial({color:0xE8D45A, transparent:true, opacity:0}));
+    ring.position.set(uc.x, uc.y, .002);
+    face.add(ring);
+    return ring;
+  })();
+
+  /* ── The lead lives in the staff, not on the battery ──
+     A captive cable ending in a USB-A plug. Seated, the plug is mated and
+     buried in the socket. Ejected, it rises clear of the rim and leans out
+     of the mouth, because a plug sitting 10 mm down a hole is invisible from
+     every angle you would actually look at the staff from. */
+  const T_LEN = .055, OM_LEN = .064;             // 12 mm tongue, 14 mm overmould
+  const plugRig = (()=>{
+    const grp = new THREE.Group();
+    const pivotY = BAT_BOT - T_LEN - OM_LEN;     // where the cable leaves it
+    grp.position.set(0, pivotY, 0);
+    staff.add(grp);
+    /* overmould, local 0 to OM_LEN */
+    const om = new THREE.Mesh(
+      new THREE.BoxGeometry(.073, OM_LEN, .038), whiteMat);   // 16 x 14 x 8 mm
+    om.position.y = OM_LEN/2;
+    grp.add(om);
+    /* metal tongue, local OM_LEN to OM_LEN + T_LEN. 12 x 4.5 mm in section. */
+    const tongueMat = new THREE.MeshStandardMaterial({color:0xB9BCC2,
+      roughness:.32, metalness:.85});
+    const tg = new THREE.Mesh(new THREE.BoxGeometry(.055, T_LEN, .0207), tongueMat);
+    tg.position.y = OM_LEN + T_LEN/2;
+    grp.add(tg);
+    /* the two shell dimples, the detail that makes a USB-A read as one */
+    const dimpleMat = new THREE.MeshStandardMaterial({color:0x5A5E64, roughness:.6});
+    [-1,1].forEach(sx=>[-1,1].forEach(sz=>{
+      const d = new THREE.Mesh(new THREE.BoxGeometry(.011,.011,.002), dimpleMat);
+      d.position.set(sx*.012, OM_LEN + T_LEN*.55, sz*.0105);
+      grp.add(d);
+    }));
+    return {grp, pivotY};
+  })();
+  /* rim ring closing the gap between holder wall and bore, so the mouth reads
+     as a rim with thickness rather than a zero-width edge */
+  {
+    const rIn = BAT_R*1.04, rOut = HOLD_R;
+    const rim = new THREE.Mesh(
+      new THREE.TorusGeometry((rIn+rOut)/2, (rOut-rIn)/2, 8, 40), whiteMat);
+    rim.rotation.x = Math.PI/2;
+    rim.position.y = HOLD_TOP;
+    staff.add(rim);
+  }
+  const CABLE_ANCHOR = new THREE.Vector3(0, POLE_TOP + .01, 0);   // socket floor
+  const cable = new THREE.Mesh(new THREE.BufferGeometry(),
+    new THREE.MeshStandardMaterial({color:0xF2F1EC, roughness:.5}));
+  staff.add(cable);
+  const _up = new THREE.Vector3();
   /* face decal spanning the whole proud length: wordmark near the top,
      flat-top hex power button low, 4 charge dashes just above the rim.
      Set BRAND to "" to drop the wordmark for storefront renders. */
@@ -219,15 +341,34 @@
     const batDecal = new THREE.Mesh(
       new THREE.PlaneGeometry(DW, DH),
       new THREE.MeshStandardMaterial({map:batTex, transparent:true, roughness:.45}));
-    batDecal.position.set(0, handleTop - BAT_PROUD/2, BAT_R + .004);
-    staff.add(batDecal);
+    batDecal.position.set(0, BAT_H - BAT_PROUD/2, BAT_R + .004);
+    batGroup.add(batDecal);
   }
   /* holder sleeve the battery seats into */
   const holdTop = HOLD_TOP;
   const holder = new THREE.Mesh(
-    new THREE.CylinderGeometry(HOLD_R, HOLD_R, HOLD_H, 24), whiteMat);
+    new THREE.CylinderGeometry(HOLD_R, HOLD_R, HOLD_H, 24, 1, true),
+    new THREE.MeshStandardMaterial({color:0xF2F1EC, roughness:.45,
+      side:THREE.DoubleSide}));
   holder.position.y = holdTop - HOLD_H/2;
   staff.add(holder);
+  /* dark bore running from the top of the pole up to the rim, with a floor
+     so you are looking into a socket rather than down an endless tube */
+  {
+    const BORE_H = HOLD_TOP - POLE_TOP;
+    const boreMat = new THREE.MeshStandardMaterial({color:0x1C1D20, roughness:.9,
+      side:THREE.DoubleSide});
+    const bore = new THREE.Mesh(
+      new THREE.CylinderGeometry(BAT_R*1.04, BAT_R*1.04, BORE_H, 24, 1, true), boreMat);
+    bore.position.y = POLE_TOP + BORE_H/2;
+    staff.add(bore);
+    const floor = new THREE.Mesh(
+      new THREE.CircleGeometry(BAT_R*1.04, 24),
+      new THREE.MeshStandardMaterial({color:0x141518, roughness:.95}));
+    floor.rotation.x = -Math.PI/2;              // normal points up
+    floor.position.y = POLE_TOP + .001;
+    staff.add(floor);
+  }
 
   /* bracket section: inner tube carrying the yellow Galaxy SF sticker,
      clamped by translucent side rails */
@@ -775,7 +916,7 @@
     poolColor.setRGB(avg.r/totalLit, avg.g/totalLit, avg.b/totalLit);
   }
 
-  document.querySelectorAll(".patterns button").forEach(b=>{
+  document.querySelectorAll(".patterns:not(.aux) button").forEach(b=>{
     b.addEventListener("click",()=>{
       document.querySelector(".patterns .on")?.classList.remove("on");
       b.classList.add("on");
@@ -793,6 +934,67 @@
       else { amb.intensity=.25; key.intensity=.55; rim.intensity=.5; }
       if(reduced || pattern==="off") paint(performance.now()/1000);
     });
+  });
+
+  /* ── Eject animation: how you charge it ──
+     Lift clear of the holder first, then tip about the port face so the
+     ports come into view. The lead stays plugged in and follows. */
+  /* Eject: lift clear, carry it out to the side, then turn it over so it
+     stands upright beside the pole with the ports facing up. That is the
+     angle the ports are actually readable from, and it is how you would be
+     holding it to plug a charger in. */
+  const PLUG_RISE = .20, PLUG_TILT = .52;       // clears the rim, then leans out
+  /* It has to swing over ABOVE the plug tip, not through it. 3.70 leaves the
+     dome end .034 inside the plug on the way round; 3.90 clears by .111 and
+     is the point past which extra height buys nothing. */
+  const EJ_CLEAR = 3.90;                        // height it rises to first
+  const EJ_SIDE = .26;                          // how far out to the side
+  /* Settle with its top level with the top of the staff. Once the plug is up,
+     the plug tip is the highest point, not the rim, so derive it from the plug
+     rather than typing a height that drifts when the plug moves. */
+  const EJ_REST = plugRig.pivotY + PLUG_RISE + Math.cos(PLUG_TILT)*(OM_LEN + T_LEN);
+  const smooth = t => t*t*(3-2*t);
+
+  let ejectTarget = 0, ejectT = 0;
+  function applyEject(){
+    /* Three phases, deliberately not sharing a parameter. Turning over and
+       coming down at the same time swings the far end back through the
+       holder, so the swing happens up at EJ_CLEAR and the drop only starts
+       once it is out to the side and the right way up. */
+    const cl = (a,b) => Math.max(0, Math.min(1, (ejectT-a)/(b-a)));
+    const lift  = smooth(cl(0,   .40));       // straight up out of the socket
+    const swing = smooth(cl(.35, .72));       // out to the side, turning over
+    const drop  = smooth(cl(.70, 1));         // settle to staff height
+    batGroup.position.set(
+      EJ_SIDE*swing,
+      BAT_BOT + (EJ_CLEAR - BAT_BOT)*lift + (EJ_REST - EJ_CLEAR)*drop,
+      0);
+    batGroup.rotation.z = Math.PI*swing;
+    const tilt = swing;
+    chargeRing.material.opacity = tilt*.9;
+    /* the plug follows the battery out, then leans the opposite way so the
+       two do not stack on top of each other in the frame */
+    plugRig.grp.position.y = plugRig.pivotY + PLUG_RISE*lift;
+    plugRig.grp.rotation.z = -PLUG_TILT*tilt;
+    plugRig.grp.updateMatrixWorld(true);
+    _up.set(0, 1, 0).applyQuaternion(plugRig.grp.quaternion);
+    const lead = new THREE.CubicBezierCurve3(
+      CABLE_ANCHOR.clone(),
+      CABLE_ANCHOR.clone().add(new THREE.Vector3(.010, .16, 0)),
+      plugRig.grp.position.clone().addScaledVector(_up, -.14),
+      plugRig.grp.position.clone());
+    cable.geometry.dispose();
+    cable.geometry = new THREE.TubeGeometry(lead, 32, .0105, 8, false);
+  }
+  applyEject();
+
+  const ejectBtn = document.getElementById("eject");
+  ejectBtn.addEventListener("click", ()=>{
+    ejectTarget = ejectTarget ? 0 : 1;
+    ejectBtn.classList.toggle("on", !!ejectTarget);
+    ejectBtn.setAttribute("aria-pressed", String(!!ejectTarget));
+    ejectBtn.textContent = ejectTarget ? "Seat battery" : "Eject battery to charge";
+    if(reduced){ ejectT = ejectTarget; applyEject(); }
   });
 
   /* ── Orbit ── */
@@ -826,6 +1028,12 @@
   function frame(){
     const now = performance.now()/1000;
     if(!dragging){ theta += reduced?0:(.0016+vTheta*.5); vTheta*=.95; }
+    if(!reduced && ejectT !== ejectTarget){
+      const d = ejectTarget - ejectT;
+      ejectT += Math.sign(d)*Math.min(Math.abs(d), .016);
+      if(Math.abs(ejectTarget-ejectT) < .001) ejectT = ejectTarget;
+      applyEject();
+    }
     staff.rotation.z = reduced?0:Math.sin(now*.6)*.010;
     setCam();
     if(!reduced && pattern!=="off") paint(now);

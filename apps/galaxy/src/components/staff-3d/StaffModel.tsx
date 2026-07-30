@@ -3,12 +3,13 @@
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { STAFF_H, R_POLE, BR_R, BR_TOP, BR_H, LED_SECTION } from "./dimensions";
+import { BOT_Y, POLE_H, R_POLE, BR_R, BR_TOP, BR_H, LED_SECTION } from "./dimensions";
 import { POLE_COLOR, SCENE_BG } from "./palette";
 import type { StaffPattern } from "./types";
 import { useStudioEnvironment } from "./useStudioEnvironment";
 import { useReducedMotion } from "./useReducedMotion";
 import HandleAssembly from "./HandleAssembly";
+import BatteryEject from "./BatteryEject";
 import RemotePod from "./RemotePod";
 import CableCoilAndLeads from "./CableCoilAndLeads";
 import StripRibbon from "./StripRibbon";
@@ -23,12 +24,14 @@ export type { StaffPattern };
 
 export interface StaffModelProps {
   pattern: StaffPattern;
+  /** Battery ejected out of its holder and standing beside the pole, ports up. */
+  ejected: boolean;
   /** Drives the idle product sway; snaps off under prefers-reduced-motion. */
   autoRotate?: boolean;
 }
 
 /** Scene contents only, render inside a react-three-fiber <Canvas> (see StaffViewer). */
-export default function StaffModel({ pattern, autoRotate = true }: StaffModelProps) {
+export default function StaffModel({ pattern, ejected, autoRotate = true }: StaffModelProps) {
   const reducedMotion = useReducedMotion();
   const isOff = pattern === "off";
 
@@ -58,11 +61,12 @@ export default function StaffModel({ pattern, autoRotate = true }: StaffModelPro
       <FloorPool materialRef={poolMaterialRef} />
 
       <group ref={staffGroupRef}>
-        <mesh material={poleMat}>
-          <cylinderGeometry args={[R_POLE, R_POLE, STAFF_H, 28]} />
+        <mesh material={poleMat} position={[0, BOT_Y + POLE_H / 2, 0]}>
+          <cylinderGeometry args={[R_POLE, R_POLE, POLE_H, 28]} />
         </mesh>
 
         <HandleAssembly />
+        <BatteryEject ejected={ejected} reducedMotion={reducedMotion} />
         {[-1, 1].map((side) => (
           <RemotePod
             key={side}

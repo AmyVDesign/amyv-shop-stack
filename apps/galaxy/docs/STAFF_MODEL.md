@@ -56,6 +56,91 @@ the new geometry, not rounded to the nearest whole turn, rounding walks
 the mouth away from where the leads expect it and the splice stops
 meeting the strip cleanly.
 
+## Battery, socket, and the captive lead
+
+`BAT_H`, the battery's length, is derived rather than typed: `BAT_R * 2 *
+4.3`, 4.3 of the battery's own diameters, measured off the loose-battery
+photo. An earlier version had this as a literal `1.05`, which worked out to
+229mm, over twice the length of a real 5000 mAh stick. Correcting it to
+103mm changes what the socket looks like: `BAT_PROUD` (how far the battery
+stands proud of the holder) is unchanged, so the socket is only about
+10mm deep, and the battery essentially stands on the holder rather than
+being sunk into it. That is correct, not a rounding problem, and the
+geometry below is built to match it.
+
+The pole no longer runs the full height. It stops at `POLE_TOP`, derived
+as `HOLD_TOP - HOLD_H - .13`, well below the battery socket, because the
+tube is hollow up there and the battery drops into it. Above `POLE_TOP`
+the bracket sleeve (`HandleAssembly`) is the visible outer surface, so
+running the pole further would leave a white post standing in the hole
+once the battery came out.
+
+The holder (`HandleAssembly`) is an open sleeve, not a solid cylinder:
+open-ended and double-sided so its inside reads correctly once the
+battery is out of it. Inside it, a dark bore (also open, double-sided) runs
+from `POLE_TOP` up to `HOLD_TOP`, closed at the bottom by a floor disc, so
+an ejected view looks into a socket rather than down an endless tube. A
+torus rim ring, spanning `BAT_R * 1.04` to `HOLD_R`, closes the gap
+between the holder wall and the bore, so the mouth reads as a rim with
+thickness rather than a zero-width edge.
+
+The port end of the battery (`Battery`, `buildPortFaceTexture` in
+`textures.ts`) is a white cap plus a canvas face carrying the USB-A slot,
+the USB-C slot, and the round indicator, all at true scale: 12 x 4.5mm,
+8.3 x 2.6mm, and about 4mm across. The layout, indicator upper left, USB-C
+upper right, USB-A below center, matches the white unit's own layout. The
+black unit photographs with a different arrangement; this is a deliberate
+choice to follow the white unit, not an inconsistency to fix.
+
+The captive USB-A lead (`PlugRig`) lives in the staff, not on the battery:
+a metal tongue whose top sits exactly at the seated port face
+(`PLUG_PIVOT_Y`, derived from `BAT_BOT`, `T_LEN`, and `OM_LEN`), a white
+overmould below it, and a short curved cable running down to a fixed
+anchor at the socket floor (`CABLE_ANCHOR`, derived from `POLE_TOP`). The
+battery pushes down onto it when seated; ejecting lifts the battery clear
+of it.
+
+## Eject animation
+
+The battery lives in a group (`Battery`) pivoted on its port face, so
+lifting and tipping it happens about the end you actually plug into.
+`BatteryEject` owns the animation: it drives the battery group, the plug
+rig, the port-face highlight ring's opacity, and the captive lead's cable
+geometry, all from one eased value (`ejectT`, 0 seated to 1 ejected) held
+in a ref and mutated inside `useFrame`, not React state, since it changes
+every frame and the project's React Compiler rules reject per-frame state
+updates.
+
+Ejecting runs three phases that deliberately do not share a parameter:
+
+1. **Lift** (`ejectT` 0 to .40): straight up out of the socket.
+2. **Swing** (`ejectT` .35 to .72): out to the side and turning over, up to
+   `EJ_CLEAR`.
+3. **Drop** (`ejectT` .70 to 1): settling down to `EJ_REST`.
+
+Sharing one parameter between the turn and the drop sweeps the far end of
+the battery back through the holder on the way round. Swinging over below
+`EJ_CLEAR` puts the dome end through the plug. Both were found and fixed
+in the prototype by numeric clearance checks (3.70 leaves the dome .034
+inside the plug; 3.90 clears by .111 and is the point past which extra
+height buys nothing), which is why the phase boundaries and `EJ_CLEAR`
+are kept exactly as given, not retuned.
+
+`EJ_REST`, the settled height, is derived from the plug (`PLUG_PIVOT_Y +
+PLUG_RISE + cos(PLUG_TILT) * (OM_LEN + T_LEN)`) rather than typed, so the
+battery's top and the plug tip stay level if the plug's own dimensions
+ever move.
+
+The plug rig follows the lift curve alone for its rise, and only leans
+(via `PLUG_TILT`) once swinging starts, so the tongue withdraws from the
+port face before any rotation begins, avoiding a collision between the
+plug and the battery's port cap.
+
+Under `prefers-reduced-motion` (`useReducedMotion`), `BatteryEject` skips
+the per-frame easing and snaps `ejectT` straight to its target on the next
+frame, landing on the same end state the animated path reaches, not a
+separate reduced version of it.
+
 ## Helix and strip-pitch math
 
 Identical *method* to the whip, independently tuned constants. For
@@ -147,7 +232,10 @@ values, not a violation to flag.
 
 - The pattern switcher is a `role="group"` of real `<button>` elements,
   each carrying `aria-pressed` to expose its state, matching the whip's
-  dev route.
+  dev route. The eject control is a second, separate `role="group"`
+  (`aria-label="Battery"`), its own single toggle button, labelled for
+  what it does ("Eject battery to charge" / "Seat battery") rather than
+  what it is, and also carrying `aria-pressed`.
 - Every button has an explicit visible focus ring
   (`focus-visible:outline-site-accent`), not just the browser default.
 - The canvas has no inherent text alternative, so `StaffViewer` renders a

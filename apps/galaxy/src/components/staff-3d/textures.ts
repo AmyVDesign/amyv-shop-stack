@@ -175,6 +175,85 @@ export function buildBatteryDecalTexture(BAT_R: number, BAT_PROUD: number, brand
   return { texture: new THREE.CanvasTexture(canvas), DW, DH };
 }
 
+export interface PortFaceTexture {
+  texture: THREE.CanvasTexture;
+  /** Cap-wall and face radius, derived from the battery radius. */
+  R_FACE: number;
+  /** Highlight ring's local position on the face, over the USB-C slot. */
+  highlight: { x: number; y: number };
+}
+
+/**
+ * Port end of the battery (faces down into the tube when seated), drawn to
+ * a canvas rather than cut as geometry: at 24mm across the slots are far
+ * below the size where real recesses would read. Layout matches the white
+ * unit: indicator upper left, USB-C upper right, USB-A below center. The
+ * black unit photographs with a different arrangement; this deliberately
+ * does not "correct" it.
+ */
+export function buildPortFaceTexture(BAT_R: number): PortFaceTexture {
+  const PX = 256;
+  const MM = PX / 24; // canvas px per mm
+  const canvas = document.createElement("canvas");
+  canvas.width = PX;
+  canvas.height = PX;
+  const ctx = canvas.getContext("2d")!;
+  const rr = (x: number, y: number, w: number, h: number, r: number) => {
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x - w / 2, y - h / 2, w, h, r);
+    else ctx.rect(x - w / 2, y - h / 2, w, h);
+    ctx.closePath();
+  };
+
+  // white cap with a shallow groove ring, not the dark face the black unit has
+  ctx.beginPath();
+  ctx.arc(PX / 2, PX / 2, PX / 2, 0, Math.PI * 2);
+  ctx.fillStyle = CanvasPalette.portFaceBg;
+  ctx.fill();
+  ctx.strokeStyle = CanvasPalette.portGrooveOuter;
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(PX / 2, PX / 2, PX / 2 - 9, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = CanvasPalette.portGrooveInner;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(PX / 2, PX / 2, PX / 2 - 22, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const UA = { x: 128, y: 150, w: 12 * MM, h: 4.5 * MM };
+  const UC = { x: 168, y: 92, w: 8.3 * MM, h: 2.6 * MM };
+  rr(UA.x, UA.y, UA.w, UA.h, 3);
+  ctx.fillStyle = CanvasPalette.portSlotBlack;
+  ctx.fill();
+  rr(UA.x, UA.y + 4, UA.w - 12, UA.h - 16, 2);
+  ctx.fillStyle = CanvasPalette.portSlotBlue;
+  ctx.fill();
+  rr(UC.x, UC.y, UC.w, UC.h, UC.h / 2);
+  ctx.fillStyle = CanvasPalette.portSlotBlack;
+  ctx.fill();
+  rr(UC.x, UC.y, UC.w - 10, UC.h - 10, (UC.h - 10) / 2);
+  ctx.fillStyle = CanvasPalette.portSlotBlue;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(92, 88, 22, 0, Math.PI * 2);
+  ctx.fillStyle = CanvasPalette.portIndicatorFill;
+  ctx.fill();
+  ctx.strokeStyle = CanvasPalette.portIndicatorStroke;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  const R_FACE = BAT_R * 1.005;
+  // highlight over the USB-C once the battery is tipped up, in the face's
+  // own local space so it inherits the face's orientation
+  const highlight = {
+    x: ((UC.x - PX / 2) / PX) * (R_FACE * 2),
+    y: -((UC.y - PX / 2) / PX) * (R_FACE * 2),
+  };
+
+  return { texture: new THREE.CanvasTexture(canvas), R_FACE, highlight };
+}
+
 /** Yellow "The_Galaxy_SF" sticker with a camera glyph, wrapped onto the bracket tube as an arc. */
 export function buildStickerTexture(): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");

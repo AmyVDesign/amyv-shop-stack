@@ -25,11 +25,26 @@ function toggleClass(active: boolean) {
 
 export default function StaffDevClient() {
   const [pattern, setPattern] = useState<StaffPattern>("rainbow");
+  const [ejected, setEjected] = useState(false);
 
   return (
     <div className="flex h-screen flex-col bg-site-bg text-site-text">
       <div className="min-h-0 flex-1">
-        <StaffViewer pattern={pattern} />
+        <StaffViewer pattern={pattern} ejected={ejected} />
+      </div>
+      <div
+        role="group"
+        aria-label="Battery"
+        className="flex items-center justify-center gap-2 border-t border-site-border p-4"
+      >
+        <button
+          type="button"
+          onClick={() => setEjected((e) => !e)}
+          aria-pressed={ejected}
+          className={toggleClass(ejected)}
+        >
+          {ejected ? "Seat battery" : "Eject battery to charge"}
+        </button>
       </div>
       <div
         role="group"

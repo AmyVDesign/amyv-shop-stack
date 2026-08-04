@@ -46,7 +46,7 @@ export default function ShopPage() {
           <li key={product.slug}>
             <Link
               href={`/shop/${product.slug}`}
-              className="group flex flex-col border border-site-border bg-site-bg-alt transition-colors hover:border-site-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-site-accent"
+              className="group flex flex-col overflow-hidden rounded-card border border-site-border bg-site-bg-alt transition-colors hover:border-site-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-site-accent"
             >
               {/* Image placeholder */}
               <div

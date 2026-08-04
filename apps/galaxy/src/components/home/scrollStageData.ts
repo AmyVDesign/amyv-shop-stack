@@ -80,10 +80,14 @@ const K3_START = 0.76;
 export const TILT_IN_START = 0.82; // last close-up ends, pull-back + tilt restore begins
 export const TILT_IN_END = 0.97; // pull-back complete, release framing settled
 
+// Pulled back enough that the subject reads at roughly half to two thirds
+// of the frame with dark space around it, not edge to edge. Callout 2
+// stays the tightest of the three (chips resolve individually) but still
+// keeps the strip in context rather than filling the viewport.
 const HERO_POS = framePos(HERO_TARGET, HERO_RADIUS, WIDE_THETA, WIDE_VOFFSET);
-const MEMBRANE_POS = framePos(MEMBRANE_TARGET, 2.0, 1.1, 0.15);
-const LED_POS = framePos(LED_TARGET, 1.3, 0.3, 0.1);
-const REMOTE_POS = framePos(REMOTE_TARGET, 1.5, 2.0, 0.15);
+const MEMBRANE_POS = framePos(MEMBRANE_TARGET, 3.0, 1.1, 0.15);
+const LED_POS = framePos(LED_TARGET, 2.4, 0.3, 0.1);
+const REMOTE_POS = framePos(REMOTE_TARGET, 2.0, 2.0, 0.15);
 const RELEASE_POS = framePos(RELEASE_TARGET, RELEASE_RADIUS, WIDE_THETA, WIDE_VOFFSET);
 
 /** Ordered camera stops the rig lerps through as scroll progress advances 0..1. */
@@ -105,8 +109,8 @@ export const STATIC_POSE: CameraKeyframe = KEYFRAMES[0];
 
 const HERO_ROTATE_SPEED = 0.12; // rad/sec, y-axis spin during the hero hold only
 
-export const TILT_X = THREE.MathUtils.degToRad(4);
-export const TILT_Z = THREE.MathUtils.degToRad(10);
+export const TILT_X = THREE.MathUtils.degToRad(6);
+export const TILT_Z = THREE.MathUtils.degToRad(18);
 export const BOB_AMPLITUDE = 0.08;
 export const BOB_ANGULAR_FREQ = (2 * Math.PI) / 4; // ~4s period
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Button } from "@/components/Button";
 import { WhipViewer } from "@/components/whip-3d";
 import { StaffViewer } from "@/components/staff-3d";
 import { SplitStaffViewer } from "@/components/split-staff-3d";
@@ -38,7 +39,7 @@ function LineupCard({ product }: { product: LineupProduct }) {
     <li>
       <Link
         href="/shop"
-        className="group flex flex-col border border-site-border bg-site-bg-alt transition-colors hover:border-site-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-site-accent"
+        className="group flex flex-col overflow-hidden rounded-card border border-site-border bg-site-bg-alt transition-colors hover:border-site-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-site-accent"
       >
         <div ref={ref} className="relative aspect-square w-full bg-site-bg">
           {inView ? (
@@ -71,12 +72,9 @@ export default function TotemLineup() {
               The Lineup
             </h2>
           </div>
-          <Link
-            href="/shop"
-            className="w-fit border border-neon px-6 py-2.5 text-xs font-semibold uppercase tracking-widest text-neon transition-colors hover:bg-neon hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-site-accent"
-          >
-            Shop Now
-          </Link>
+          <Button href="/shop" className="w-fit">
+            Shop now
+          </Button>
         </div>
 
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-3">

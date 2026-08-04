@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import type { Pattern, Length } from "@/components/TotemSVG";
 
 // ── Option definitions ────────────────────────────────────────────
@@ -140,12 +141,7 @@ export default function TotemConfigurator({
 
       {/* ── Add to cart ───────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
-        <button
-          type="button"
-          className="w-full bg-site-accent py-4 text-sm font-bold uppercase tracking-widest text-black transition-opacity hover:opacity-85 active:opacity-70"
-        >
-          Add to Cart
-        </button>
+        <Button fullWidth>Add to cart</Button>
 
         {/* Configuration summary */}
         <p className="text-xs text-site-muted">

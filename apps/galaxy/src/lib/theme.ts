@@ -54,6 +54,10 @@ export const RADIUS = {
   md:   "0.5rem",  // rounded-md
   lg:   "1rem",    // rounded-lg
   full: "9999px",  // rounded-full
+  // Button/card radii, from the Amy V Design portfolio brand system.
+  button:     "8px",  // rounded-button, button inner surface
+  buttonRing: "10px", // rounded-button-ring, button outer accent ring
+  card:       "16px", // rounded-card, product/lineup/callout cards
 } as const;
 
 export const theme: Theme = {

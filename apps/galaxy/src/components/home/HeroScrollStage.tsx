@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import { Button } from "@/components/Button";
 import { useReducedMotion } from "@/components/whip-3d/useReducedMotion";
 import { CALLOUTS, headlineOpacity, windowOpacity, type Callout } from "./scrollStageData";
 
@@ -38,7 +38,7 @@ function CalloutBox({ callout, boxRef }: CalloutBoxProps) {
   return (
     <div
       ref={boxRef}
-      className="pointer-events-none absolute max-w-[240px] border border-site-border bg-site-bg/85 px-4 py-3 opacity-0 backdrop-blur-sm"
+      className="pointer-events-none absolute max-w-[240px] overflow-hidden rounded-card border border-site-border bg-site-bg/85 px-4 py-3 opacity-0 backdrop-blur-sm"
       style={callout.style}
     >
       <CalloutArrow rotate={callout.arrow.rotate} />
@@ -68,12 +68,9 @@ function HeroContent({
       <p className="mb-10 max-w-sm text-base leading-relaxed text-white/50 sm:text-lg">
         Custom waterproof LED totems for festivals and raves.
       </p>
-      <Link
-        href="/shop"
-        className="pointer-events-auto border border-neon px-10 py-3 text-sm font-semibold uppercase tracking-widest text-neon transition-colors hover:bg-neon hover:text-black"
-      >
-        Shop Totems
-      </Link>
+      <Button href="/shop" className="pointer-events-auto">
+        Shop totems
+      </Button>
     </div>
   );
 }
@@ -98,7 +95,10 @@ function StaticFallback() {
         </div>
         <ul className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {CALLOUTS.map((callout) => (
-            <li key={callout.id} className="border border-site-border bg-site-bg-alt px-4 py-3">
+            <li
+              key={callout.id}
+              className="overflow-hidden rounded-card border border-site-border bg-site-bg-alt px-4 py-3"
+            >
               <p className="text-base leading-snug text-white">
                 <span className="font-bold text-site-accent">{callout.heading}.</span>{" "}
                 {callout.body}
@@ -113,17 +113,21 @@ function StaticFallback() {
 
 /**
  * Pinned scroll-driven product journey: a ~400svh section whose inner
- * viewport stays sticky while a scroll-progress value (0..1, kept in a ref
- * to avoid re-rendering React on every scroll pixel) drives both the R3F
- * camera rig (inside HeroStageScene) and these HTML overlay's opacities,
- * applied imperatively via direct DOM writes in the scroll handler.
+ * viewport stays sticky while a raw scroll-progress value (0..1, kept in a
+ * ref to avoid re-rendering React on every scroll pixel) feeds the R3F
+ * camera rig (inside HeroStageScene). The rig damps that raw value into a
+ * smoothedProgress on its own render loop and reports it back here via
+ * onProgress, which is what drives these HTML overlay opacities -- so the
+ * camera and the callouts never fall out of sync with each other, and both
+ * keep settling toward the release pose after a fast scroll even once
+ * scrolling has stopped.
  */
 export default function HeroScrollStage() {
   const reducedMotion = useReducedMotion();
   const [ready, setReady] = useState(false);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const progressRef = useRef(0);
+  const rawProgressRef = useRef(0);
   const heroContentElRef = useRef<HTMLDivElement | null>(null);
   const calloutElRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -148,22 +152,7 @@ export default function HeroScrollStage() {
       const rect = wrapper.getBoundingClientRect();
       const scrollableHeight = rect.height - window.innerHeight;
       const raw = scrollableHeight > 0 ? -rect.top / scrollableHeight : 0;
-      const progress = Math.min(1, Math.max(0, raw));
-      progressRef.current = progress;
-
-      const heroOpacity = headlineOpacity(progress);
-      const heroEl = heroContentElRef.current;
-      if (heroEl) {
-        heroEl.style.opacity = String(heroOpacity);
-        const active = heroOpacity > 0.02;
-        heroEl.style.pointerEvents = active ? "auto" : "none";
-        heroEl.style.visibility = active ? "visible" : "hidden";
-      }
-
-      CALLOUTS.forEach((callout, i) => {
-        const el = calloutElRefs.current[i];
-        if (el) el.style.opacity = String(windowOpacity(progress, callout.window));
-      });
+      rawProgressRef.current = Math.min(1, Math.max(0, raw));
     };
 
     const onScrollOrResize = () => {
@@ -179,6 +168,22 @@ export default function HeroScrollStage() {
       if (rafId) cancelAnimationFrame(rafId);
     };
   }, [reducedMotion]);
+
+  const applyOverlay = useCallback((progress: number) => {
+    const heroOpacity = headlineOpacity(progress);
+    const heroEl = heroContentElRef.current;
+    if (heroEl) {
+      heroEl.style.opacity = String(heroOpacity);
+      const active = heroOpacity > 0.02;
+      heroEl.style.pointerEvents = active ? "auto" : "none";
+      heroEl.style.visibility = active ? "visible" : "hidden";
+    }
+
+    CALLOUTS.forEach((callout, i) => {
+      const el = calloutElRefs.current[i];
+      if (el) el.style.opacity = String(windowOpacity(progress, callout.window));
+    });
+  }, []);
 
   const calloutBoxRefs = useMemo(
     () =>
@@ -197,7 +202,7 @@ export default function HeroScrollStage() {
           <div className="absolute inset-0 z-0 animate-pulse bg-site-bg-alt" aria-hidden="true" />
         )}
         <div className="absolute inset-0 z-0">
-          <HeroStageScene progressRef={progressRef} />
+          <HeroStageScene rawProgressRef={rawProgressRef} onProgress={applyOverlay} />
         </div>
 
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">

@@ -13,6 +13,11 @@
   --site-accent:       #39ff14;
   --site-accent-dark:  #1f8a0a;
   --site-accent-light: #c8ffb8;
+
+  /* Button/card radii, from the Amy V Design portfolio brand system. */
+  --button-radius:      8px;
+  --button-ring-radius: 10px;
+  --card-radius:        16px;
 }
 
 /* ── Tailwind v4 theme mapping ───────────────────────────────────
@@ -31,6 +36,11 @@
 
   /* Alias: keep `neon` working in existing code */
   --color-neon: var(--site-accent);
+
+  /* Button/card radii → rounded-button, rounded-button-ring, rounded-card */
+  --radius-button:      var(--button-radius);
+  --radius-button-ring: var(--button-ring-radius);
+  --radius-card:        var(--card-radius);
 
   /* Animations */
   --animate-fade-in: fade-in 0.15s ease-out;

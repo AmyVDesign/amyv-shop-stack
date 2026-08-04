@@ -19,21 +19,38 @@ import {
 // Scratch objects reused every frame -- never allocate inside useFrame.
 const scratchPos = new THREE.Vector3();
 const scratchTarget = new THREE.Vector3();
-const lookTarget = new THREE.Vector3();
+
+// Time-based exponential damping rate for the smoothed-progress follower.
+const DAMPING_RATE = 6;
 
 interface ScrollCameraRigProps {
-  progressRef: RefObject<number>;
+  rawProgressRef: RefObject<number>;
   modelGroupRef: RefObject<THREE.Group | null>;
+  /** Called every frame with the damped progress so the DOM overlay stays in sync. */
+  onProgress: (smoothedProgress: number) => void;
 }
 
-/** Lives inside <Canvas>; lerps the camera along the keyframe poses each frame. */
-function ScrollCameraRig({ progressRef, modelGroupRef }: ScrollCameraRigProps) {
+/**
+ * Lives inside <Canvas>. Raw scroll progress jumps around (a fast scroll can
+ * land far from where the camera currently sits), so a smoothed follower is
+ * advanced toward it here with time-based damping rather than consumed
+ * directly -- frame-rate independent, and because it runs on R3F's own
+ * render loop it keeps converging after the user stops scrolling instead of
+ * stalling wherever the last scroll event left off. Camera pose and the DOM
+ * overlay opacity writes (via onProgress) both read this same smoothed
+ * value so they never drift out of sync with each other.
+ */
+function ScrollCameraRig({ rawProgressRef, modelGroupRef, onProgress }: ScrollCameraRigProps) {
+  const smoothedRef = useRef(0);
+
   useFrame((state, delta) => {
-    const progress = progressRef.current;
+    const raw = rawProgressRef.current;
+    smoothedRef.current += (raw - smoothedRef.current) * (1 - Math.exp(-DAMPING_RATE * delta));
+    const progress = smoothedRef.current;
+
     poseAt(progress, scratchPos, scratchTarget);
-    state.camera.position.lerp(scratchPos, 0.09);
-    lookTarget.lerp(scratchTarget, 0.09);
-    state.camera.lookAt(lookTarget);
+    state.camera.position.copy(scratchPos);
+    state.camera.lookAt(scratchTarget);
 
     const group = modelGroupRef.current;
     if (group) {
@@ -47,13 +64,17 @@ function ScrollCameraRig({ progressRef, modelGroupRef }: ScrollCameraRigProps) {
       group.rotation.z = TILT_Z * presence;
       group.position.y = BOB_AMPLITUDE * Math.sin(state.clock.elapsedTime * BOB_ANGULAR_FREQ) * presence;
     }
+
+    onProgress(progress);
   });
   return null;
 }
 
 export interface HeroStageSceneProps {
-  /** Omit for the static prefers-reduced-motion fallback (fixed pose, no rig). */
-  progressRef?: RefObject<number>;
+  /** Omit both for the static prefers-reduced-motion fallback (fixed pose, no rig). */
+  rawProgressRef?: RefObject<number>;
+  /** Called every frame with the rig's damped progress; required alongside rawProgressRef. */
+  onProgress?: (smoothedProgress: number) => void;
 }
 
 /**
@@ -61,9 +82,9 @@ export interface HeroStageSceneProps {
  * (not WhipViewer, which owns its own OrbitControls) so this rig is the only
  * thing driving the camera.
  */
-export default function HeroStageScene({ progressRef }: HeroStageSceneProps) {
+export default function HeroStageScene({ rawProgressRef, onProgress }: HeroStageSceneProps) {
   const modelGroupRef = useRef<THREE.Group>(null);
-  const startPose = progressRef ? KEYFRAMES[0] : STATIC_POSE;
+  const startPose = rawProgressRef ? KEYFRAMES[0] : STATIC_POSE;
 
   return (
     <Canvas
@@ -76,10 +97,16 @@ export default function HeroStageScene({ progressRef }: HeroStageSceneProps) {
         toneMappingExposure: 1.1,
       }}
     >
-      <group ref={modelGroupRef} rotation={progressRef ? undefined : [TILT_X, 0, TILT_Z]}>
-        <WhipModel pattern="rainbow" length="48in" autoRotate={!progressRef} />
+      <group ref={modelGroupRef} rotation={rawProgressRef ? undefined : [TILT_X, 0, TILT_Z]}>
+        <WhipModel pattern="rainbow" length="48in" autoRotate={!rawProgressRef} />
       </group>
-      {progressRef && <ScrollCameraRig progressRef={progressRef} modelGroupRef={modelGroupRef} />}
+      {rawProgressRef && onProgress && (
+        <ScrollCameraRig
+          rawProgressRef={rawProgressRef}
+          modelGroupRef={modelGroupRef}
+          onProgress={onProgress}
+        />
+      )}
     </Canvas>
   );
 }

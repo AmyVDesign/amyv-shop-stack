@@ -30,15 +30,21 @@ function framePos(target: Vec3, radius: number, theta: number, verticalOffset: n
   ];
 }
 
-// Wide shots target the LED pole's own vertical center (near BASE_Y, where
-// it meets the folded lower assembly), not the whole tall folded
-// assembly's midpoint (world y=0) -- that centered the crop on the plain
-// lower poles and pushed the lit strip off the top of frame.
+// Release is a whole-product establishing shot: target the LED pole's own
+// vertical center (near BASE_Y, where it meets the folded lower assembly),
+// not the whole tall folded assembly's midpoint (world y=0) -- that
+// centered the crop on the plain lower poles and pushed the lit strip off
+// the top of frame.
 const WIDE_TARGET_Y = DIMS.BASE_Y + DIMS.WHIP_OFFSET;
+const RELEASE_TARGET: Vec3 = [0, WIDE_TARGET_Y, 0];
+
+// Hero targets a point slightly above the strip's own midpoint so the lit
+// strip dominates the frame (the dark lower pole and cable mostly fall out
+// below), not the whole-assembly center used for the release shot.
+const HERO_LED_TARGET_Y = DIMS.ledStartY + DIMS.SPAN * 0.6 + DIMS.WHIP_OFFSET;
 // Behind and to the right of the centered headline overlay: look slightly
 // left of the model's true (x=0) center so the model renders right-of-center.
-const HERO_TARGET: Vec3 = [-1.4, WIDE_TARGET_Y, 0];
-const RELEASE_TARGET: Vec3 = [0, WIDE_TARGET_Y, 0];
+const HERO_TARGET: Vec3 = [-1.4, HERO_LED_TARGET_Y, 0];
 
 // Upper third of the LED strip -- membrane highlights gather tightest near
 // ledEndY, but "upper third" per spec is the region's midpoint, not the tip.
@@ -62,12 +68,12 @@ export interface CameraKeyframe {
   target: Vec3;
 }
 
-// Wide establishing shot: same radius/angle family for hero and release,
-// just recentered (hero looks off-center to clear the headline; release
-// looks dead-on since nothing needs to be dodged once the stage releases).
+// Release is the wide establishing shot. Hero is pulled in much closer so
+// the lit strip dominates the frame, running diagonally behind the
+// headline, rather than reading as a small wide product shot.
 const WIDE_THETA = 0.6;
 const WIDE_VOFFSET = 1.2;
-const HERO_RADIUS = 12;
+const HERO_RADIUS = 7;
 const RELEASE_RADIUS = 14;
 
 /** Progress stops driving the camera timeline; also used by heroPresence. */
@@ -80,10 +86,11 @@ const K3_START = 0.76;
 export const TILT_IN_START = 0.82; // last close-up ends, pull-back + tilt restore begins
 export const TILT_IN_END = 0.97; // pull-back complete, release framing settled
 
-// Pulled back enough that the subject reads at roughly half to two thirds
-// of the frame with dark space around it, not edge to edge. Callout 2
-// stays the tightest of the three (chips resolve individually) but still
-// keeps the strip in context rather than filling the viewport.
+// Close-up radii are pulled back enough that each subject reads at roughly
+// half to two thirds of the frame with dark space around it, not edge to
+// edge. Callout 2 stays the tightest of the three (chips resolve
+// individually) but still keeps the strip in context rather than filling
+// the viewport.
 const HERO_POS = framePos(HERO_TARGET, HERO_RADIUS, WIDE_THETA, WIDE_VOFFSET);
 const MEMBRANE_POS = framePos(MEMBRANE_TARGET, 3.0, 1.1, 0.15);
 const LED_POS = framePos(LED_TARGET, 2.4, 0.3, 0.1);
@@ -107,12 +114,8 @@ export const KEYFRAMES: CameraKeyframe[] = [
 /** Static framing used for the prefers-reduced-motion fallback (no rig, no pin). */
 export const STATIC_POSE: CameraKeyframe = KEYFRAMES[0];
 
-const HERO_ROTATE_SPEED = 0.12; // rad/sec, y-axis spin during the hero hold only
-
 export const TILT_X = THREE.MathUtils.degToRad(6);
-export const TILT_Z = THREE.MathUtils.degToRad(18);
-export const BOB_AMPLITUDE = 0.08;
-export const BOB_ANGULAR_FREQ = (2 * Math.PI) / 4; // ~4s period
+export const TILT_Z = THREE.MathUtils.degToRad(25);
 
 export const smoothstep = (t: number): number => {
   const c = Math.max(0, Math.min(1, t));
@@ -141,16 +144,12 @@ export function poseAt(progress: number, outPos: THREE.Vector3, outTarget: THREE
   );
 }
 
-export function heroRotationDelta(progress: number, delta: number): number {
-  return progress < HERO_HOLD_END ? delta * HERO_ROTATE_SPEED : 0;
-}
-
 /**
  * 1 through the hero hold, eases to 0 as the camera departs for the first
  * close-up, stays 0 through all three close-ups, eases back to 1 as the
- * camera pulls back to the release shot. Drives the model tilt and float
- * so both read as a hero-pose trait that steps aside for the close-ups and
- * returns for the release, not a constant background wobble.
+ * camera pulls back to the release shot. Drives the model tilt so it reads
+ * as a hero-pose trait that steps aside for the close-ups (the strip reads
+ * vertical) and returns for the release.
  */
 export function heroPresence(progress: number): number {
   if (progress <= HERO_HOLD_END) return 1;

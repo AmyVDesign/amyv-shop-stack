@@ -62,7 +62,7 @@ function HeroContent({
     >
       <p className="mb-5 text-xs tracking-[0.5em] uppercase text-white/30">San Francisco</p>
       <h1 className="mb-6 text-[clamp(4rem,16vw,13rem)] font-black uppercase leading-none tracking-tight">
-        The{" "}
+        <span className="[text-shadow:0_0_40px_#ffffff40]">The</span>{" "}
         <span className="text-neon [text-shadow:0_0_40px_#39ff1460]">Galaxy</span>
       </h1>
       <p className="mb-10 max-w-sm text-base leading-relaxed text-white/50 sm:text-lg">

@@ -1,22 +1,29 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
-/** Own copy of the whip's reduced-motion hook. */
-function readPrefersReducedMotion(): boolean {
-  return typeof window !== "undefined"
-    ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    : false;
+const QUERY = "(prefers-reduced-motion: reduce)";
+
+function subscribe(callback: () => void): () => void {
+  const mql = window.matchMedia(QUERY);
+  mql.addEventListener("change", callback);
+  return () => mql.removeEventListener("change", callback);
 }
 
-/** Tracks prefers-reduced-motion so animated pieces can fall back to a static paint. */
+function getSnapshot(): boolean {
+  return window.matchMedia(QUERY).matches;
+}
+
+function getServerSnapshot(): boolean {
+  return false;
+}
+
+/**
+ * Own copy of the whip's reduced-motion hook. Tracks prefers-reduced-motion
+ * so animated pieces can fall back to a static paint. useSyncExternalStore
+ * is the right primitive for a browser API like matchMedia: it uses
+ * getServerSnapshot for both the server render and the first client
+ * render (so the two agree and hydration never mismatches), then syncs to
+ * the live value right after.
+ */
 export function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(readPrefersReducedMotion);
-
-  useEffect(() => {
-    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const handleChange = (event: MediaQueryListEvent) => setReduced(event.matches);
-    mql.addEventListener("change", handleChange);
-    return () => mql.removeEventListener("change", handleChange);
-  }, []);
-
-  return reduced;
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

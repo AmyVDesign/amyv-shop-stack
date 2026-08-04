@@ -4,17 +4,7 @@ import { useRef, type RefObject } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import WhipModel from "@/components/whip-3d/WhipModel";
-import {
-  poseAt,
-  heroRotationDelta,
-  heroPresence,
-  KEYFRAMES,
-  STATIC_POSE,
-  TILT_X,
-  TILT_Z,
-  BOB_AMPLITUDE,
-  BOB_ANGULAR_FREQ,
-} from "./scrollStageData";
+import { poseAt, heroPresence, KEYFRAMES, STATIC_POSE, TILT_X, TILT_Z } from "./scrollStageData";
 
 // Scratch objects reused every frame -- never allocate inside useFrame.
 const scratchPos = new THREE.Vector3();
@@ -54,15 +44,13 @@ function ScrollCameraRig({ rawProgressRef, modelGroupRef, onProgress }: ScrollCa
 
     const group = modelGroupRef.current;
     if (group) {
-      group.rotation.y += heroRotationDelta(progress, delta);
-
-      // Tilt and float are hero-pose traits: full during the hero hold,
-      // eased to nothing for the close-ups (so the strip reads vertical),
-      // eased back in for the release shot.
+      // Tilt is a hero-pose trait: full during the hero hold, eased to
+      // nothing for the close-ups (so the strip reads vertical), eased
+      // back in for the release shot. No spin, no float -- the hero pose
+      // is a frozen totem, still until the user scrolls.
       const presence = heroPresence(progress);
       group.rotation.x = TILT_X * presence;
       group.rotation.z = TILT_Z * presence;
-      group.position.y = BOB_AMPLITUDE * Math.sin(state.clock.elapsedTime * BOB_ANGULAR_FREQ) * presence;
     }
 
     onProgress(progress);

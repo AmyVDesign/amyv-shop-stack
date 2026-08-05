@@ -4,7 +4,15 @@ import { useRef, type RefObject } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import WhipModel from "@/components/whip-3d/WhipModel";
-import { poseAt, heroPresence, KEYFRAMES, STATIC_POSE, TILT_X, TILT_Z } from "./scrollStageData";
+import {
+  poseAt,
+  heroPresence,
+  applyAspectPullback,
+  KEYFRAMES,
+  STATIC_POSE,
+  TILT_X,
+  TILT_Z,
+} from "./scrollStageData";
 
 // Scratch objects reused every frame -- never allocate inside useFrame.
 const scratchPos = new THREE.Vector3();
@@ -39,16 +47,18 @@ function ScrollCameraRig({ rawProgressRef, modelGroupRef, onProgress }: ScrollCa
     const progress = smoothedRef.current;
 
     poseAt(progress, scratchPos, scratchTarget);
+    // Tilt and the aspect pullback are both hero-pose traits: full during
+    // the hero hold, eased to nothing for the close-ups (so the strip
+    // reads vertical and framing matches what those keyframes were tuned
+    // against), eased back in for the release shot. No spin, no float --
+    // the hero pose is a frozen totem, still until the user scrolls.
+    const presence = heroPresence(progress);
+    applyAspectPullback(scratchPos, scratchTarget, state.size.width / state.size.height, presence);
     state.camera.position.copy(scratchPos);
     state.camera.lookAt(scratchTarget);
 
     const group = modelGroupRef.current;
     if (group) {
-      // Tilt is a hero-pose trait: full during the hero hold, eased to
-      // nothing for the close-ups (so the strip reads vertical), eased
-      // back in for the release shot. No spin, no float -- the hero pose
-      // is a frozen totem, still until the user scrolls.
-      const presence = heroPresence(progress);
       group.rotation.x = TILT_X * presence;
       group.rotation.z = TILT_Z * presence;
     }
@@ -77,7 +87,13 @@ export default function HeroStageScene({ rawProgressRef, onProgress }: HeroStage
   return (
     <Canvas
       camera={{ position: startPose.pos, fov: 38, near: 0.1, far: 100 }}
-      onCreated={({ camera }) => camera.lookAt(...startPose.target)}
+      onCreated={({ camera, size }) => {
+        const target = new THREE.Vector3(...startPose.target);
+        const pos = new THREE.Vector3(...startPose.pos);
+        applyAspectPullback(pos, target, size.width / size.height, 1);
+        camera.position.copy(pos);
+        camera.lookAt(target);
+      }}
       dpr={[1, 2]}
       gl={{
         antialias: true,

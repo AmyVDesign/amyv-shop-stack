@@ -38,13 +38,36 @@ function framePos(target: Vec3, radius: number, theta: number, verticalOffset: n
 const WIDE_TARGET_Y = DIMS.BASE_Y + DIMS.WHIP_OFFSET;
 const RELEASE_TARGET: Vec3 = [0, WIDE_TARGET_Y, 0];
 
-// Hero targets a point slightly above the strip's own midpoint so the lit
-// strip dominates the frame (the dark lower pole and cable mostly fall out
-// below), not the whole-assembly center used for the release shot.
-const HERO_LED_TARGET_Y = DIMS.ledStartY + DIMS.SPAN * 0.6 + DIMS.WHIP_OFFSET;
-// Behind and to the right of the centered headline overlay: look slightly
-// left of the model's true (x=0) center so the model renders right-of-center.
-const HERO_TARGET: Vec3 = [-1.4, HERO_LED_TARGET_Y, 0];
+// The hero-pose tilt (see TILT_X/TILT_Z below) is applied to the model's
+// outer group, which has no position of its own -- it rotates around
+// world origin, not around the strip. A point that sits far from the
+// origin (the strip does, at world y around 5) swings sideways and drops
+// noticeably once rotated, so the untilted coordinates below aren't where
+// the strip actually ends up on screen. HERO_TARGET is computed from the
+// rotated position instead of the raw local one so the camera's lookAt
+// tracks where the tilted strip really is.
+export const TILT_X = THREE.MathUtils.degToRad(6);
+export const TILT_Z = THREE.MathUtils.degToRad(48);
+const HERO_TILT_EULER = new THREE.Euler(TILT_X, 0, TILT_Z, "XYZ");
+
+// Camera.lookAt always centers this point in frame, so it's what decides
+// how much of the strip's own length ends up above vs below center on
+// screen. Near the bottom of the lit strip (rather than its midpoint)
+// leaves most of the strip's length above the crossing point, which is
+// what lets the top end reach the viewport's top edge instead of leaving
+// a dead gap there with the cap visible.
+const HERO_LED_TARGET_Y = DIMS.ledStartY + DIMS.SPAN * 0.0 + DIMS.WHIP_OFFSET;
+const HERO_STRIP_CENTER = new THREE.Vector3(0, HERO_LED_TARGET_Y, 0).applyEuler(HERO_TILT_EULER);
+// Small extra lateral push, on top of whatever sideways swing the tilt
+// itself already added above, so the beam crosses behind the letters of
+// GALAXY near the viewport's horizontal center rather than the gap
+// between the two words.
+const HERO_TARGET_X_PUSH = -0.3;
+const HERO_TARGET: Vec3 = [
+  HERO_STRIP_CENTER.x + HERO_TARGET_X_PUSH,
+  HERO_STRIP_CENTER.y,
+  HERO_STRIP_CENTER.z,
+];
 
 // Upper third of the LED strip -- membrane highlights gather tightest near
 // ledEndY, but "upper third" per spec is the region's midpoint, not the tip.
@@ -68,13 +91,19 @@ export interface CameraKeyframe {
   target: Vec3;
 }
 
-// Release is the wide establishing shot. Hero is pulled in much closer so
-// the lit strip dominates the frame, running diagonally behind the
-// headline, rather than reading as a small wide product shot.
+// Release is the wide establishing shot: same angle/elevation family as
+// the pre-tilt hero framing used to share. Hero has its own, much closer
+// radius and elevation so the tilted strip's full run bleeds off the
+// viewport edges instead of sitting centered with dark space around it
+// (see applyAspectPullback below for how this holds up on narrow
+// viewports, where it can't bleed both top and bottom at once).
 const WIDE_THETA = 0.6;
 const WIDE_VOFFSET = 1.2;
-const HERO_RADIUS = 7;
 const RELEASE_RADIUS = 14;
+
+const HERO_THETA = 0.6;
+const HERO_VOFFSET = 0.6;
+const HERO_RADIUS = 5.5;
 
 /** Progress stops driving the camera timeline; also used by heroPresence. */
 export const HERO_HOLD_END = 0.2; // headline + tilt hold through here
@@ -91,7 +120,7 @@ export const TILT_IN_END = 0.97; // pull-back complete, release framing settled
 // edge. Callout 2 stays the tightest of the three (chips resolve
 // individually) but still keeps the strip in context rather than filling
 // the viewport.
-const HERO_POS = framePos(HERO_TARGET, HERO_RADIUS, WIDE_THETA, WIDE_VOFFSET);
+const HERO_POS = framePos(HERO_TARGET, HERO_RADIUS, HERO_THETA, HERO_VOFFSET);
 const MEMBRANE_POS = framePos(MEMBRANE_TARGET, 3.0, 1.1, 0.15);
 const LED_POS = framePos(LED_TARGET, 2.4, 0.3, 0.1);
 const REMOTE_POS = framePos(REMOTE_TARGET, 2.0, 2.0, 0.15);
@@ -113,9 +142,6 @@ export const KEYFRAMES: CameraKeyframe[] = [
 
 /** Static framing used for the prefers-reduced-motion fallback (no rig, no pin). */
 export const STATIC_POSE: CameraKeyframe = KEYFRAMES[0];
-
-export const TILT_X = THREE.MathUtils.degToRad(6);
-export const TILT_Z = THREE.MathUtils.degToRad(25);
 
 export const smoothstep = (t: number): number => {
   const c = Math.max(0, Math.min(1, t));
@@ -142,6 +168,41 @@ export function poseAt(progress: number, outPos: THREE.Vector3, outTarget: THREE
     a.target[1] + (b.target[1] - a.target[1]) * eased,
     a.target[2] + (b.target[2] - a.target[2]) * eased
   );
+}
+
+// Three.js's `fov` is the VERTICAL field of view, so horizontal coverage
+// shrinks a lot on a narrow portrait viewport even though vertical framing
+// stays the same. The hero radius above was tuned against a landscape
+// reference; on a narrower viewport the steep tilt swings the strip mostly
+// outside that narrower horizontal cone, so it barely shows at all. Pulling
+// the camera back along the same target-to-camera line (same crossing
+// point, same angle, just farther away) restores enough horizontal
+// coverage to keep the strip in frame.
+//
+// A full linear correction (matching the aspect ratio exactly) overcorrects:
+// it also shrinks the strip's apparent vertical length, reopening a gap at
+// both ends instead of just the horizontal one. There's no setting that
+// gets both -- a 30-40 degree diagonal cannot span full viewport height
+// while also staying within a portrait-narrow width (tan(30deg) alone
+// already exceeds a typical phone's aspect ratio), so full top-and-bottom
+// bleed is only achievable in landscape. The square root keeps the angle
+// requirement (the actual acceptance test) intact and lets the strip stay
+// large enough to still read as a dramatic corner-to-corner beam behind the
+// headline, at the cost of exiting a side edge rather than the bottom one
+// on narrow viewports.
+const REFERENCE_ASPECT = 1440 / 900;
+
+/** Writes an aspect-corrected camera position into `outPos`, pulling back on narrow viewports. */
+export function applyAspectPullback(
+  outPos: THREE.Vector3,
+  target: THREE.Vector3,
+  aspect: number,
+  weight: number
+): void {
+  const stretch = Math.max(1, Math.sqrt(REFERENCE_ASPECT / aspect));
+  const pullBack = 1 + (stretch - 1) * weight;
+  if (pullBack === 1) return;
+  outPos.sub(target).multiplyScalar(pullBack).add(target);
 }
 
 /**
